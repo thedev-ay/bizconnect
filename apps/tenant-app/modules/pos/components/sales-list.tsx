@@ -1,0 +1,189 @@
+"use client";
+
+import { useState } from "react";
+import { format } from "date-fns";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { SaleDetailDialog } from "./sale-detail-dialog";
+
+interface SaleItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unitPrice: string;
+  total: string;
+}
+
+interface SaleRecord {
+  id: string;
+  referenceNo: string;
+  subtotal: string;
+  discount: string;
+  total: string;
+  amountPaid: string;
+  change: string;
+  paymentMethod: string;
+  status: string;
+  createdAt: Date;
+  servedByName?: string | null;
+  items: SaleItem[];
+}
+
+interface SalesListProps {
+  sales: SaleRecord[];
+  tenantSlug: string;
+  tenantId: string;
+  currencySymbol: string;
+  currencyLocale: string;
+}
+
+const STATUS_PILL: Record<string, string> = {
+  completed: "bg-emerald-50 text-emerald-700",
+  voided: "bg-zinc-100 text-zinc-500",
+};
+
+const PAYMENT_LABEL: Record<string, string> = {
+  cash: "Cash",
+  card: "Card",
+  gcash: "GCash",
+  maya: "Maya",
+};
+
+export function SalesList({ sales, tenantSlug, tenantId, currencySymbol, currencyLocale }: SalesListProps) {
+  const [search, setSearch] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
+
+  const filtered = sales.filter((s) => {
+    if (search && !s.referenceNo.toLowerCase().includes(search.toLowerCase())) return false;
+    if (paymentFilter !== "all" && s.paymentMethod !== paymentFilter) return false;
+    if (statusFilter !== "all" && s.status !== statusFilter) return false;
+    return true;
+  });
+
+  const fmt = (v: string) =>
+    `${currencySymbol}${Number(v).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}`;
+
+  return (
+    <>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 p-4 border-b border-zinc-100">
+        <Input
+          placeholder="Search reference no..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-8 w-52 text-sm"
+        />
+        <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+          <SelectTrigger className="h-8 w-36 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All methods</SelectItem>
+            <SelectItem value="cash">Cash</SelectItem>
+            <SelectItem value="card">Card</SelectItem>
+            <SelectItem value="gcash">GCash</SelectItem>
+            <SelectItem value="maya">Maya</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="h-8 w-36 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="voided">Voided</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Table>
+        <TableHeader>
+          <TableRow className="border-zinc-100 hover:bg-transparent">
+            <TableHead className="pl-5 text-xs font-semibold uppercase tracking-wide text-zinc-500">Reference</TableHead>
+            <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Date</TableHead>
+            <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Items</TableHead>
+            <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Payment</TableHead>
+            <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Status</TableHead>
+            <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 pr-5">Total</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filtered.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="py-12 text-center text-sm text-zinc-400">
+                No transactions found
+              </TableCell>
+            </TableRow>
+          ) : (
+            filtered.map((sale) => (
+              <TableRow
+                key={sale.id}
+                className={cn(
+                  "border-zinc-50 cursor-pointer transition-colors hover:bg-zinc-50",
+                  sale.status === "voided" && "opacity-60"
+                )}
+                onClick={() => setSelectedSale(sale)}
+              >
+                <TableCell className="pl-5">
+                  <span className="font-mono text-sm font-medium text-zinc-800">
+                    {sale.referenceNo}
+                  </span>
+                </TableCell>
+                <TableCell className="text-sm text-zinc-500">
+                  {format(new Date(sale.createdAt), "MMM d, yyyy · h:mm a")}
+                </TableCell>
+                <TableCell className="text-sm text-zinc-500">
+                  {sale.items.length} item{sale.items.length !== 1 ? "s" : ""}
+                </TableCell>
+                <TableCell className="text-sm text-zinc-500">
+                  {PAYMENT_LABEL[sale.paymentMethod] ?? sale.paymentMethod}
+                </TableCell>
+                <TableCell>
+                  <span className={cn(
+                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+                    STATUS_PILL[sale.status] ?? "bg-zinc-100 text-zinc-500"
+                  )}>
+                    {sale.status}
+                  </span>
+                </TableCell>
+                <TableCell className="pr-5 text-right text-sm font-semibold tabular-nums text-zinc-800">
+                  {fmt(sale.total)}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+
+      {selectedSale && (
+        <SaleDetailDialog
+          sale={selectedSale}
+          tenantSlug={tenantSlug}
+          tenantId={tenantId}
+          currencySymbol={currencySymbol}
+          currencyLocale={currencyLocale}
+          open={!!selectedSale}
+          onOpenChange={(o) => { if (!o) setSelectedSale(null); }}
+        />
+      )}
+    </>
+  );
+}

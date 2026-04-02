@@ -1,9 +1,9 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AppointmentCalendar, CreateAppointmentDialog } from "@/modules/appointments";
+import { Card, CardContent } from "@/components/ui/card";
+import { AppointmentsShell } from "@/modules/appointments";
 import type { Appointment } from "@/modules/appointments";
-import { Clock, CheckCircle, XCircle, CalendarClock } from "lucide-react";
+import { Clock, CalendarCheck, CheckCircle, XCircle } from "lucide-react";
 
 interface AppointmentsPageProps {
   params: Promise<{ tenant: string }>;
@@ -13,7 +13,7 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
   const { tenant: tenantSlug } = await params;
   const tenant = await getTenant(tenantSlug);
 
-  const [appointments, services, staff] = await Promise.all([
+  const [appointments, services, staff, businessHours] = await Promise.all([
     prisma.appointment.findMany({
       where: { tenantId: tenant.id },
       include: {
@@ -29,11 +29,17 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
     prisma.employee.findMany({
       where: { tenantId: tenant.id, isActive: true },
       orderBy: { name: "asc" },
-      include: {
-        services: { select: { serviceId: true } },
-      },
+      include: { services: { select: { serviceId: true } } },
+    }),
+    prisma.businessHours.findMany({
+      where: { tenantId: tenant.id, isOpen: true },
     }),
   ]);
+
+  const openTimes = businessHours.map((h) => h.openTime);
+  const closeTimes = businessHours.map((h) => h.closeTime);
+  const slotMinTime = openTimes.length > 0 ? openTimes.sort()[0] : "07:00";
+  const slotMaxTime = closeTimes.length > 0 ? closeTimes.sort().at(-1)! : "21:00";
 
   const typedAppointments: Appointment[] = appointments.map((a) => ({
     id: a.id,
@@ -69,68 +75,87 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
   const pending = appointments.filter((a) => a.status === "pending").length;
   const confirmed = appointments.filter((a) => a.status === "confirmed").length;
   const done = appointments.filter((a) => a.status === "done").length;
-  const cancelled = appointments.filter(
-    (a) => a.status === "cancelled" || a.status === "no-show"
-  ).length;
+  const cancelled = appointments.filter((a) => a.status === "cancelled" || a.status === "no-show").length;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Appointments</h1>
-          <p className="text-muted-foreground">{appointments.length} total</p>
-        </div>
-        <CreateAppointmentDialog
-          tenantSlug={tenantSlug}
-          tenantId={tenant.id}
-          services={serviceOptions}
-          staff={staffOptions}
-        />
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Appointments</h1>
+        <p className="text-sm text-zinc-500 mt-0.5">{appointments.length} total</p>
       </div>
 
+      {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{pending}</div></CardContent>
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Pending</p>
+                <p className="mt-1.5 text-2xl font-bold text-amber-600">{pending}</p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50">
+                <Clock className="h-4 w-4 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <CalendarClock className="h-4 w-4 text-blue-500" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Confirmed</CardTitle>
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold text-blue-600">{confirmed}</div></CardContent>
+
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Confirmed</p>
+                <p className="mt-1.5 text-2xl font-bold text-blue-600">{confirmed}</p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
+                <CalendarCheck className="h-4 w-4 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Done</CardTitle>
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold text-green-600">{done}</div></CardContent>
+
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Completed</p>
+                <p className="mt-1.5 text-2xl font-bold text-emerald-600">{done}</p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50">
+                <CheckCircle className="h-4 w-4 text-emerald-600" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <XCircle className="h-4 w-4 text-destructive" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Cancelled</CardTitle>
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold text-destructive">{cancelled}</div></CardContent>
+
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Cancelled</p>
+                <p className="mt-1.5 text-2xl font-bold text-zinc-400">{cancelled}</p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100">
+                <XCircle className="h-4 w-4 text-zinc-400" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Calendar</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AppointmentCalendar
-            appointments={typedAppointments}
-            tenantSlug={tenantSlug}
-            tenantId={tenant.id}
-          />
-        </CardContent>
-      </Card>
+      {/* Calendar + dialog — shell manages slot-click → open dialog interaction */}
+      <AppointmentsShell
+        appointments={typedAppointments}
+        tenantSlug={tenantSlug}
+        tenantId={tenant.id}
+        services={serviceOptions}
+        staff={staffOptions}
+        currencySymbol={tenant.currencySymbol}
+        currencyLocale={tenant.currencyLocale}
+        slotMinTime={slotMinTime}
+        slotMaxTime={slotMaxTime}
+      />
     </div>
   );
 }

@@ -24,9 +24,10 @@ import { createItem } from "../actions";
 interface AddItemDialogProps {
   tenantSlug: string;
   tenantId: string;
+  currencySymbol: string;
 }
 
-export function AddItemDialog({ tenantSlug, tenantId }: AddItemDialogProps) {
+export function AddItemDialog({ tenantSlug, tenantId, currencySymbol }: AddItemDialogProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -78,14 +79,14 @@ export function AddItemDialog({ tenantSlug, tenantId }: AddItemDialogProps) {
               <Input type="number" min={0} {...register("quantity")} />
             </div>
             <div className="space-y-2">
-              <Label>Unit Cost (₱)</Label>
+              <Label>Unit Cost ({currencySymbol})</Label>
               <Input type="number" step="0.01" min={0} {...register("unitCost")} />
               {errors.unitCost && (
                 <p className="text-sm text-destructive">{errors.unitCost.message}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label>Unit Price (₱)</Label>
+              <Label>Unit Price ({currencySymbol})</Label>
               <Input type="number" step="0.01" min={0} {...register("unitPrice")} />
               {errors.unitPrice && (
                 <p className="text-sm text-destructive">{errors.unitPrice.message}</p>

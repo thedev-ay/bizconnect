@@ -7,7 +7,19 @@ const fetchTenant = unstable_cache(
   async (slug: string) => {
     return prisma.tenant.findUnique({
       where: { slug, isActive: true },
-      select: { id: true, slug: true, name: true, plan: true, logoUrl: true },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        plan: true,
+        logoUrl: true,
+        address: true,
+        phone: true,
+        email: true,
+        currencySymbol: true,
+        currencyLocale: true,
+        defaultTaxRate: true,
+      },
     });
   },
   ["tenant"],
@@ -18,7 +30,10 @@ const fetchTenant = unstable_cache(
 export const getTenant = cache(async (slug: string) => {
   const tenant = await fetchTenant(slug);
   if (!tenant) notFound();
-  return tenant;
+  return {
+    ...tenant,
+    defaultTaxRate: tenant.defaultTaxRate.toString(),
+  };
 });
 
 export type TenantInfo = Awaited<ReturnType<typeof getTenant>>;

@@ -2,19 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
-import { auth } from "@/lib/auth";
+import { authorize } from "@/lib/authorize";
 import { createEmployeeSchema, type CreateEmployeeInput } from "./schema";
-
-async function authorize(tenantSlug: string) {
-  const session = await auth();
-  if (!session?.user || session.user.tenantSlug !== tenantSlug) throw new Error("Unauthorized");
-  return session;
-}
 
 // ── Employees ────────────────────────────────────────────────────────────────
 
 export async function createEmployee(tenantSlug: string, tenantId: string, input: CreateEmployeeInput) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "hr.view");
   const parsed = createEmployeeSchema.parse(input);
   const count = await prisma.employee.count({ where: { tenantId } });
   const employeeNo = parsed.employeeNo || `EMP-${String(count + 1).padStart(4, "0")}`;
@@ -39,13 +33,13 @@ export async function createEmployee(tenantSlug: string, tenantId: string, input
 }
 
 export async function deactivateEmployee(tenantSlug: string, tenantId: string, employeeId: string) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "hr.view");
   await prisma.employee.update({ where: { id: employeeId, tenantId }, data: { isActive: false } });
   revalidatePath(`/${tenantSlug}/hr`);
 }
 
 export async function reactivateEmployee(tenantSlug: string, tenantId: string, employeeId: string) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "hr.view");
   await prisma.employee.update({ where: { id: employeeId, tenantId }, data: { isActive: true } });
   revalidatePath(`/${tenantSlug}/hr`);
 }
@@ -53,7 +47,7 @@ export async function reactivateEmployee(tenantSlug: string, tenantId: string, e
 // ── Attendance ────────────────────────────────────────────────────────────────
 
 export async function clockIn(tenantSlug: string, tenantId: string, employeeId: string, date: string) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "hr.attendance");
   await prisma.attendance.upsert({
     where: { employeeId_date: { employeeId, date: new Date(date) } },
     update: { clockIn: new Date() },
@@ -63,7 +57,7 @@ export async function clockIn(tenantSlug: string, tenantId: string, employeeId: 
 }
 
 export async function clockOut(tenantSlug: string, tenantId: string, employeeId: string, date: string) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "hr.attendance");
   await prisma.attendance.upsert({
     where: { employeeId_date: { employeeId, date: new Date(date) } },
     update: { clockOut: new Date() },
@@ -78,19 +72,19 @@ export async function logAttendance(
   employeeId: string,
   date: string,
   clockIn: string,
-  clockOut: string,
+  clockOut?: string,
   notes?: string
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "hr.attendance");
   await prisma.attendance.upsert({
     where: { employeeId_date: { employeeId, date: new Date(date) } },
-    update: { clockIn: new Date(clockIn), clockOut: new Date(clockOut), notes: notes || null },
+    update: { clockIn: new Date(clockIn), clockOut: clockOut ? new Date(clockOut) : null, notes: notes || null },
     create: {
       tenantId,
       employeeId,
       date: new Date(date),
       clockIn: new Date(clockIn),
-      clockOut: new Date(clockOut),
+      clockOut: clockOut ? new Date(clockOut) : null,
       notes: notes || null,
     },
   });
@@ -104,7 +98,7 @@ export async function createLeaveRequest(
   tenantId: string,
   input: { employeeId: string; type: string; startDate: string; endDate: string; reason?: string }
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "hr.leave");
   await prisma.leaveRequest.create({
     data: {
       tenantId,
@@ -125,7 +119,7 @@ export async function updateLeaveStatus(
   leaveId: string,
   status: "approved" | "rejected"
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "hr.leave");
   await prisma.leaveRequest.update({ where: { id: leaveId, tenantId }, data: { status } });
   revalidatePath(`/${tenantSlug}/hr`);
 }
@@ -141,7 +135,7 @@ export async function generatePayroll(
   deductions: number,
   notes?: string
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "hr.payroll");
 
   const employee = await prisma.employee.findUnique({
     where: { id: employeeId, tenantId },
@@ -194,7 +188,13 @@ export async function updatePayrollStatus(
   payrollId: string,
   status: "processed" | "paid"
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "hr.payroll");
   await prisma.payrollRecord.update({ where: { id: payrollId, tenantId }, data: { status } });
+  revalidatePath(`/${tenantSlug}/hr`);
+}
+
+export async function deletePayrollRecord(tenantSlug: string, tenantId: string, payrollId: string) {
+  await authorize(tenantSlug, "hr.payroll");
+  await prisma.payrollRecord.delete({ where: { id: payrollId, tenantId } });
   revalidatePath(`/${tenantSlug}/hr`);
 }

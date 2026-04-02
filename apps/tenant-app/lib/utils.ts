@@ -10,6 +10,3 @@ export function nanoid(length = 8) {
   return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
-export function formatCurrency(amount: number | string): string {
-  return `₱${Number(amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
-}

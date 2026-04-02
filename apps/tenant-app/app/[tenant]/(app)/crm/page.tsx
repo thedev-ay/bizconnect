@@ -1,9 +1,9 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { CustomerList, AddCustomerDialog } from "@/modules/crm";
 import type { Customer } from "@/modules/crm";
-import { Users, Tag } from "lucide-react";
+import { Users, Tag, Star } from "lucide-react";
 
 interface CRMPageProps {
   params: Promise<{ tenant: string }>;
@@ -18,53 +18,69 @@ export default async function CRMPage({ params }: CRMPageProps) {
     orderBy: { name: "asc" },
   });
 
-  const allTags = customers.flatMap((c) => c.tags);
-  const uniqueTags = new Set(allTags).size;
-
+  const uniqueTags = new Set(customers.flatMap((c) => c.tags)).size;
+  const vipCount = customers.filter((c) => c.tags.includes("vip")).length;
   const typedCustomers: Customer[] = customers;
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">CRM</h1>
-          <p className="text-muted-foreground">Customer Relationship Management</p>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Customers</h1>
+          <p className="text-sm text-zinc-500 mt-0.5">{customers.length} total</p>
         </div>
         <AddCustomerDialog tenantSlug={tenantSlug} tenantId={tenant.id} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Customers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{customers.length}</div>
+      {/* Stat cards */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Total Customers</p>
+                <p className="mt-1.5 text-2xl font-bold text-zinc-900">{customers.length}</p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50">
+                <Users className="h-4 w-4 text-violet-600" />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <Tag className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Unique Tags
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{uniqueTags}</div>
+
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">VIP Customers</p>
+                <p className="mt-1.5 text-2xl font-bold text-zinc-900">{vipCount}</p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50">
+                <Star className="h-4 w-4 text-amber-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Unique Tags</p>
+                <p className="mt-1.5 text-2xl font-bold text-zinc-900">{uniqueTags}</p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
+                <Tag className="h-4 w-4 text-blue-500" />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">All Customers</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <CustomerList customers={typedCustomers} tenantSlug={tenantSlug} tenantId={tenant.id} />
-        </CardContent>
+      {/* Table */}
+      <Card className="shadow-none border-zinc-200">
+        <CustomerList customers={typedCustomers} tenantSlug={tenantSlug} tenantId={tenant.id} />
       </Card>
     </div>
   );

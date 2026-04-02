@@ -1,8 +1,8 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { InventoryList, AddItemDialog } from "@/modules/inventory";
-import { Package, AlertTriangle } from "lucide-react";
+import { Package, AlertTriangle, TrendingDown, DollarSign } from "lucide-react";
 
 interface InventoryPageProps {
   params: Promise<{ tenant: string }>;
@@ -15,87 +15,102 @@ async function getInventoryData(tenantId: string) {
     orderBy: { name: "asc" },
   });
   const lowStock = items.filter((i) => i.quantity <= i.reorderAt);
-  return { items, lowStockCount: lowStock.length };
+  const totalValue = items.reduce((sum, i) => sum + Number(i.unitCost) * i.quantity, 0);
+  return { items, lowStockCount: lowStock.length, totalValue };
 }
 
 export default async function InventoryPage({ params }: InventoryPageProps) {
   const { tenant: tenantSlug } = await params;
   const tenant = await getTenant(tenantSlug);
-  const { items, lowStockCount } = await getInventoryData(tenant.id);
+  const { items, lowStockCount, totalValue } = await getInventoryData(tenant.id);
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Inventory</h1>
-          <p className="text-muted-foreground">
-            {items.length} items · {lowStockCount} low stock
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Inventory</h1>
+          <p className="text-sm text-zinc-500 mt-0.5">{items.length} items tracked</p>
         </div>
-        <AddItemDialog tenantSlug={tenantSlug} tenantId={tenant.id} />
+        <AddItemDialog tenantSlug={tenantSlug} tenantId={tenant.id} currencySymbol={tenant.currencySymbol} />
       </div>
 
-      {lowStockCount > 0 && (
-        <div className="flex items-center gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
-          <AlertTriangle className="h-4 w-4" />
-          <span>
-            <strong>{lowStockCount}</strong> item{lowStockCount > 1 ? "s are" : " is"} at or below
-            reorder level.
-          </span>
-        </div>
-      )}
-
+      {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <Package className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Items</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{items.length}</div>
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Total Items</p>
+                <p className="mt-1.5 text-2xl font-bold text-zinc-900">{items.length}</p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
+                <Package className="h-4 w-4 text-blue-600" />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Low Stock</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{lowStockCount}</div>
+
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Low Stock</p>
+                <p className={`mt-1.5 text-2xl font-bold ${lowStockCount > 0 ? "text-amber-600" : "text-zinc-900"}`}>
+                  {lowStockCount}
+                </p>
+                {lowStockCount > 0 && (
+                  <p className="mt-0.5 text-xs text-amber-600">Needs restocking</p>
+                )}
+              </div>
+              <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${lowStockCount > 0 ? "bg-amber-50" : "bg-zinc-100"}`}>
+                <TrendingDown className={`h-4 w-4 ${lowStockCount > 0 ? "text-amber-600" : "text-zinc-400"}`} />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Inventory Value
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ₱
-              {items
-                .reduce((sum, i) => sum + Number(i.unitCost) * i.quantity, 0)
-                .toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Inventory Value</p>
+                <p className="mt-1.5 text-2xl font-bold text-zinc-900">
+                  {tenant.currencySymbol}{totalValue.toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 0 })}
+                </p>
+                <p className="mt-0.5 text-xs text-zinc-400">at cost</p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50">
+                <DollarSign className="h-4 w-4 text-emerald-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">All Items</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <InventoryList
-            items={items.map((i) => ({
-              ...i,
-              unitCost: i.unitCost.toString(),
-              unitPrice: i.unitPrice.toString(),
-            }))}
-            tenantSlug={tenantSlug}
-            tenantId={tenant.id}
-          />
-        </CardContent>
+      {/* Low stock alert */}
+      {lowStockCount > 0 && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+          <span>
+            <strong>{lowStockCount}</strong> item{lowStockCount > 1 ? "s are" : " is"} at or below reorder level.
+          </span>
+        </div>
+      )}
+
+      {/* Table */}
+      <Card className="shadow-none border-zinc-200">
+        <InventoryList
+          items={items.map((i) => ({
+            ...i,
+            unitCost: i.unitCost.toString(),
+            unitPrice: i.unitPrice.toString(),
+          }))}
+          tenantSlug={tenantSlug}
+          tenantId={tenant.id}
+          currencySymbol={tenant.currencySymbol}
+          currencyLocale={tenant.currencyLocale}
+        />
       </Card>
     </div>
   );

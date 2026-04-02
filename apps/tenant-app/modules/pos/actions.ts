@@ -2,17 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
-import { auth } from "@/lib/auth";
+import { authorize } from "@/lib/authorize";
 import { createSaleSchema, type CreateSaleInput } from "./schema";
 import { nanoid } from "@/lib/utils";
-
-async function authorize(tenantSlug: string) {
-  const session = await auth();
-  if (!session?.user || session.user.tenantSlug !== tenantSlug) {
-    throw new Error("Unauthorized");
-  }
-  return session;
-}
 
 function generateReferenceNo() {
   const now = new Date();
@@ -22,7 +14,7 @@ function generateReferenceNo() {
 }
 
 export async function createSale(tenantSlug: string, tenantId: string, input: CreateSaleInput) {
-  const session = await authorize(tenantSlug);
+  const session = await authorize(tenantSlug, "pos.process_sale");
   const parsed = createSaleSchema.parse(input);
 
   const change = parsed.amountPaid - parsed.total;
@@ -41,30 +33,75 @@ export async function createSale(tenantSlug: string, tenantId: string, input: Cr
         paymentMethod: parsed.paymentMethod,
         status: "completed",
         servedById: session.user.id,
-        items: {
-          create: parsed.items.map((item) => ({
-            itemId: item.itemId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        items: { create: parsed.items.map((item) => ({
+            itemId: item.itemId ?? null,
+            itemType: item.itemType,
             name: item.name,
             quantity: item.quantity,
+            weight: item.weight ?? null,
             unitPrice: item.unitPrice,
+            originalPrice: item.originalPrice,
+            promoDiscount: item.promoDiscount,
             total: item.total,
-          })),
-        },
+          })) as any },
       },
       include: { items: true },
     });
 
-    // Deduct stock for each item
+    // Deduct stock for product items only
     for (const item of parsed.items) {
-      await tx.inventoryItem.updateMany({
-        where: { id: item.itemId, tenantId },
-        data: { quantity: { decrement: item.quantity } },
-      });
+      if (item.itemType === "product" && item.itemId) {
+        await tx.inventoryItem.updateMany({
+          where: { id: item.itemId, tenantId },
+          data: { quantity: { decrement: item.quantity } },
+        });
+      }
     }
 
     return newSale;
   });
 
   revalidatePath(`/${tenantSlug}/pos`);
-  return sale;
+  revalidatePath(`/${tenantSlug}/pos/sales`);
+  return {
+    ...sale,
+    subtotal: sale.subtotal.toString(),
+    discount: sale.discount.toString(),
+    total: sale.total.toString(),
+    amountPaid: sale.amountPaid.toString(),
+    change: sale.change.toString(),
+    items: sale.items.map((i) => ({
+      ...i,
+      unitPrice: i.unitPrice.toString(),
+      total: i.total.toString(),
+    })),
+  };
+}
+
+export async function voidSale(tenantSlug: string, tenantId: string, saleId: string) {
+  await authorize(tenantSlug, "pos.void");
+
+  const sale = await prisma.sale.findUnique({
+    where: { id: saleId, tenantId },
+    include: { items: true },
+  });
+  if (!sale) throw new Error("Sale not found");
+  if (sale.status === "voided") throw new Error("Sale already voided");
+
+  await prisma.$transaction(async (tx) => {
+    await tx.sale.update({
+      where: { id: saleId },
+      data: { status: "voided" },
+    });
+    // Restore stock
+    for (const item of sale.items) {
+      await tx.inventoryItem.updateMany({
+        where: { id: item.itemId, tenantId },
+        data: { quantity: { increment: item.quantity } },
+      });
+    }
+  });
+
+  revalidatePath(`/${tenantSlug}/pos/sales`);
 }

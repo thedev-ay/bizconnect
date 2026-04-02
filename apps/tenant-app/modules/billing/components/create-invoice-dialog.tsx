@@ -25,9 +25,11 @@ import { createInvoice } from "../actions";
 interface CreateInvoiceDialogProps {
   tenantSlug: string;
   tenantId: string;
+  currencySymbol: string;
+  defaultTaxRate: number;
 }
 
-export function CreateInvoiceDialog({ tenantSlug, tenantId }: CreateInvoiceDialogProps) {
+export function CreateInvoiceDialog({ tenantSlug, tenantId, currencySymbol, defaultTaxRate }: CreateInvoiceDialogProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -37,6 +39,7 @@ export function CreateInvoiceDialog({ tenantSlug, tenantId }: CreateInvoiceDialo
     control,
     watch,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CreateInvoiceInput>({
     resolver: zodResolver(createInvoiceSchema as any),
@@ -99,7 +102,20 @@ export function CreateInvoiceDialog({ tenantSlug, tenantId }: CreateInvoiceDialo
               )}
             </div>
             <div className="space-y-2">
-              <Label>Tax (₱)</Label>
+              <div className="flex items-center justify-between">
+                <Label>Tax ({currencySymbol})</Label>
+                {defaultTaxRate > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValue("tax", Math.round(subtotal * defaultTaxRate) / 100);
+                    }}
+                    className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                  >
+                    Apply {defaultTaxRate}%
+                  </button>
+                )}
+              </div>
               <Input type="number" step="0.01" min={0} {...register("tax")} />
             </div>
           </div>
@@ -160,15 +176,15 @@ export function CreateInvoiceDialog({ tenantSlug, tenantId }: CreateInvoiceDialo
             <div className="space-y-1 pt-2 text-sm">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
-                <span>₱{subtotal.toFixed(2)}</span>
+                <span>{currencySymbol}{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Tax</span>
-                <span>₱{Number(watchedTax || 0).toFixed(2)}</span>
+                <span>{currencySymbol}{Number(watchedTax || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-bold">
                 <span>Total</span>
-                <span>₱{total.toFixed(2)}</span>
+                <span>{currencySymbol}{total.toFixed(2)}</span>
               </div>
             </div>
           </div>

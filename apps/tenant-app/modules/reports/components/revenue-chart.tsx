@@ -19,9 +19,11 @@ const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6"];
 
 interface RevenueChartProps {
   data: RevenueDataPoint[];
+  currencySymbol: string;
+  currencyLocale: string;
 }
 
-export function RevenueChart({ data }: RevenueChartProps) {
+export function RevenueChart({ data, currencySymbol, currencyLocale }: RevenueChartProps) {
   return (
     <ResponsiveContainer width="100%" height={280}>
       <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
@@ -39,10 +41,10 @@ export function RevenueChart({ data }: RevenueChartProps) {
         <XAxis dataKey="month" tick={{ fontSize: 11 }} />
         <YAxis
           tick={{ fontSize: 11 }}
-          tickFormatter={(v) => `₱${Number(v).toLocaleString("en-PH")}`}
+          tickFormatter={(v) => `${currencySymbol}${Number(v).toLocaleString(currencyLocale)}`}
         />
         <Tooltip
-          formatter={(value: unknown) => { const v = Number(value ?? 0); return `₱${v.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`; }}
+          formatter={(value: unknown) => { const v = Number(value ?? 0); return `${currencySymbol}${v.toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}`; }}
         />
         <Legend />
         <Area
@@ -68,9 +70,11 @@ export function RevenueChart({ data }: RevenueChartProps) {
 
 interface PaymentMethodChartProps {
   data: PaymentMethodBreakdown[];
+  currencySymbol: string;
+  currencyLocale: string;
 }
 
-export function PaymentMethodChart({ data }: PaymentMethodChartProps) {
+export function PaymentMethodChart({ data, currencySymbol, currencyLocale }: PaymentMethodChartProps) {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
@@ -78,10 +82,10 @@ export function PaymentMethodChart({ data }: PaymentMethodChartProps) {
         <XAxis dataKey="method" tick={{ fontSize: 11 }} />
         <YAxis
           tick={{ fontSize: 11 }}
-          tickFormatter={(v) => `₱${Number(v).toLocaleString("en-PH")}`}
+          tickFormatter={(v) => `${currencySymbol}${Number(v).toLocaleString(currencyLocale)}`}
         />
         <Tooltip
-          formatter={(value: unknown) => { const v = Number(value ?? 0); return `₱${v.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`; }}
+          formatter={(value: unknown) => { const v = Number(value ?? 0); return `${currencySymbol}${v.toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}`; }}
         />
         <Bar dataKey="total" name="Revenue" radius={[4, 4, 0, 0]}>
           {data.map((_, index) => (

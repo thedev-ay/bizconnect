@@ -23,9 +23,10 @@ import { createEmployee } from "../actions";
 interface AddEmployeeDialogProps {
   tenantSlug: string;
   tenantId: string;
+  currencySymbol: string;
 }
 
-export function AddEmployeeDialog({ tenantSlug, tenantId }: AddEmployeeDialogProps) {
+export function AddEmployeeDialog({ tenantSlug, tenantId, currencySymbol }: AddEmployeeDialogProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -92,7 +93,7 @@ export function AddEmployeeDialog({ tenantSlug, tenantId }: AddEmployeeDialogPro
               <Input type="date" {...register("hireDate")} />
             </div>
             <div className="space-y-2">
-              <Label>Monthly Salary (₱)</Label>
+              <Label>Monthly Salary ({currencySymbol})</Label>
               <Input type="number" step="0.01" min={0} {...register("salary")} />
             </div>
           </div>

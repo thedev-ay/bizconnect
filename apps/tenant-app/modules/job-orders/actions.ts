@@ -2,16 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
-import { auth } from "@/lib/auth";
+import { authorize } from "@/lib/authorize";
 import { createJobOrderSchema, type CreateJobOrderInput } from "./schema";
-
-async function authorize(tenantSlug: string) {
-  const session = await auth();
-  if (!session?.user || session.user.tenantSlug !== tenantSlug) {
-    throw new Error("Unauthorized");
-  }
-  return session;
-}
 
 function generateJobNo() {
   const date = new Date();
@@ -25,24 +17,32 @@ export async function createJobOrder(
   tenantId: string,
   input: CreateJobOrderInput
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "job-orders.create");
   const parsed = createJobOrderSchema.parse(input);
 
-  const jobOrder = await prisma.jobOrder.create({
+  await prisma.jobOrder.create({
     data: {
       tenantId,
       jobNo: generateJobNo(),
       customerName: parsed.customerName,
-      description: parsed.description,
+      contactNo: parsed.contactNo || null,
+      notes: parsed.notes || null,
       priority: parsed.priority,
       assignedTo: parsed.assignedTo || null,
       dueDate: parsed.dueDate ? new Date(parsed.dueDate) : null,
-      status: "pending",
-    },
+      status: "received",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      items: parsed.items.length > 0 ? { create: parsed.items.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        weight: item.weight ?? null,
+        unitPrice: item.unitPrice,
+        total: item.total,
+      })) } : undefined,
+    } as any,
   });
 
   revalidatePath(`/${tenantSlug}/job-orders`);
-  return jobOrder;
 }
 
 export async function updateJobOrderStatus(
@@ -51,16 +51,64 @@ export async function updateJobOrderStatus(
   jobOrderId: string,
   status: string
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "job-orders.status");
 
   const data: Record<string, unknown> = { status };
-  if (status === "completed") data.completedAt = new Date();
+  if (status === "claimed") {
+    data.claimedAt = new Date();
+    data.completedAt = new Date();
+  }
 
-  const jobOrder = await prisma.jobOrder.update({
+  await prisma.jobOrder.update({
     where: { id: jobOrderId, tenantId },
     data,
   });
 
   revalidatePath(`/${tenantSlug}/job-orders`);
-  return jobOrder;
+}
+
+export async function updateJobOrder(
+  tenantSlug: string,
+  tenantId: string,
+  jobOrderId: string,
+  input: CreateJobOrderInput
+) {
+  await authorize(tenantSlug, "job-orders.edit");
+  const parsed = createJobOrderSchema.parse(input);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.jobOrder.update({
+      where: { id: jobOrderId, tenantId },
+      data: {
+        customerName: parsed.customerName,
+        contactNo: parsed.contactNo || null,
+        notes: parsed.notes || null,
+        priority: parsed.priority,
+        assignedTo: parsed.assignedTo || null,
+        dueDate: parsed.dueDate ? new Date(parsed.dueDate) : null,
+      },
+    });
+    // Replace items
+    await tx.jobOrderItem.deleteMany({ where: { jobOrderId } });
+    if (parsed.items.length > 0) {
+      await tx.jobOrderItem.createMany({
+        data: parsed.items.map((item) => ({
+          jobOrderId,
+          name: item.name,
+          quantity: item.quantity,
+          weight: item.weight ?? null,
+          unitPrice: item.unitPrice,
+          total: item.total,
+        })),
+      });
+    }
+  });
+
+  revalidatePath(`/${tenantSlug}/job-orders`);
+}
+
+export async function deleteJobOrder(tenantSlug: string, tenantId: string, jobOrderId: string) {
+  await authorize(tenantSlug, "job-orders.edit");
+  await prisma.jobOrder.delete({ where: { id: jobOrderId, tenantId } });
+  revalidatePath(`/${tenantSlug}/job-orders`);
 }

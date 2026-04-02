@@ -75,7 +75,7 @@ export function StaffProfileDialog({ staff, services, tenantSlug, tenantId }: St
       <DialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
         <Settings className="h-4 w-4" />
       </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Staff Profile — {staff.name}</DialogTitle></DialogHeader>
 
         <div className="space-y-5">

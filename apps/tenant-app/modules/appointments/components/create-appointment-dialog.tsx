@@ -36,6 +36,11 @@ interface CreateAppointmentDialogProps {
   services: ServiceOption[];
   staff: StaffOption[];
   defaultStart?: string;
+  currencySymbol: string;
+  currencyLocale: string;
+  // External control — when provided, the internal trigger button is hidden
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function CreateAppointmentDialog({
@@ -44,13 +49,20 @@ export function CreateAppointmentDialog({
   services,
   staff,
   defaultStart,
+  currencySymbol,
+  currencyLocale,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange,
 }: CreateAppointmentDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange ?? setInternalOpen;
   const router = useRouter();
 
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
   const [availability, setAvailability] = useState<{
     isWorkingDay: boolean;
     workStart: string | null;
@@ -93,6 +105,16 @@ export function CreateAppointmentDialog({
     }
   }, [selectedServiceId]);
 
+  // Pre-fill date/time when dialog opens with a defaultStart (e.g. from calendar slot click)
+  useEffect(() => {
+    if (open && defaultStart) {
+      const [date, time] = defaultStart.split("T");
+      setSelectedDate(date);
+      setSelectedTime(time ?? "");
+      setValue("startAt", defaultStart);
+    }
+  }, [open, defaultStart]);
+
   function handleOpen(o: boolean) {
     setOpen(o);
     if (!o) {
@@ -100,10 +122,8 @@ export function CreateAppointmentDialog({
       setSelectedServiceId("");
       setSelectedEmployeeId("");
       setSelectedDate("");
+      setSelectedTime("");
       setAvailability(null);
-    } else if (defaultStart) {
-      setValue("startAt", defaultStart);
-      setSelectedDate(defaultStart.slice(0, 10));
     }
   }
 
@@ -120,10 +140,12 @@ export function CreateAppointmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogTrigger render={<Button />}>
-        <Plus className="mr-2 h-4 w-4" /> New Appointment
-      </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      {externalOpen === undefined && (
+        <DialogTrigger render={<Button />}>
+          <Plus className="mr-2 h-4 w-4" /> New Appointment
+        </DialogTrigger>
+      )}
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Book Appointment</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
@@ -135,12 +157,16 @@ export function CreateAppointmentDialog({
               onValueChange={(v) => { if (v) { setSelectedServiceId(v); setValue("serviceId", v); } }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a service..." />
+                <SelectValue>
+                  {selectedServiceId
+                    ? services.find((s) => s.id === selectedServiceId)?.name
+                    : <span className="text-muted-foreground">Select a service...</span>}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {services.map((svc) => (
                   <SelectItem key={svc.id} value={svc.id}>
-                    {svc.name} — {svc.duration}min · ₱{Number(svc.price).toLocaleString("en-PH")}
+                    {svc.name} — {svc.duration}min · {currencySymbol}{Number(svc.price).toLocaleString(currencyLocale)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -157,7 +183,11 @@ export function CreateAppointmentDialog({
               disabled={!selectedServiceId}
             >
               <SelectTrigger>
-                <SelectValue placeholder={selectedServiceId ? "Select staff..." : "Select a service first"} />
+                <SelectValue>
+                  {selectedEmployeeId
+                    ? qualifiedStaff.find((s) => s.id === selectedEmployeeId)?.name
+                    : <span className="text-muted-foreground">{selectedServiceId ? "Select staff..." : "Select a service first"}</span>}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {qualifiedStaff.length === 0 ? (
@@ -180,8 +210,15 @@ export function CreateAppointmentDialog({
               <Label>Date *</Label>
               <Input
                 type="date"
+                value={selectedDate}
                 disabled={!selectedEmployeeId}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                onChange={(e) => {
+                  const date = e.target.value;
+                  setSelectedDate(date);
+                  if (date && selectedTime) {
+                    setValue("startAt", `${date}T${selectedTime}`);
+                  }
+                }}
               />
             </div>
             <div className="space-y-2">
@@ -191,14 +228,15 @@ export function CreateAppointmentDialog({
               </Label>
               <Input
                 type="time"
+                value={selectedTime}
                 disabled={!selectedDate}
-                {...register("startAt", {
-                  onChange: (e) => {
-                    if (selectedDate) {
-                      setValue("startAt", `${selectedDate}T${e.target.value}`);
-                    }
-                  },
-                })}
+                onChange={(e) => {
+                  const time = e.target.value;
+                  setSelectedTime(time);
+                  if (selectedDate && time) {
+                    setValue("startAt", `${selectedDate}T${time}`);
+                  }
+                }}
               />
               {errors.startAt && <p className="text-sm text-destructive">{errors.startAt.message}</p>}
             </div>
@@ -222,7 +260,7 @@ export function CreateAppointmentDialog({
                       {availability.bookedSlots.length > 0 && (
                         <div className="mt-0.5 text-amber-700">
                           Already booked: {availability.bookedSlots.map((s) =>
-                            `${new Date(s.start).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })}–${new Date(s.end).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })}`
+                            `${new Date(s.start).toLocaleTimeString(currencyLocale, { hour: "2-digit", minute: "2-digit" })}–${new Date(s.end).toLocaleTimeString(currencyLocale, { hour: "2-digit", minute: "2-digit" })}`
                           ).join(", ")}
                         </div>
                       )}

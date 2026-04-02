@@ -6,13 +6,15 @@ export type ModuleSlug =
   | "users"
   | "inventory"
   | "pos"
+  | "promotions"
+  | "services"
   | "appointments"
   | "billing"
   | "hr"
   | "reports"
   | "job-orders"
   | "crm"
-  | "staff";
+  | "loyalty";
 
 export interface ActiveModule {
   id: string;
@@ -94,6 +96,8 @@ export const ROUTE_SEGMENT_TO_MODULE: Record<string, ModuleSlug> = {
   reports: "reports",
   "job-orders": "job-orders",
   crm: "crm",
-  staff: "staff",
+  promotions: "promotions",
+  services: "services",
+  loyalty: "loyalty",
   // "users" and "dashboard" are always accessible — not listed here
 };

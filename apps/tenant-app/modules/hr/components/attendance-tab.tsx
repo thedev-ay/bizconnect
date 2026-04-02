@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { logAttendance } from "../actions";
 import type { Employee, AttendanceRecord } from "../types";
 
@@ -22,6 +23,7 @@ interface AttendanceTabProps {
 export function AttendanceTab({ employees, records, tenantSlug, tenantId }: AttendanceTabProps) {
   const router = useRouter();
   const [employeeId, setEmployeeId] = useState("");
+  const [employeeKey, setEmployeeKey] = useState(0);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [clockIn, setClockIn] = useState("");
   const [clockOut, setClockOut] = useState("");
@@ -34,8 +36,20 @@ export function AttendanceTab({ employees, records, tenantSlug, tenantId }: Atte
     }
     setSaving(true);
     try {
-      await logAttendance(tenantSlug, tenantId, employeeId, date, `${date}T${clockIn}`, clockOut ? `${date}T${clockOut}` : `${date}T${clockIn}`, undefined);
+      await logAttendance(
+        tenantSlug,
+        tenantId,
+        employeeId,
+        date,
+        `${date}T${clockIn}`,
+        clockOut ? `${date}T${clockOut}` : undefined,
+        undefined
+      );
       toast.success("Attendance logged");
+      setEmployeeId("");
+      setEmployeeKey((k) => k + 1);
+      setClockIn("");
+      setClockOut("");
       router.refresh();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to log attendance");
@@ -53,12 +67,12 @@ export function AttendanceTab({ employees, records, tenantSlug, tenantId }: Atte
   return (
     <div className="space-y-6">
       {/* Log form */}
-      <div className="rounded-lg border p-4">
-        <p className="mb-3 text-sm font-medium">Log Attendance</p>
+      <div className="rounded-lg border border-zinc-200 p-4">
+        <p className="mb-3 text-sm font-semibold text-zinc-900">Log Attendance</p>
         <div className="grid gap-3 sm:grid-cols-5">
           <div className="space-y-1">
-            <Label className="text-xs">Employee</Label>
-            <Select onValueChange={(v) => { if (v) setEmployeeId(v as string); }}>
+            <Label className="text-xs text-zinc-600">Employee</Label>
+            <Select key={employeeKey} onValueChange={(v) => { if (v) setEmployeeId(v); }}>
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
               <SelectContent>
                 {employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
@@ -66,15 +80,15 @@ export function AttendanceTab({ employees, records, tenantSlug, tenantId }: Atte
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Date</Label>
+            <Label className="text-xs text-zinc-600">Date</Label>
             <Input type="date" className="h-8 text-xs" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Clock In</Label>
+            <Label className="text-xs text-zinc-600">Clock In</Label>
             <Input type="time" className="h-8 text-xs" value={clockIn} onChange={(e) => setClockIn(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Clock Out</Label>
+            <Label className="text-xs text-zinc-600">Clock Out <span className="text-zinc-400">(optional)</span></Label>
             <Input type="time" className="h-8 text-xs" value={clockOut} onChange={(e) => setClockOut(e.target.value)} />
           </div>
           <div className="flex items-end">
@@ -88,27 +102,29 @@ export function AttendanceTab({ employees, records, tenantSlug, tenantId }: Atte
       {/* Records table */}
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>Employee</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Clock In</TableHead>
-            <TableHead>Clock Out</TableHead>
-            <TableHead>Hours</TableHead>
+          <TableRow className="border-zinc-100 hover:bg-transparent">
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Employee</TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Date</TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Clock In</TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Clock Out</TableHead>
+            <TableHead className="text-right text-xs font-medium uppercase tracking-wide text-zinc-500">Hours</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {records.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No attendance records yet.</TableCell>
+              <TableCell colSpan={5} className="py-12 text-center text-sm text-zinc-400">No attendance records yet.</TableCell>
             </TableRow>
           ) : (
             records.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="font-medium">{r.employeeName}</TableCell>
-                <TableCell>{format(new Date(r.date), "MMM d, yyyy")}</TableCell>
-                <TableCell>{r.clockIn ? format(new Date(r.clockIn), "h:mm a") : "—"}</TableCell>
-                <TableCell>{r.clockOut ? format(new Date(r.clockOut), "h:mm a") : "—"}</TableCell>
-                <TableCell className="font-medium">{hoursWorked(r)}</TableCell>
+              <TableRow key={r.id} className="border-zinc-100 hover:bg-zinc-50/50">
+                <TableCell className="text-sm font-medium text-zinc-900">{r.employeeName}</TableCell>
+                <TableCell className="text-sm text-zinc-500">{format(new Date(r.date), "MMM d, yyyy")}</TableCell>
+                <TableCell className="text-sm text-zinc-700">{r.clockIn ? format(new Date(r.clockIn), "h:mm a") : <span className="text-zinc-300">—</span>}</TableCell>
+                <TableCell className={cn("text-sm", r.clockOut ? "text-zinc-700" : "text-amber-600")}>
+                  {r.clockOut ? format(new Date(r.clockOut), "h:mm a") : "Still in"}
+                </TableCell>
+                <TableCell className="text-right text-sm font-medium text-zinc-900">{hoursWorked(r)}</TableCell>
               </TableRow>
             ))
           )}

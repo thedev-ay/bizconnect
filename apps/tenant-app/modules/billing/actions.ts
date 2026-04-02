@@ -2,16 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
-import { auth } from "@/lib/auth";
+import { authorize } from "@/lib/authorize";
 import { createInvoiceSchema, type CreateInvoiceInput } from "./schema";
-
-async function authorize(tenantSlug: string) {
-  const session = await auth();
-  if (!session?.user || session.user.tenantSlug !== tenantSlug) {
-    throw new Error("Unauthorized");
-  }
-  return session;
-}
 
 function generateInvoiceNo() {
   const date = new Date();
@@ -25,7 +17,7 @@ export async function createInvoice(
   tenantId: string,
   input: CreateInvoiceInput
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "billing.create");
   const parsed = createInvoiceSchema.parse(input);
 
   const subtotal = parsed.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
@@ -61,7 +53,7 @@ export async function createInvoice(
 }
 
 export async function markInvoicePaid(tenantSlug: string, tenantId: string, invoiceId: string) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "billing.mark_paid");
 
   const invoice = await prisma.invoice.update({
     where: { id: invoiceId, tenantId },
@@ -73,7 +65,7 @@ export async function markInvoicePaid(tenantSlug: string, tenantId: string, invo
 }
 
 export async function voidInvoice(tenantSlug: string, tenantId: string, invoiceId: string) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "billing.edit");
 
   const invoice = await prisma.invoice.update({
     where: { id: invoiceId, tenantId },
@@ -85,7 +77,7 @@ export async function voidInvoice(tenantSlug: string, tenantId: string, invoiceI
 }
 
 export async function sendInvoice(tenantSlug: string, tenantId: string, invoiceId: string) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "billing.edit");
 
   const invoice = await prisma.invoice.update({
     where: { id: invoiceId, tenantId },

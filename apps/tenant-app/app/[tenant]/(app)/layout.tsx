@@ -1,7 +1,6 @@
 import { getTenant } from "@/lib/tenant";
 import { getActiveModules } from "@/lib/module-registry";
 import { Sidebar } from "@/components/layout/sidebar";
-import { Topbar } from "@/components/layout/topbar";
 import { Providers } from "@/components/providers";
 
 interface TenantLayoutProps {
@@ -26,9 +25,7 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
     <Providers>
       <div className="flex h-screen overflow-hidden">
         <Sidebar tenant={tenant} modules={activeModules} />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <main className="flex-1 overflow-y-auto bg-muted/30 p-6">{children}</main>
-        </div>
+        <main className="flex-1 overflow-y-auto bg-zinc-50 p-6">{children}</main>
       </div>
     </Providers>
   );

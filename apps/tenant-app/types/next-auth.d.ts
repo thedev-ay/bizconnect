@@ -7,6 +7,7 @@ declare module "next-auth" {
       tenantId: string;
       tenantName: string;
       role: string;
+      permissions: Record<string, boolean>;
     } & DefaultSession["user"];
   }
 }
@@ -17,5 +18,6 @@ declare module "next-auth/jwt" {
     tenantId: string;
     tenantName: string;
     role: string;
+    permissions: Record<string, boolean>;
   }
 }

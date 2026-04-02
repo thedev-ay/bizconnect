@@ -1,3 +1,3 @@
 export { POSTerminal } from "./components/pos-terminal";
-export { createSale } from "./actions";
+export { createSale, voidSale } from "./actions";
 export type { CartItem, Sale } from "./types";

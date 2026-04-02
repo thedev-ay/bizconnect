@@ -29,6 +29,9 @@ export async function createUser(tenantSlug: string, tenantId: string, input: Cr
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
 
+  // Owners and admins bypass permission checks — don't store permissions for them
+  const permissions = parsed.data.role === "member" ? parsed.data.permissions : {};
+
   const user = await prisma.user.create({
     data: {
       tenantId,
@@ -36,6 +39,7 @@ export async function createUser(tenantSlug: string, tenantId: string, input: Cr
       name: parsed.data.name,
       passwordHash,
       role: parsed.data.role,
+      permissions,
     },
   });
 
@@ -54,9 +58,21 @@ export async function updateUser(
   const parsed = updateUserSchema.safeParse(input);
   if (!parsed.success) throw new Error("Invalid input");
 
+  const data: Record<string, unknown> = {};
+  if (parsed.data.name !== undefined) data.name = parsed.data.name;
+  if (parsed.data.isActive !== undefined) data.isActive = parsed.data.isActive;
+  if (parsed.data.role !== undefined) {
+    data.role = parsed.data.role;
+    // Clearing permissions when role is promoted to owner/admin
+    if (parsed.data.role !== "member") data.permissions = {};
+  }
+  if (parsed.data.permissions !== undefined && parsed.data.role !== "owner" && parsed.data.role !== "admin") {
+    data.permissions = parsed.data.permissions;
+  }
+
   const user = await prisma.user.update({
     where: { id: userId, tenantId },
-    data: parsed.data,
+    data,
   });
 
   revalidatePath(`/${tenantSlug}/users`);
@@ -66,7 +82,6 @@ export async function updateUser(
 export async function deleteUser(tenantSlug: string, tenantId: string, userId: string) {
   const session = await getAuthorizedSession(tenantSlug);
 
-  // Prevent self-deletion
   if (session.user.id === userId) throw new Error("Cannot delete your own account");
 
   await prisma.user.delete({ where: { id: userId, tenantId } });

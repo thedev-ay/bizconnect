@@ -1,8 +1,13 @@
 export interface CartItem {
   itemId: string;
+  itemType: "product" | "service";
   name: string;
-  unitPrice: number;
+  unitPrice: number;        // effective price after promo
+  originalPrice: number;    // price before promo
+  promoDiscount: number;    // discount per unit from promo
+  promoLabel: string | null;
   quantity: number;
+  weight: number | null;    // kg, for per_kilo services
   total: number;
 }
 

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -22,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, PlayCircle, CheckCircle, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { JobOrder } from "../types";
 import { updateJobOrderStatus } from "../actions";
 
@@ -31,18 +31,18 @@ interface JobOrderListProps {
   tenantId: string;
 }
 
-const STATUS_BADGE: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  pending: "outline",
-  "in-progress": "secondary",
-  completed: "default",
-  cancelled: "destructive",
+const STATUS_PILL: Record<string, string> = {
+  pending: "bg-amber-50 text-amber-700 border-amber-200",
+  "in-progress": "bg-blue-50 text-blue-700 border-blue-200",
+  completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  cancelled: "bg-zinc-100 text-zinc-500 border-zinc-200",
 };
 
-const PRIORITY_BADGE: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  low: "outline",
-  normal: "secondary",
-  high: "default",
-  urgent: "destructive",
+const PRIORITY_PILL: Record<string, string> = {
+  low: "bg-zinc-100 text-zinc-500 border-zinc-200",
+  normal: "bg-blue-50 text-blue-700 border-blue-200",
+  high: "bg-amber-50 text-amber-700 border-amber-200",
+  urgent: "bg-red-50 text-red-700 border-red-200",
 };
 
 export function JobOrderList({ jobOrders, tenantSlug, tenantId }: JobOrderListProps) {
@@ -65,21 +65,21 @@ export function JobOrderList({ jobOrders, tenantSlug, tenantId }: JobOrderListPr
   return (
     <Table>
       <TableHeader>
-        <TableRow>
-          <TableHead>Job No.</TableHead>
-          <TableHead>Customer</TableHead>
-          <TableHead>Description</TableHead>
-          <TableHead>Priority</TableHead>
-          <TableHead>Assigned To</TableHead>
-          <TableHead>Due Date</TableHead>
-          <TableHead>Status</TableHead>
+        <TableRow className="border-zinc-100 hover:bg-transparent">
+          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Job No.</TableHead>
+          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Customer</TableHead>
+          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Description</TableHead>
+          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Priority</TableHead>
+          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Assigned To</TableHead>
+          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Due Date</TableHead>
+          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Status</TableHead>
           <TableHead />
         </TableRow>
       </TableHeader>
       <TableBody>
         {jobOrders.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+            <TableCell colSpan={8} className="py-12 text-center text-sm text-zinc-400">
               No job orders yet.
             </TableCell>
           </TableRow>
@@ -92,31 +92,42 @@ export function JobOrderList({ jobOrders, tenantSlug, tenantId }: JobOrderListPr
               new Date(jo.dueDate) < new Date();
 
             return (
-              <TableRow key={jo.id} className={loading === jo.id ? "opacity-50" : ""}>
-                <TableCell className="font-mono text-sm font-medium">{jo.jobNo}</TableCell>
-                <TableCell className="font-medium">{jo.customerName}</TableCell>
-                <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
+              <TableRow
+                key={jo.id}
+                className={cn("border-zinc-100 hover:bg-zinc-50/50", loading === jo.id && "opacity-50")}
+              >
+                <TableCell className="font-mono text-sm font-medium text-zinc-900">{jo.jobNo}</TableCell>
+                <TableCell className="text-sm font-medium text-zinc-900">{jo.customerName}</TableCell>
+                <TableCell className="max-w-[200px] truncate text-sm text-zinc-500">
                   {jo.description}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={PRIORITY_BADGE[jo.priority] ?? "outline"} className="capitalize">
+                  <span className={cn(
+                    "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
+                    PRIORITY_PILL[jo.priority] ?? "bg-zinc-100 text-zinc-500 border-zinc-200"
+                  )}>
                     {jo.priority}
-                  </Badge>
+                  </span>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{jo.assignedTo ?? "—"}</TableCell>
-                <TableCell className={isOverdue ? "text-destructive" : "text-muted-foreground"}>
-                  {jo.dueDate ? format(new Date(jo.dueDate), "MMM d, yyyy") : "—"}
+                <TableCell className="text-sm text-zinc-500">{jo.assignedTo ?? <span className="text-zinc-300">—</span>}</TableCell>
+                <TableCell className={isOverdue ? "text-red-600" : "text-zinc-500"}>
+                  <span className="text-sm">
+                    {jo.dueDate ? format(new Date(jo.dueDate), "MMM d, yyyy") : <span className="text-zinc-300">—</span>}
+                  </span>
                   {isOverdue && <span className="ml-1 text-xs">(overdue)</span>}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={STATUS_BADGE[jo.status] ?? "outline"} className="capitalize">
-                    {jo.status}
-                  </Badge>
+                  <span className={cn(
+                    "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
+                    STATUS_PILL[jo.status] ?? "bg-zinc-100 text-zinc-500 border-zinc-200"
+                  )}>
+                    {jo.status.replace("-", " ")}
+                  </span>
                 </TableCell>
                 <TableCell>
                   {jo.status !== "completed" && jo.status !== "cancelled" && (
                     <DropdownMenu>
-                      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8"/>}>
+                      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-700" />}>
                         <MoreHorizontal className="h-4 w-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">

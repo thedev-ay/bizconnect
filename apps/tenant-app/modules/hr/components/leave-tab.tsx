@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { createLeaveRequest, updateLeaveStatus } from "../actions";
 import type { Employee, LeaveRequest } from "../types";
 
@@ -22,14 +22,22 @@ interface LeaveTabProps {
   tenantId: string;
 }
 
-const STATUS_BADGE: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  pending: "outline",
-  approved: "default",
-  rejected: "destructive",
+const LEAVE_TYPE: Record<string, string> = {
+  sick: "Sick Leave",
+  vacation: "Vacation",
+  personal: "Personal",
+  unpaid: "Unpaid",
+};
+
+const STATUS_PILL: Record<string, string> = {
+  pending: "bg-amber-50 text-amber-700 border-amber-200",
+  approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  rejected: "bg-red-50 text-red-600 border-red-200",
 };
 
 export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTabProps) {
   const router = useRouter();
+  const [formKey, setFormKey] = useState(0);
   const [employeeId, setEmployeeId] = useState("");
   const [type, setType] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -40,14 +48,23 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
 
   async function handleSubmit() {
     if (!employeeId || !type || !startDate || !endDate) {
-      toast.error("All fields except reason are required");
+      toast.error("Employee, type, and dates are required");
+      return;
+    }
+    if (new Date(endDate) < new Date(startDate)) {
+      toast.error("End date must be on or after start date");
       return;
     }
     setSaving(true);
     try {
       await createLeaveRequest(tenantSlug, tenantId, { employeeId, type, startDate, endDate, reason });
       toast.success("Leave request created");
-      setEmployeeId(""); setType(""); setStartDate(""); setEndDate(""); setReason("");
+      setFormKey((k) => k + 1);
+      setEmployeeId("");
+      setType("");
+      setStartDate("");
+      setEndDate("");
+      setReason("");
       router.refresh();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to create request");
@@ -71,19 +88,19 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border p-4">
-        <p className="mb-3 text-sm font-medium">New Leave Request</p>
-        <div className="grid gap-3 sm:grid-cols-2">
+      <div className="rounded-lg border border-zinc-200 p-4">
+        <p className="mb-3 text-sm font-semibold text-zinc-900">New Leave Request</p>
+        <div key={formKey} className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label className="text-xs">Employee</Label>
-            <Select onValueChange={(v) => { if (v) setEmployeeId(v as string); }}>
+            <Label className="text-xs text-zinc-600">Employee</Label>
+            <Select onValueChange={(v) => { if (v) setEmployeeId(v); }}>
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
               <SelectContent>{employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Leave Type</Label>
-            <Select onValueChange={(v) => { if (v) setType(v as string); }}>
+            <Label className="text-xs text-zinc-600">Leave Type</Label>
+            <Select onValueChange={(v) => { if (v) setType(v); }}>
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="sick">Sick Leave</SelectItem>
@@ -94,56 +111,61 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Start Date</Label>
+            <Label className="text-xs text-zinc-600">Start Date</Label>
             <Input type="date" className="h-8 text-xs" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">End Date</Label>
-            <Input type="date" className="h-8 text-xs" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <Label className="text-xs text-zinc-600">End Date</Label>
+            <Input type="date" className="h-8 text-xs" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <Label className="text-xs">Reason (optional)</Label>
+            <Label className="text-xs text-zinc-600">Reason <span className="text-zinc-400">(optional)</span></Label>
             <Textarea className="text-xs" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
           <div className="sm:col-span-2">
-            <Button size="sm" onClick={handleSubmit} disabled={saving}>{saving ? "Saving..." : "Submit Request"}</Button>
+            <Button size="sm" onClick={handleSubmit} disabled={saving}>{saving ? "Submitting..." : "Submit Request"}</Button>
           </div>
         </div>
       </div>
 
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>Employee</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>From</TableHead>
-            <TableHead>To</TableHead>
-            <TableHead>Reason</TableHead>
-            <TableHead>Status</TableHead>
+          <TableRow className="border-zinc-100 hover:bg-transparent">
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Employee</TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Type</TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">From</TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">To</TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Reason</TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Status</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
         <TableBody>
           {requests.length === 0 ? (
-            <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">No leave requests.</TableCell></TableRow>
+            <TableRow><TableCell colSpan={7} className="py-12 text-center text-sm text-zinc-400">No leave requests yet.</TableCell></TableRow>
           ) : (
             requests.map((r) => (
-              <TableRow key={r.id} className={loading === r.id ? "opacity-50" : ""}>
-                <TableCell className="font-medium">{r.employeeName}</TableCell>
-                <TableCell className="capitalize">{r.type}</TableCell>
-                <TableCell>{format(new Date(r.startDate), "MMM d, yyyy")}</TableCell>
-                <TableCell>{format(new Date(r.endDate), "MMM d, yyyy")}</TableCell>
-                <TableCell className="max-w-[150px] truncate text-muted-foreground">{r.reason ?? "—"}</TableCell>
+              <TableRow key={r.id} className={cn("border-zinc-100 hover:bg-zinc-50/50", loading === r.id && "opacity-50")}>
+                <TableCell className="text-sm font-medium text-zinc-900">{r.employeeName}</TableCell>
+                <TableCell className="text-sm text-zinc-700">{LEAVE_TYPE[r.type] ?? r.type}</TableCell>
+                <TableCell className="text-sm text-zinc-500">{format(new Date(r.startDate), "MMM d, yyyy")}</TableCell>
+                <TableCell className="text-sm text-zinc-500">{format(new Date(r.endDate), "MMM d, yyyy")}</TableCell>
+                <TableCell className="max-w-[160px] truncate text-sm text-zinc-400">{r.reason ?? <span className="text-zinc-300">—</span>}</TableCell>
                 <TableCell>
-                  <Badge variant={STATUS_BADGE[r.status] ?? "outline"} className="capitalize">{r.status}</Badge>
+                  <span className={cn(
+                    "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
+                    STATUS_PILL[r.status] ?? "bg-zinc-100 text-zinc-500 border-zinc-200"
+                  )}>
+                    {r.status}
+                  </span>
                 </TableCell>
                 <TableCell>
                   {r.status === "pending" && (
                     <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" onClick={() => handleStatus(r.id, "approved")}>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600 hover:text-emerald-700" onClick={() => handleStatus(r.id, "approved")}>
                         <CheckCircle className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleStatus(r.id, "rejected")}>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => handleStatus(r.id, "rejected")}>
                         <XCircle className="h-4 w-4" />
                       </Button>
                     </div>

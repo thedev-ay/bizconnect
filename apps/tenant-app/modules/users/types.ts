@@ -6,5 +6,6 @@ export interface TenantUser {
   email: string;
   role: string;
   isActive: boolean;
+  permissions: Record<string, boolean>;
   createdAt: Date;
 }

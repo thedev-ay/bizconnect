@@ -2,23 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
-import { auth } from "@/lib/auth";
+import { authorize } from "@/lib/authorize";
 import { createCustomerSchema, type CreateCustomerInput } from "./schema";
-
-async function authorize(tenantSlug: string) {
-  const session = await auth();
-  if (!session?.user || session.user.tenantSlug !== tenantSlug) {
-    throw new Error("Unauthorized");
-  }
-  return session;
-}
 
 export async function createCustomer(
   tenantSlug: string,
   tenantId: string,
   input: CreateCustomerInput
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "crm.create");
   const parsed = createCustomerSchema.parse(input);
 
   const tags = parsed.tags
@@ -46,7 +38,7 @@ export async function deleteCustomer(
   tenantId: string,
   customerId: string
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "crm.delete");
 
   await prisma.customer.delete({ where: { id: customerId, tenantId } });
 

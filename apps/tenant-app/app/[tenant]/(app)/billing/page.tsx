@@ -1,9 +1,9 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { InvoiceList, CreateInvoiceDialog } from "@/modules/billing";
 import type { Invoice } from "@/modules/billing";
-import { FileText, DollarSign, Clock, AlertCircle } from "lucide-react";
+import { FileText, TrendingUp, Clock, AlertCircle } from "lucide-react";
 
 interface BillingPageProps {
   params: Promise<{ tenant: string }>;
@@ -47,69 +47,80 @@ export default async function BillingPage({ params }: BillingPageProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Billing & Invoices</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Billing & Invoices</h1>
+          <p className="text-sm text-zinc-500 mt-0.5">
             {invoices.length} invoice{invoices.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <CreateInvoiceDialog tenantSlug={tenantSlug} tenantId={tenant.id} />
+        <CreateInvoiceDialog tenantSlug={tenantSlug} tenantId={tenant.id} currencySymbol={tenant.currencySymbol} defaultTaxRate={Number(tenant.defaultTaxRate)} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Invoiced</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ₱{total.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Total Invoiced</p>
+                <p className="mt-1.5 text-2xl font-bold text-zinc-900">
+                  {tenant.currencySymbol}{total.toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100">
+                <FileText className="h-4 w-4 text-zinc-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <DollarSign className="h-4 w-4 text-green-500" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Collected</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              ₱{paidTotal.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Collected</p>
+                <p className="mt-1.5 text-2xl font-bold text-emerald-600">
+                  {tenant.currencySymbol}{paidTotal.toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50">
+                <TrendingUp className="h-4 w-4 text-emerald-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <Clock className="h-4 w-4 text-blue-500" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Outstanding</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              ₱{(total - paidTotal).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Outstanding</p>
+                <p className="mt-1.5 text-2xl font-bold text-blue-600">
+                  {tenant.currencySymbol}{(total - paidTotal).toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
+                <Clock className="h-4 w-4 text-blue-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <AlertCircle className="h-4 w-4 text-destructive" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Overdue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{overdueCount}</div>
+        <Card className="shadow-none border-zinc-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-zinc-500">Overdue</p>
+                <p className="mt-1.5 text-2xl font-bold text-red-600">{overdueCount}</p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-500" />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">All Invoices</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <InvoiceList invoices={typedInvoices} tenantSlug={tenantSlug} tenantId={tenant.id} />
-        </CardContent>
+      <Card className="shadow-none border-zinc-200">
+        <InvoiceList invoices={typedInvoices} tenantSlug={tenantSlug} tenantId={tenant.id} currencySymbol={tenant.currencySymbol} currencyLocale={tenant.currencyLocale} />
       </Card>
     </div>
   );

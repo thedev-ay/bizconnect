@@ -53,6 +53,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           tenantId: user.tenant.id,
           tenantName: user.tenant.name,
           role: user.role,
+          permissions: (user.permissions as Record<string, boolean>) ?? {},
         };
       },
     }),
@@ -65,11 +66,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           tenantId: string;
           tenantName: string;
           role: string;
+          permissions: Record<string, boolean>;
         };
         token.tenantSlug = u.tenantSlug;
         token.tenantId = u.tenantId;
         token.tenantName = u.tenantName;
         token.role = u.role;
+        token.permissions = u.permissions;
       }
       return token;
     },
@@ -79,6 +82,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.tenantId = token.tenantId as string;
         session.user.tenantName = token.tenantName as string;
         session.user.role = token.role as string;
+        session.user.permissions = (token.permissions as Record<string, boolean>) ?? {};
       }
       return session;
     },

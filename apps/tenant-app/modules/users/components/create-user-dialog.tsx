@@ -27,14 +27,18 @@ import {
 } from "@/components/ui/select";
 import { createUserSchema, type CreateUserInput } from "../schema";
 import { createUser } from "../actions";
+import { PermissionEditor } from "./permission-editor";
 
 interface CreateUserDialogProps {
   tenantSlug: string;
   tenantId: string;
+  activeModuleSlugs: string[];
 }
 
-export function CreateUserDialog({ tenantSlug, tenantId }: CreateUserDialogProps) {
+export function CreateUserDialog({ tenantSlug, tenantId, activeModuleSlugs }: CreateUserDialogProps) {
   const [open, setOpen] = useState(false);
+  const [role, setRole] = useState<string>("member");
+  const [permissions, setPermissions] = useState<Record<string, boolean>>({});
   const router = useRouter();
 
   const {
@@ -45,15 +49,17 @@ export function CreateUserDialog({ tenantSlug, tenantId }: CreateUserDialogProps
     formState: { errors, isSubmitting },
   } = useForm<CreateUserInput>({
     resolver: zodResolver(createUserSchema as any),
-    defaultValues: { role: "member" },
+    defaultValues: { role: "member", permissions: {} },
   });
 
   async function onSubmit(data: CreateUserInput) {
     try {
-      await createUser(tenantSlug, tenantId, data);
+      await createUser(tenantSlug, tenantId, { ...data, permissions });
       toast.success(`${data.name} added successfully`);
       setOpen(false);
       reset();
+      setRole("member");
+      setPermissions({});
       router.refresh();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to create user");
@@ -66,7 +72,7 @@ export function CreateUserDialog({ tenantSlug, tenantId }: CreateUserDialogProps
         <Plus className="mr-2 h-4 w-4" />
         Add User
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>Create a new user account for this workspace.</DialogDescription>
@@ -91,7 +97,13 @@ export function CreateUserDialog({ tenantSlug, tenantId }: CreateUserDialogProps
           </div>
           <div className="space-y-2">
             <Label>Role</Label>
-            <Select defaultValue="member" onValueChange={(v) => setValue("role", v as any)}>
+            <Select
+              defaultValue="member"
+              onValueChange={(v) => {
+                if (v) setRole(v);
+                setValue("role", v as any);
+              }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -102,6 +114,22 @@ export function CreateUserDialog({ tenantSlug, tenantId }: CreateUserDialogProps
               </SelectContent>
             </Select>
           </div>
+
+          {/* Permission editor — only for members */}
+          {role === "member" && (
+            <div className="space-y-2">
+              <Label>Module Permissions</Label>
+              <p className="text-xs text-zinc-400">
+                Toggle modules on to grant access. Expand each module to set action-level permissions.
+              </p>
+              <PermissionEditor
+                value={permissions}
+                onChange={setPermissions}
+                activeModuleSlugs={activeModuleSlugs}
+              />
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel

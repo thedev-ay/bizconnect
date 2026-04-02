@@ -2,23 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
-import { auth } from "@/lib/auth";
+import { authorize } from "@/lib/authorize";
 import { createItemSchema, updateItemSchema, adjustStockSchema } from "./schema";
 import type { CreateItemInput, UpdateItemInput } from "./schema";
 
-async function authorize(tenantSlug: string) {
-  const session = await auth();
-  if (!session?.user || session.user.tenantSlug !== tenantSlug) {
-    throw new Error("Unauthorized");
-  }
-  return session;
-}
-
 export async function createItem(tenantSlug: string, tenantId: string, input: CreateItemInput) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "inventory.create");
   const parsed = createItemSchema.parse(input);
 
-  const item = await prisma.inventoryItem.create({
+  await prisma.inventoryItem.create({
     data: {
       tenantId,
       ...parsed,
@@ -26,7 +18,6 @@ export async function createItem(tenantSlug: string, tenantId: string, input: Cr
   });
 
   revalidatePath(`/${tenantSlug}/inventory`);
-  return item;
 }
 
 export async function updateItem(
@@ -35,16 +26,15 @@ export async function updateItem(
   itemId: string,
   input: UpdateItemInput
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "inventory.edit");
   const parsed = updateItemSchema.parse(input);
 
-  const item = await prisma.inventoryItem.update({
+  await prisma.inventoryItem.update({
     where: { id: itemId, tenantId },
     data: parsed,
   });
 
   revalidatePath(`/${tenantSlug}/inventory`);
-  return item;
 }
 
 export async function adjustStock(
@@ -53,19 +43,18 @@ export async function adjustStock(
   itemId: string,
   delta: number
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "inventory.edit");
 
-  const item = await prisma.inventoryItem.update({
+  await prisma.inventoryItem.update({
     where: { id: itemId, tenantId },
     data: { quantity: { increment: delta } },
   });
 
   revalidatePath(`/${tenantSlug}/inventory`);
-  return item;
 }
 
 export async function deleteItem(tenantSlug: string, tenantId: string, itemId: string) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "inventory.delete");
   await prisma.inventoryItem.delete({ where: { id: itemId, tenantId } });
   revalidatePath(`/${tenantSlug}/inventory`);
 }

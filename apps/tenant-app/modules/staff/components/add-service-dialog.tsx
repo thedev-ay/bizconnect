@@ -17,9 +17,10 @@ import { createService } from "../actions";
 interface AddServiceDialogProps {
   tenantSlug: string;
   tenantId: string;
+  currencySymbol: string;
 }
 
-export function AddServiceDialog({ tenantSlug, tenantId }: AddServiceDialogProps) {
+export function AddServiceDialog({ tenantSlug, tenantId, currencySymbol }: AddServiceDialogProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CreateServiceInput>({
@@ -63,7 +64,7 @@ export function AddServiceDialog({ tenantSlug, tenantId }: AddServiceDialogProps
               {errors.duration && <p className="text-sm text-destructive">{errors.duration.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Price (₱) *</Label>
+              <Label>Price ({currencySymbol}) *</Label>
               <Input type="number" step="0.01" min={0} {...register("price")} />
               {errors.price && <p className="text-sm text-destructive">{errors.price.message}</p>}
             </div>

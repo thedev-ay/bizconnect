@@ -2,14 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
-import { auth } from "@/lib/auth";
+import { authorize } from "@/lib/authorize";
 import { createAppointmentSchema, type CreateAppointmentInput } from "./schema";
-
-async function authorize(tenantSlug: string) {
-  const session = await auth();
-  if (!session?.user || session.user.tenantSlug !== tenantSlug) throw new Error("Unauthorized");
-  return session;
-}
 
 /** Check if a staff member is available at a given datetime. */
 export async function getStaffAvailability(
@@ -58,7 +52,7 @@ export async function createAppointment(
   tenantId: string,
   input: CreateAppointmentInput
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "appointments.create");
   const parsed = createAppointmentSchema.parse(input);
 
   // Fetch service to get duration and title
@@ -130,7 +124,7 @@ export async function updateAppointmentStatus(
   appointmentId: string,
   status: string
 ) {
-  await authorize(tenantSlug);
+  await authorize(tenantSlug, "appointments.status");
   const appointment = await prisma.appointment.update({
     where: { id: appointmentId, tenantId },
     data: { status },
