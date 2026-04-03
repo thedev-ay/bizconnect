@@ -48,6 +48,7 @@ interface SalesListProps {
   sales: SaleRecord[];
   tenantSlug: string;
   tenantId: string;
+  tenantName: string;
   currencySymbol: string;
   currencyLocale: string;
 }
@@ -64,7 +65,7 @@ const PAYMENT_LABEL: Record<string, string> = {
   maya: "Maya",
 };
 
-export function SalesList({ sales, tenantSlug, tenantId, currencySymbol, currencyLocale }: SalesListProps) {
+export function SalesList({ sales, tenantSlug, tenantId, tenantName, currencySymbol, currencyLocale }: SalesListProps) {
   const [search, setSearch] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -178,6 +179,7 @@ export function SalesList({ sales, tenantSlug, tenantId, currencySymbol, currenc
           sale={selectedSale}
           tenantSlug={tenantSlug}
           tenantId={tenantId}
+          tenantName={tenantName}
           currencySymbol={currencySymbol}
           currencyLocale={currencyLocale}
           open={!!selectedSale}

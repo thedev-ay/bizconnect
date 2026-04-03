@@ -29,12 +29,13 @@ model Tenant {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  users          User[]
-  tenantModules  TenantModule[]
-  businessHours  BusinessHours[]
-  serviceCatalog ServiceCatalog[]
-  loyaltySetting LoyaltySetting?
-  loyaltyCards   LoyaltyCard[]
+  users           User[]
+  tenantModules   TenantModule[]
+  businessHours   BusinessHours[]
+  serviceCatalog  ServiceCatalog[]
+  loyaltySetting  LoyaltySetting?
+  loyaltyCards    LoyaltyCard[]
+  workflowStages  WorkflowStage[]
 
   @@map("tenants")
 }
@@ -440,6 +441,26 @@ model JobOrderItem {
   jobOrder JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
 
   @@map("job_order_items")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JOB ORDER WORKFLOW
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WorkflowStage {
+  id        String @id @default(cuid())
+  tenantId  String @map("tenant_id")
+  name      String
+  slug      String
+  color     String @default("zinc") // zinc | blue | orange | violet | emerald | red | amber | sky
+  sortOrder Int    @map("sort_order")
+  type      String @default("active") // active | completed | cancelled
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("workflow_stages")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

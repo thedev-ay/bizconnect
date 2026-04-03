@@ -138,6 +138,7 @@ export default async function SalesPage({ params }: SalesPageProps) {
           }))}
           tenantSlug={tenantSlug}
           tenantId={tenant.id}
+          tenantName={tenant.name}
           currencySymbol={tenant.currencySymbol}
           currencyLocale={tenant.currencyLocale}
         />

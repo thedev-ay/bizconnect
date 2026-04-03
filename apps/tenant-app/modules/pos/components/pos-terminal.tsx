@@ -26,6 +26,7 @@ import type { CartItem } from "../types";
 import { createSale } from "../actions";
 import { bestPromo } from "@/modules/promotions/apply";
 import type { PromoType } from "@/modules/promotions";
+import { ReceiptPrintDialog } from "@/components/receipt";
 
 interface ActivePromo {
   id: string;
@@ -61,11 +62,12 @@ interface POSTerminalProps {
   services: POSService[];
   tenantSlug: string;
   tenantId: string;
+  tenantName: string;
   currencySymbol: string;
   currencyLocale: string;
 }
 
-export function POSTerminal({ products, services, tenantSlug, tenantId, currencySymbol, currencyLocale }: POSTerminalProps) {
+export function POSTerminal({ products, services, tenantSlug, tenantId, tenantName, currencySymbol, currencyLocale }: POSTerminalProps) {
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountType, setDiscountType] = useState<"flat" | "percent">("flat");
@@ -78,6 +80,8 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, currency
   const [activeTab, setActiveTab] = useState<"products" | "services">("products");
   const [weightService, setWeightService] = useState<POSService | null>(null);
   const [weightInput, setWeightInput] = useState("");
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [completedSale, setCompletedSale] = useState<any>(null);
 
   const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
   const discountAmount = discountType === "percent"
@@ -296,7 +300,12 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, currency
         amountPaid: Number(amountPaid),
         paymentMethod: paymentMethod as "cash" | "card" | "gcash" | "maya",
       });
-      toast.success(`Sale recorded — ${sale.referenceNo} · Change: ${currencySymbol}${Number(sale.change).toFixed(2)}`);
+      
+      // Store completed sale and open receipt dialog
+      setCompletedSale(sale);
+      setReceiptOpen(true);
+      
+      // Reset cart and form
       setCart([]);
       setDiscountValue(0);
       setAmountPaid("");
@@ -639,6 +648,26 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, currency
           )}
         </div>
       </div>
+
+      {/* Receipt dialog */}
+      {completedSale && (
+        <ReceiptPrintDialog
+          open={receiptOpen}
+          onOpenChange={setReceiptOpen}
+          type="sale"
+          referenceNo={completedSale.referenceNo}
+          createdAt={completedSale.createdAt}
+          items={completedSale.items}
+          subtotal={completedSale.subtotal}
+          discount={completedSale.discount}
+          total={completedSale.total}
+          amountPaid={completedSale.amountPaid}
+          change={completedSale.change}
+          paymentMethod={completedSale.paymentMethod}
+          tenantName={tenantName}
+          currencySymbol={currencySymbol}
+        />
+      )}
 
       {/* Weight input dialog */}
       <Dialog open={!!weightService} onOpenChange={(o) => { if (!o) { setWeightService(null); setWeightInput(""); } }}>

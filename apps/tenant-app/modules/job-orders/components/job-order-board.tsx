@@ -7,16 +7,12 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Phone, ChevronRight, Search, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import type { JobOrder, LaundryStatus } from "../types";
-import {
-  STATUS_LABEL,
-  STATUS_COLORS,
-  NEXT_STATUS,
-  NEXT_STATUS_LABEL,
-} from "../types";
+import type { JobOrder, WorkflowStage } from "../types";
+import { getNextStage, getStageColors } from "../types";
 import { updateJobOrderStatus } from "../actions";
 import { JobOrderDetailDialog } from "./job-order-detail-dialog";
 import { EditJobOrderDialog } from "./edit-job-order-dialog";
+import { ClaimPaymentDialog } from "./claim-payment-dialog";
 
 interface ServiceOption {
   id: string;
@@ -28,22 +24,14 @@ interface ServiceOption {
 
 interface JobOrderBoardProps {
   jobOrders: JobOrder[];
+  stages: WorkflowStage[];
   tenantSlug: string;
   tenantId: string;
+  tenantName: string;
   currencySymbol: string;
   currencyLocale: string;
   services: ServiceOption[];
 }
-
-const TABS: { status: LaundryStatus; shortLabel: string }[] = [
-  { status: "received", shortLabel: "Received" },
-  { status: "washing",  shortLabel: "Washing" },
-  { status: "drying",   shortLabel: "Drying" },
-  { status: "folding",  shortLabel: "Folding" },
-  { status: "ready",    shortLabel: "Ready" },
-  { status: "claimed",  shortLabel: "Claimed" },
-  { status: "cancelled", shortLabel: "Cancelled" },
-];
 
 const PRIORITY_STYLES: Record<string, { dot: string; badge: string; label: string }> = {
   low:    { dot: "bg-zinc-300",  badge: "", label: "" },
@@ -54,17 +42,21 @@ const PRIORITY_STYLES: Record<string, { dot: string; badge: string; label: strin
 
 export function JobOrderBoard({
   jobOrders,
+  stages,
   tenantSlug,
   tenantId,
+  tenantName,
   currencySymbol,
   currencyLocale,
   services,
 }: JobOrderBoardProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<LaundryStatus>("received");
+  const firstStage = stages[0];
+  const [activeTab, setActiveTab] = useState<string>(firstStage?.slug ?? "");
   const [advancing, setAdvancing] = useState<string | null>(null);
   const [selected, setSelected] = useState<JobOrder | null>(null);
   const [editing, setEditing] = useState<JobOrder | null>(null);
+  const [claiming, setClaiming] = useState<JobOrder | null>(null);
   const [search, setSearch] = useState("");
 
   const q = search.toLowerCase();
@@ -77,21 +69,29 @@ export function JobOrderBoard({
     );
   }
 
-  const countByStatus = (status: LaundryStatus) =>
-    jobOrders.filter((j) => j.status === status).length;
-
   const visibleCards = jobOrders.filter(
     (j) => j.status === activeTab && matchesSearch(j)
   );
 
+  const activeStage = stages.find((s) => s.slug === activeTab);
+  const isCompletedTab = activeStage?.type === "completed";
+  const isCancelledTab = activeStage?.type === "cancelled";
+  const isListTab = isCompletedTab || isCancelledTab;
+
   async function handleAdvance(e: React.MouseEvent, jo: JobOrder) {
     e.stopPropagation();
-    const next = NEXT_STATUS[jo.status as LaundryStatus];
+    const next = getNextStage(stages, jo.status);
     if (!next) return;
+
+    if (next.type === "completed") {
+      setClaiming(jo);
+      return;
+    }
+
     setAdvancing(jo.id);
     try {
-      await updateJobOrderStatus(tenantSlug, tenantId, jo.id, next);
-      toast.success(`${jo.jobNo} → ${STATUS_LABEL[next]}`);
+      await updateJobOrderStatus(tenantSlug, tenantId, jo.id, next.slug, next.type);
+      toast.success(`${jo.jobNo} → ${next.name}`);
       router.refresh();
     } catch {
       toast.error("Failed to update");
@@ -103,37 +103,37 @@ export function JobOrderBoard({
   return (
     <div className="flex h-full flex-col gap-3">
 
-      {/* Tab bar + search row */}
+      {/* Tab bar + search */}
       <div className="flex items-center gap-3 shrink-0 flex-wrap">
-        {/* Tabs */}
         <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0">
-          {TABS.map(({ status, shortLabel }) => {
-            const count = countByStatus(status);
-            const isActive = activeTab === status;
-            const isReady = status === "ready" && count > 0;
+          {stages.map((stage) => {
+            const count = jobOrders.filter((j) => j.status === stage.slug).length;
+            const isActive = activeTab === stage.slug;
+            const isReadyStage = stage.type === "active" &&
+              getNextStage(stages, stage.slug)?.type === "completed";
 
             return (
               <button
-                key={status}
-                onClick={() => setActiveTab(status)}
+                key={stage.slug}
+                onClick={() => setActiveTab(stage.slug)}
                 className={cn(
                   "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
                   isActive
-                    ? isReady
+                    ? isReadyStage
                       ? "bg-emerald-600 text-white shadow-sm"
                       : "bg-zinc-900 text-white shadow-sm"
-                    : isReady
+                    : isReadyStage && count > 0
                     ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                     : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
                 )}
               >
-                {shortLabel}
+                {stage.name}
                 {count > 0 && (
                   <span className={cn(
                     "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none",
                     isActive
                       ? "bg-white/20 text-white"
-                      : isReady
+                      : isReadyStage && count > 0
                       ? "bg-emerald-200 text-emerald-800"
                       : "bg-zinc-200 text-zinc-600"
                   )}>
@@ -145,7 +145,6 @@ export function JobOrderBoard({
           })}
         </div>
 
-        {/* Search */}
         <div className="relative shrink-0 w-56">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <Input
@@ -157,7 +156,7 @@ export function JobOrderBoard({
         </div>
       </div>
 
-      {/* Card grid */}
+      {/* Card area */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         {visibleCards.length === 0 ? (
           <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-200 text-center">
@@ -166,12 +165,12 @@ export function JobOrderBoard({
                 <Search className="h-6 w-6 text-zinc-200" />
                 <p className="text-sm text-zinc-400">No matches for "{search}"</p>
               </>
-            ) : activeTab === "claimed" ? (
+            ) : isCompletedTab ? (
               <>
                 <CheckCircle2 className="h-6 w-6 text-zinc-200" />
-                <p className="text-sm text-zinc-400">No claimed orders yet</p>
+                <p className="text-sm text-zinc-400">No completed orders yet</p>
               </>
-            ) : activeTab === "cancelled" ? (
+            ) : isCancelledTab ? (
               <>
                 <XCircle className="h-6 w-6 text-zinc-200" />
                 <p className="text-sm text-zinc-400">No cancelled orders</p>
@@ -183,8 +182,8 @@ export function JobOrderBoard({
               </>
             )}
           </div>
-        ) : activeTab === "claimed" || activeTab === "cancelled" ? (
-          /* Claimed / Cancelled — compact table list */
+        ) : isListTab ? (
+          /* Completed / Cancelled — compact list */
           <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
             <div className="divide-y divide-zinc-100">
               {visibleCards.map((jo) => (
@@ -202,7 +201,7 @@ export function JobOrderBoard({
                     </span>
                   )}
                   <span className="text-xs text-zinc-400 shrink-0">
-                    {activeTab === "claimed" && jo.claimedAt
+                    {isCompletedTab && jo.claimedAt
                       ? format(new Date(jo.claimedAt), "MMM d, h:mm a")
                       : format(new Date(jo.createdAt), "MMM d")}
                   </span>
@@ -216,9 +215,10 @@ export function JobOrderBoard({
             {visibleCards.map((jo) => {
               const isOverdue = jo.dueDate && new Date(jo.dueDate) < new Date();
               const grandTotal = jo.items.reduce((s, i) => s + Number(i.total), 0);
-              const nextStatus = NEXT_STATUS[jo.status as LaundryStatus];
+              const nextStage = getNextStage(stages, jo.status);
+              const isReadyForCompletion = nextStage?.type === "completed";
               const priority = PRIORITY_STYLES[jo.priority] ?? PRIORITY_STYLES.normal;
-              const isReady = jo.status === "ready";
+              const stageColors = getStageColors(activeStage?.color ?? "zinc");
 
               return (
                 <div
@@ -228,12 +228,12 @@ export function JobOrderBoard({
                     "cursor-pointer rounded-xl border bg-white p-4 shadow-sm transition-all hover:shadow-md flex flex-col gap-3",
                     jo.priority === "urgent"
                       ? "border-red-200 hover:border-red-300"
-                      : isReady
+                      : isReadyForCompletion
                       ? "border-emerald-200 hover:border-emerald-300"
-                      : "border-zinc-200 hover:border-zinc-300"
+                      : stageColors.card
                   )}
                 >
-                  {/* Top row: job no + priority */}
+                  {/* Top: job no + priority */}
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-xs font-semibold text-zinc-400">{jo.jobNo}</span>
                     {priority.badge ? (
@@ -256,16 +256,14 @@ export function JobOrderBoard({
                     )}
                   </div>
 
-                  {/* Services summary */}
+                  {/* Services */}
                   <div className="flex-1">
                     {jo.items.length > 0 ? (
                       <div className="space-y-0.5">
                         {jo.items.slice(0, 2).map((item) => (
                           <p key={item.id} className="truncate text-xs text-zinc-500">
                             {item.name}
-                            {item.weight != null
-                              ? ` · ${Number(item.weight)} kg`
-                              : ` · ×${item.quantity}`}
+                            {item.weight != null ? ` · ${Number(item.weight)} kg` : ` · ×${item.quantity}`}
                           </p>
                         ))}
                         {jo.items.length > 2 && (
@@ -277,14 +275,11 @@ export function JobOrderBoard({
                     )}
                   </div>
 
-                  {/* Footer: total + due date */}
+                  {/* Footer: dates + total */}
                   <div className="flex items-end justify-between gap-2">
                     <div>
                       {jo.dueDate && (
-                        <p className={cn(
-                          "text-[10px] font-medium",
-                          isOverdue ? "text-red-500" : "text-zinc-400"
-                        )}>
+                        <p className={cn("text-[10px] font-medium", isOverdue ? "text-red-500" : "text-zinc-400")}>
                           Due {format(new Date(jo.dueDate), "MMM d")}
                           {isOverdue && " · overdue"}
                         </p>
@@ -301,7 +296,7 @@ export function JobOrderBoard({
                   </div>
 
                   {/* Advance button */}
-                  {nextStatus && (
+                  {nextStage && (
                     <button
                       onClick={(e) => handleAdvance(e, jo)}
                       disabled={advancing === jo.id}
@@ -309,12 +304,12 @@ export function JobOrderBoard({
                         "flex w-full items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-50",
                         jo.priority === "urgent"
                           ? "bg-red-600 text-white hover:bg-red-700"
-                          : isReady
+                          : isReadyForCompletion
                           ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                          : "bg-zinc-900 text-white hover:bg-zinc-700"
+                          : getStageColors(nextStage.color).btn
                       )}
                     >
-                      {advancing === jo.id ? "Updating..." : NEXT_STATUS_LABEL[jo.status as LaundryStatus]}
+                      {advancing === jo.id ? "Updating..." : `Move to ${nextStage.name}`}
                       <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                   )}
@@ -328,13 +323,16 @@ export function JobOrderBoard({
       {selected && (
         <JobOrderDetailDialog
           jobOrder={selected}
+          stages={stages}
           tenantSlug={tenantSlug}
           tenantId={tenantId}
+          tenantName={tenantName}
           currencySymbol={currencySymbol}
           currencyLocale={currencyLocale}
           open={!!selected}
           onOpenChange={(o) => { if (!o) setSelected(null); }}
           onEdit={(jo) => { setSelected(null); setEditing(jo); }}
+          onClaim={() => { const jo = selected; setSelected(null); setClaiming(jo); }}
         />
       )}
 
@@ -348,6 +346,18 @@ export function JobOrderBoard({
           currencyLocale={currencyLocale}
           open={!!editing}
           onOpenChange={(o) => { if (!o) setEditing(null); }}
+        />
+      )}
+
+      {claiming && (
+        <ClaimPaymentDialog
+          jobOrder={claiming}
+          tenantSlug={tenantSlug}
+          tenantId={tenantId}
+          currencySymbol={currencySymbol}
+          currencyLocale={currencyLocale}
+          open={!!claiming}
+          onOpenChange={(o) => { if (!o) setClaiming(null); }}
         />
       )}
     </div>

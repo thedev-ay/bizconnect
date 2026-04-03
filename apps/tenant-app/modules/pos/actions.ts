@@ -72,8 +72,16 @@ export async function createSale(tenantSlug: string, tenantId: string, input: Cr
     amountPaid: sale.amountPaid.toString(),
     change: sale.change.toString(),
     items: sale.items.map((i) => ({
-      ...i,
+      id: i.id,
+      saleId: i.saleId,
+      itemId: i.itemId,
+      itemType: i.itemType,
+      name: i.name,
+      quantity: i.quantity,
+      weight: i.weight,
       unitPrice: i.unitPrice.toString(),
+      originalPrice: i.originalPrice.toString(),
+      promoDiscount: i.promoDiscount.toString(),
       total: i.total.toString(),
     })),
   };

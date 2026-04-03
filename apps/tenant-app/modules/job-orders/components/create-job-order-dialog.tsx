@@ -52,9 +52,10 @@ interface CreateJobOrderDialogProps {
   services: ServiceOption[];
   currencySymbol: string;
   currencyLocale: string;
+  firstStageSlug: string;
 }
 
-export function CreateJobOrderDialog({ tenantSlug, tenantId, services, currencySymbol, currencyLocale }: CreateJobOrderDialogProps) {
+export function CreateJobOrderDialog({ tenantSlug, tenantId, services, currencySymbol, currencyLocale, firstStageSlug }: CreateJobOrderDialogProps) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<LineItem[]>([]);
   const [serviceSearch, setServiceSearch] = useState("");
@@ -137,7 +138,7 @@ export function CreateJobOrderDialog({ tenantSlug, tenantId, services, currencyS
           unitPrice: i.unitPrice,
           total: i.total,
         })),
-      });
+      }, firstStageSlug);
       toast.success("Job order created");
       handleClose(false);
       router.refresh();

@@ -1,7 +1,7 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
-import { JobOrderBoard, CreateJobOrderDialog } from "@/modules/job-orders";
-import type { JobOrder } from "@/modules/job-orders";
+import { JobOrderBoard, CreateJobOrderDialog, WorkflowStageEditor } from "@/modules/job-orders";
+import type { JobOrder, WorkflowStage } from "@/modules/job-orders";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClipboardList, Waves, CheckCircle, Star } from "lucide-react";
 
@@ -9,11 +9,14 @@ interface JobOrdersPageProps {
   params: Promise<{ tenant: string }>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = prisma as any;
+
 export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
   const { tenant: tenantSlug } = await params;
   const tenant = await getTenant(tenantSlug);
 
-  const [rawOrders, rawServices] = await Promise.all([
+  const [rawOrders, rawServices, rawStages] = await Promise.all([
     prisma.jobOrder.findMany({
       where: { tenantId: tenant.id },
       include: {
@@ -30,27 +33,39 @@ export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
       },
       orderBy: { createdAt: "desc" },
     }),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (prisma as any).serviceCatalog.findMany({
+    db.serviceCatalog.findMany({
       where: { tenantId: tenant.id, isActive: true },
       orderBy: [{ category: "asc" }, { name: "asc" }],
     }),
+    db.workflowStage.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: { sortOrder: "asc" },
+    }),
   ]);
 
-  const jobOrders: JobOrder[] = rawOrders.map((jo) => ({
+  const stages: WorkflowStage[] = rawStages.map((s: any) => ({
+    id: s.id,
+    name: s.name,
+    slug: s.slug,
+    color: s.color,
+    sortOrder: s.sortOrder,
+    type: s.type as "active" | "completed" | "cancelled",
+  }));
+
+  const jobOrders: JobOrder[] = rawOrders.map((jo: any) => ({
     id: jo.id,
     jobNo: jo.jobNo,
     customerName: jo.customerName,
-    contactNo: (jo as any).contactNo ?? null,
-    notes: (jo as any).notes ?? null,
+    contactNo: jo.contactNo ?? null,
+    notes: jo.notes ?? null,
     status: jo.status,
     priority: jo.priority,
     assignedTo: jo.assignedTo,
     dueDate: jo.dueDate,
     completedAt: jo.completedAt,
-    claimedAt: (jo as any).claimedAt ?? null,
+    claimedAt: jo.claimedAt ?? null,
     createdAt: jo.createdAt,
-    items: jo.items.map((i) => ({
+    items: jo.items.map((i: any) => ({
       id: i.id,
       name: i.name,
       quantity: i.quantity,
@@ -60,8 +75,7 @@ export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
     })),
   }));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const services = (rawServices as any[]).map((s) => ({
+  const services = rawServices.map((s: any) => ({
     id: s.id as string,
     name: s.name as string,
     pricingType: s.pricingType as "per_piece" | "per_kilo" | "flat",
@@ -69,43 +83,57 @@ export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
     category: s.category as string | null,
   }));
 
-  const active = jobOrders.filter((j) => !["claimed", "cancelled"].includes(j.status));
-  const ready = jobOrders.filter((j) => j.status === "ready");
-  const claimed = jobOrders.filter((j) => j.status === "claimed");
+  const completedStage = stages.find((s) => s.type === "completed");
+  const activeStages = stages.filter((s) => s.type === "active");
+  const firstActiveSlug = activeStages[0]?.slug;
+
+  const activeOrders = jobOrders.filter((j) => activeStages.some((s) => s.slug === j.status));
+  const readyOrders = jobOrders.filter((j) => {
+    const lastActive = activeStages[activeStages.length - 1];
+    return lastActive && j.status === lastActive.slug;
+  });
+  const completedToday = jobOrders.filter((j) => {
+    if (!completedStage || j.status !== completedStage.slug || !j.claimedAt) return false;
+    const d = new Date(j.claimedAt);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  });
   const today = jobOrders.filter((j) => {
     const d = new Date(j.createdAt);
     const now = new Date();
-    return d.getFullYear() === now.getFullYear() &&
-      d.getMonth() === now.getMonth() &&
-      d.getDate() === now.getDate();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
   });
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Job Orders</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">{active.length} active orders</p>
+          <p className="text-sm text-zinc-500 mt-0.5">{activeOrders.length} active orders</p>
         </div>
-        <CreateJobOrderDialog
-          tenantSlug={tenantSlug}
-          tenantId={tenant.id}
-          services={services}
-          currencySymbol={tenant.currencySymbol}
-          currencyLocale={tenant.currencyLocale}
-        />
+        <div className="flex items-center gap-2">
+          <WorkflowStageEditor
+            tenantSlug={tenantSlug}
+            tenantId={tenant.id}
+            stages={stages}
+          />
+          <CreateJobOrderDialog
+            tenantSlug={tenantSlug}
+            tenantId={tenant.id}
+            services={services}
+            currencySymbol={tenant.currencySymbol}
+            currencyLocale={tenant.currencyLocale}
+            firstStageSlug={firstActiveSlug ?? "received"}
+          />
+        </div>
       </div>
 
       {/* Stat cards */}
       <div className="grid gap-3 sm:grid-cols-4 shrink-0">
         {[
-          { label: "Active", value: active.length, icon: Waves, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "Ready for Pickup", value: ready.length, icon: Star, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Claimed Today", value: claimed.filter((j) => {
-            const d = j.claimedAt ? new Date(j.claimedAt) : null;
-            const now = new Date();
-            return d && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-          }).length, icon: CheckCircle, color: "text-zinc-600", bg: "bg-zinc-100" },
+          { label: "Active", value: activeOrders.length, icon: Waves, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "Ready for Pickup", value: readyOrders.length, icon: Star, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Completed Today", value: completedToday.length, icon: CheckCircle, color: "text-zinc-600", bg: "bg-zinc-100" },
           { label: "Received Today", value: today.length, icon: ClipboardList, color: "text-amber-600", bg: "bg-amber-50" },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <Card key={label} className="shadow-none border-zinc-200">
@@ -128,8 +156,10 @@ export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
       <div className="min-h-0 flex-1">
         <JobOrderBoard
           jobOrders={jobOrders}
+          stages={stages}
           tenantSlug={tenantSlug}
           tenantId={tenant.id}
+          tenantName={tenant.name}
           currencySymbol={tenant.currencySymbol}
           currencyLocale={tenant.currencyLocale}
           services={services}
