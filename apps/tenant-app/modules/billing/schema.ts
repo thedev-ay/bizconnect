@@ -7,6 +7,8 @@ export const invoiceItemSchema = z.object({
 });
 
 export const createInvoiceSchema = z.object({
+  customerId: z.string().optional(),
+  jobOrderId: z.string().optional(),
   customerName: z.string().min(1, "Customer name is required"),
   customerEmail: z.string().email().optional().or(z.literal("")),
   dueDate: z.string().min(1, "Due date is required"),

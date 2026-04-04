@@ -96,18 +96,20 @@ export async function logAttendance(
 export async function createLeaveRequest(
   tenantSlug: string,
   tenantId: string,
-  input: { employeeId: string; type: string; startDate: string; endDate: string; reason?: string }
+  input: { employeeId: string; type: string; startDate: string; endDate?: string; reason?: string }
 ) {
   await authorize(tenantSlug, "hr.leave");
   await prisma.leaveRequest.create({
     data: {
       tenantId,
-      employeeId: input.employeeId,
       type: input.type,
       startDate: new Date(input.startDate),
-      endDate: new Date(input.endDate),
+      endDate: input.endDate ? new Date(input.endDate) : null,
       reason: input.reason || null,
-      status: "pending",
+      status: input.type === "sick" ? "approved" : "pending",
+      employee: {
+        connect: { id: input.employeeId },
+      },
     },
   });
   revalidatePath(`/${tenantSlug}/hr`);
@@ -124,7 +126,19 @@ export async function updateLeaveStatus(
   revalidatePath(`/${tenantSlug}/hr`);
 }
 
-// ── Payroll ────────────────────────────────────────────────────────────────────
+export async function updateLeaveRequestEndDate(
+  tenantSlug: string,
+  tenantId: string,
+  leaveId: string,
+  endDate: string
+) {
+  await authorize(tenantSlug, "hr.leave");
+  await prisma.leaveRequest.update({
+    where: { id: leaveId, tenantId },
+    data: { endDate: new Date(endDate) },
+  });
+  revalidatePath(`/${tenantSlug}/hr`);
+}
 
 export async function generatePayroll(
   tenantSlug: string,

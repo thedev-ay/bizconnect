@@ -8,18 +8,22 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:backfill-service-shop": "tsx scripts/backfill-service-shop-preset.ts",
+    "db:backfill-retail": "tsx scripts/backfill-retail-preset.ts",
+    "test:service-shop": "tsx scripts/test-service-shop-regressions.ts"
   },
   "dependencies": {
+    "@faker-js/faker": "^10.4.0",
     "@neondatabase/serverless": "^0.10.4",
     "@prisma/adapter-neon": "^6.1.0",
     "@prisma/client": "^6.1.0"
   },
   "devDependencies": {
     "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7",
     "prisma": "^6.1.0",
-    "tsx": "^4.19.2",
-    "dotenv": "^16.4.7"
+    "tsx": "^4.19.2"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

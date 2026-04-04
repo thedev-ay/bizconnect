@@ -280,12 +280,12 @@ export function CreateAppointmentDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2">
               <Label>Customer Name *</Label>
-              <Input placeholder="Juan dela Cruz" {...register("customerName")} />
+              <Input placeholder="Alex Morgan" {...register("customerName")} />
               {errors.customerName && <p className="text-sm text-destructive">{errors.customerName.message}</p>}
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>
-              <Input placeholder="+63 9XX XXX XXXX" {...register("customerPhone")} />
+              <Input placeholder="+31 6 12345678" {...register("customerPhone")} />
             </div>
             <div className="space-y-2">
               <Label>Email</Label>

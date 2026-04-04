@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import {
   Table,
@@ -29,6 +30,26 @@ interface SaleItem {
   total: string;
 }
 
+interface SaleReturnItem {
+  id: string;
+  saleItemId: string;
+  quantity: number;
+}
+
+interface SaleReturnRecord {
+  id: string;
+  referenceNo: string;
+  reason: string;
+  notes: string | null;
+  status: string;
+  refundAmount: string | null;
+  refundMethod: string | null;
+  approvedAt: Date | null;
+  refundedAt: Date | null;
+  createdAt: Date;
+  items: SaleReturnItem[];
+}
+
 interface SaleRecord {
   id: string;
   referenceNo: string;
@@ -42,6 +63,7 @@ interface SaleRecord {
   createdAt: Date;
   servedByName?: string | null;
   items: SaleItem[];
+  returns: SaleReturnRecord[];
 }
 
 interface SalesListProps {
@@ -51,11 +73,19 @@ interface SalesListProps {
   tenantName: string;
   currencySymbol: string;
   currencyLocale: string;
+  highlightedSaleId?: string;
 }
 
 const STATUS_PILL: Record<string, string> = {
   completed: "bg-emerald-50 text-emerald-700",
   voided: "bg-zinc-100 text-zinc-500",
+};
+
+const RETURN_STATUS_PILL: Record<string, string> = {
+  pending: "bg-amber-50 text-amber-700",
+  approved: "bg-blue-50 text-blue-700",
+  rejected: "bg-zinc-100 text-zinc-500",
+  refunded: "bg-emerald-50 text-emerald-700",
 };
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -65,11 +95,22 @@ const PAYMENT_LABEL: Record<string, string> = {
   maya: "Maya",
 };
 
-export function SalesList({ sales, tenantSlug, tenantId, tenantName, currencySymbol, currencyLocale }: SalesListProps) {
+export function SalesList({
+  sales,
+  tenantSlug,
+  tenantId,
+  tenantName,
+  currencySymbol,
+  currencyLocale,
+  highlightedSaleId,
+}: SalesListProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
+  const [selectedSaleId, setSelectedSaleId] = useState<string | null>(highlightedSaleId ?? null);
 
   const filtered = sales.filter((s) => {
     if (search && !s.referenceNo.toLowerCase().includes(search.toLowerCase())) return false;
@@ -77,6 +118,39 @@ export function SalesList({ sales, tenantSlug, tenantId, tenantName, currencySym
     if (statusFilter !== "all" && s.status !== statusFilter) return false;
     return true;
   });
+
+  const selectedSale =
+    filtered.find((sale) => sale.id === selectedSaleId) ??
+    sales.find((sale) => sale.id === selectedSaleId) ??
+    null;
+
+  useEffect(() => {
+    if (!highlightedSaleId) return;
+    setSelectedSaleId(highlightedSaleId);
+    const row = document.getElementById(`sale-row-${highlightedSaleId}`);
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightedSaleId]);
+
+  function updateSaleQuery(saleId: string | null) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (saleId) {
+      params.set("saleId", saleId);
+    } else {
+      params.delete("saleId");
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
+  function openSale(saleId: string) {
+    setSelectedSaleId(saleId);
+    updateSaleQuery(saleId);
+  }
+
+  function closeSale() {
+    setSelectedSaleId(null);
+    updateSaleQuery(null);
+  }
 
   const fmt = (v: string) =>
     `${currencySymbol}${Number(v).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}`;
@@ -137,11 +211,13 @@ export function SalesList({ sales, tenantSlug, tenantId, tenantName, currencySym
             filtered.map((sale) => (
               <TableRow
                 key={sale.id}
+                id={`sale-row-${sale.id}`}
                 className={cn(
                   "border-zinc-50 cursor-pointer transition-colors hover:bg-zinc-50",
-                  sale.status === "voided" && "opacity-60"
+                  sale.status === "voided" && "opacity-60",
+                  selectedSaleId === sale.id && "bg-emerald-50/60 ring-1 ring-emerald-200"
                 )}
-                onClick={() => setSelectedSale(sale)}
+                onClick={() => openSale(sale.id)}
               >
                 <TableCell className="pl-5">
                   <span className="font-mono text-sm font-medium text-zinc-800">
@@ -152,18 +228,33 @@ export function SalesList({ sales, tenantSlug, tenantId, tenantName, currencySym
                   {format(new Date(sale.createdAt), "MMM d, yyyy · h:mm a")}
                 </TableCell>
                 <TableCell className="text-sm text-zinc-500">
-                  {sale.items.length} item{sale.items.length !== 1 ? "s" : ""}
+                  <div>{sale.items.length} item{sale.items.length !== 1 ? "s" : ""}</div>
+                  {sale.returns.length > 0 && (
+                    <div className="mt-0.5 text-xs text-zinc-400">
+                      {sale.returns.length} return{sale.returns.length !== 1 ? "s" : ""}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell className="text-sm text-zinc-500">
                   {PAYMENT_LABEL[sale.paymentMethod] ?? sale.paymentMethod}
                 </TableCell>
                 <TableCell>
-                  <span className={cn(
-                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
-                    STATUS_PILL[sale.status] ?? "bg-zinc-100 text-zinc-500"
-                  )}>
-                    {sale.status}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className={cn(
+                      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+                      STATUS_PILL[sale.status] ?? "bg-zinc-100 text-zinc-500"
+                    )}>
+                      {sale.status}
+                    </span>
+                    {sale.returns[0] && (
+                      <span className={cn(
+                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+                        RETURN_STATUS_PILL[sale.returns[0].status] ?? "bg-zinc-100 text-zinc-500"
+                      )}>
+                        Return {sale.returns[0].status}
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="pr-5 text-right text-sm font-semibold tabular-nums text-zinc-800">
                   {fmt(sale.total)}
@@ -182,8 +273,8 @@ export function SalesList({ sales, tenantSlug, tenantId, tenantName, currencySym
           tenantName={tenantName}
           currencySymbol={currencySymbol}
           currencyLocale={currencyLocale}
-          open={!!selectedSale}
-          onOpenChange={(o) => { if (!o) setSelectedSale(null); }}
+          open={Boolean(selectedSale)}
+          onOpenChange={(o) => { if (!o) closeSale(); }}
         />
       )}
     </>

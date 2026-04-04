@@ -26,7 +26,6 @@ import type { CartItem } from "../types";
 import { createSale } from "../actions";
 import { bestPromo } from "@/modules/promotions/apply";
 import type { PromoType } from "@/modules/promotions";
-import { ReceiptPrintDialog } from "@/components/receipt";
 
 interface ActivePromo {
   id: string;
@@ -60,6 +59,7 @@ interface POSService {
 interface POSTerminalProps {
   products: POSProduct[];
   services: POSService[];
+  servicesEnabled: boolean;
   tenantSlug: string;
   tenantId: string;
   tenantName: string;
@@ -67,7 +67,16 @@ interface POSTerminalProps {
   currencyLocale: string;
 }
 
-export function POSTerminal({ products, services, tenantSlug, tenantId, tenantName, currencySymbol, currencyLocale }: POSTerminalProps) {
+export function POSTerminal({
+  products,
+  services,
+  servicesEnabled,
+  tenantSlug,
+  tenantId,
+  tenantName,
+  currencySymbol,
+  currencyLocale,
+}: POSTerminalProps) {
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountType, setDiscountType] = useState<"flat" | "percent">("flat");
@@ -80,8 +89,6 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, tenantNa
   const [activeTab, setActiveTab] = useState<"products" | "services">("products");
   const [weightService, setWeightService] = useState<POSService | null>(null);
   const [weightInput, setWeightInput] = useState("");
-  const [receiptOpen, setReceiptOpen] = useState(false);
-  const [completedSale, setCompletedSale] = useState<any>(null);
 
   const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
   const discountAmount = discountType === "percent"
@@ -89,6 +96,10 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, tenantNa
     : Math.min(discountValue, subtotal);
   const total = Math.max(0, subtotal - discountAmount);
   const change = Math.max(0, Number(amountPaid) - total);
+  const availableTabs = (servicesEnabled ? ["products", "services"] : ["products"]) as const;
+  const emptyCartMessage = servicesEnabled
+    ? "Tap a product or service to add it"
+    : "Tap a product to add it";
 
   // Product categories
   const productCategories = Array.from(
@@ -119,6 +130,11 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, tenantNa
   });
 
   const categories = activeTab === "products" ? productCategories : serviceCategories;
+
+  function getAvailableStock(itemId: string) {
+    const product = products.find((entry) => entry.id === itemId);
+    return product?.quantity ?? 0;
+  }
 
   function addToCart(product: POSProduct) {
     setCart((prev) => {
@@ -252,6 +268,11 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, tenantNa
           const newQty = i.quantity + delta;
           if (newQty <= 0) return null as unknown as CartItem;
           if (i.itemType === "product") {
+            const availableStock = getAvailableStock(itemId);
+            if (delta > 0 && newQty > availableStock) {
+              toast.error("Insufficient stock");
+              return i;
+            }
             const product = products.find((p) => p.id === itemId);
             const promo = product ? bestPromo(product.promotions, i.originalPrice, newQty) : null;
             const unitPrice = promo ? promo.unitPrice : i.originalPrice;
@@ -267,6 +288,45 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, tenantNa
           return { ...i, quantity: newQty, total: newQty * i.unitPrice };
         })
         .filter(Boolean)
+    );
+  }
+
+  function setItemQuantity(itemId: string, nextQuantity: number) {
+    if (!Number.isFinite(nextQuantity) || nextQuantity < 1) {
+      return;
+    }
+
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.itemId !== itemId) return item;
+
+        if (item.itemType === "product") {
+          const availableStock = getAvailableStock(itemId);
+          if (nextQuantity > availableStock) {
+            toast.error("Insufficient stock");
+            return item;
+          }
+
+          const product = products.find((entry) => entry.id === itemId);
+          const promo = product ? bestPromo(product.promotions, item.originalPrice, nextQuantity) : null;
+          const unitPrice = promo ? promo.unitPrice : item.originalPrice;
+
+          return {
+            ...item,
+            quantity: nextQuantity,
+            unitPrice,
+            promoDiscount: promo ? promo.promoDiscount : 0,
+            promoLabel: promo ? promo.label : null,
+            total: nextQuantity * unitPrice,
+          };
+        }
+
+        return {
+          ...item,
+          quantity: nextQuantity,
+          total: nextQuantity * item.unitPrice,
+        };
+      })
     );
   }
 
@@ -300,16 +360,12 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, tenantNa
         amountPaid: Number(amountPaid),
         paymentMethod: paymentMethod as "cash" | "card" | "gcash" | "maya",
       });
-      
-      // Store completed sale and open receipt dialog
-      setCompletedSale(sale);
-      setReceiptOpen(true);
-      
-      // Reset cart and form
+
       setCart([]);
       setDiscountValue(0);
       setAmountPaid("");
-      router.refresh();
+      toast.success("Sale completed");
+      router.push(`/${tenantSlug}/pos/sales?saleId=${sale.id}`);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to process sale");
     } finally {
@@ -325,25 +381,27 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, tenantNa
         <div className="flex min-h-0 flex-col gap-3">
 
           {/* Tabs */}
-          <div className="flex gap-1 rounded-lg bg-zinc-100 p-1">
-            {(["products", "services"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => { setActiveTab(tab); setActiveCategory(null); setSearch(""); }}
-                className={cn(
-                  "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
-                  activeTab === tab
-                    ? "bg-white text-zinc-900 shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-700"
-                )}
-              >
-                {tab === "products" ? "Products" : "Services"}
-                {tab === "services" && services.length > 0 && (
-                  <span className="ml-1.5 text-xs text-zinc-400">({services.length})</span>
-                )}
-              </button>
-            ))}
-          </div>
+          {availableTabs.length > 1 && (
+            <div className="flex gap-1 rounded-lg bg-zinc-100 p-1">
+              {availableTabs.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => { setActiveTab(tab); setActiveCategory(null); setSearch(""); }}
+                  className={cn(
+                    "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
+                    activeTab === tab
+                      ? "bg-white text-zinc-900 shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-700"
+                  )}
+                >
+                  {tab === "products" ? "Products" : "Services"}
+                  {tab === "services" && services.length > 0 && (
+                    <span className="ml-1.5 text-xs text-zinc-400">({services.length})</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
 
           <Input
             placeholder={activeTab === "products" ? "Search by name or SKU..." : "Search services..."}
@@ -486,7 +544,7 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, tenantNa
           <div className="flex-1 overflow-y-auto min-h-0">
             {cart.length === 0 ? (
               <div className="flex h-full items-center justify-center">
-                <p className="text-sm text-zinc-400">Tap a product or service to add it</p>
+                <p className="text-sm text-zinc-400">{emptyCartMessage}</p>
               </div>
             ) : (
               <div className="divide-y divide-zinc-50">
@@ -532,7 +590,18 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, tenantNa
                         >
                           <Minus className="h-3 w-3" />
                         </button>
-                        <span className="w-6 text-center text-sm font-semibold tabular-nums">{item.quantity}</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={item.itemType === "product" ? getAvailableStock(item.itemId) : undefined}
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const parsed = Number.parseInt(e.target.value, 10);
+                            if (Number.isNaN(parsed)) return;
+                            setItemQuantity(item.itemId, parsed);
+                          }}
+                          className="h-6 w-14 px-1 text-center text-sm font-semibold tabular-nums"
+                        />
                         <button
                           onClick={() => updateQty(item.itemId, 1)}
                           className="flex h-6 w-6 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50"
@@ -611,7 +680,7 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, tenantNa
 
               <Select value={paymentMethod} onValueChange={(v) => { if (v) setPaymentMethod(v); }}>
                 <SelectTrigger className="h-8 text-sm">
-                  <SelectValue />
+                  {paymentMethod ? { cash: "Cash", card: "Card", gcash: "GCash", maya: "Maya" }[paymentMethod] : <span className="text-muted-foreground">Select...</span>}
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
@@ -648,26 +717,6 @@ export function POSTerminal({ products, services, tenantSlug, tenantId, tenantNa
           )}
         </div>
       </div>
-
-      {/* Receipt dialog */}
-      {completedSale && (
-        <ReceiptPrintDialog
-          open={receiptOpen}
-          onOpenChange={setReceiptOpen}
-          type="sale"
-          referenceNo={completedSale.referenceNo}
-          createdAt={completedSale.createdAt}
-          items={completedSale.items}
-          subtotal={completedSale.subtotal}
-          discount={completedSale.discount}
-          total={completedSale.total}
-          amountPaid={completedSale.amountPaid}
-          change={completedSale.change}
-          paymentMethod={completedSale.paymentMethod}
-          tenantName={tenantName}
-          currencySymbol={currencySymbol}
-        />
-      )}
 
       {/* Weight input dialog */}
       <Dialog open={!!weightService} onOpenChange={(o) => { if (!o) { setWeightService(null); setWeightInput(""); } }}>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Trash2, Scale } from "lucide-react";
+import { Trash2, Scale, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,6 +37,12 @@ interface ServiceOption {
   category: string | null;
 }
 
+interface CustomerOption {
+  id: string;
+  name: string;
+  phone: string | null;
+}
+
 interface LineItem {
   name: string;
   quantity: number;
@@ -44,6 +50,7 @@ interface LineItem {
   unitPrice: number;
   total: number;
   pricingType: "per_piece" | "per_kilo" | "flat";
+  isCustom?: boolean;
 }
 
 interface EditJobOrderDialogProps {
@@ -51,6 +58,7 @@ interface EditJobOrderDialogProps {
   tenantSlug: string;
   tenantId: string;
   services: ServiceOption[];
+  customers: CustomerOption[];
   currencySymbol: string;
   currencyLocale: string;
   open: boolean;
@@ -62,6 +70,7 @@ export function EditJobOrderDialog({
   tenantSlug,
   tenantId,
   services,
+  customers,
   currencySymbol,
   currencyLocale,
   open,
@@ -82,6 +91,7 @@ export function EditJobOrderDialog({
         unitPrice: Number(i.unitPrice),
         total: Number(i.total),
         pricingType,
+        isCustom: true,
       };
     });
   }
@@ -95,10 +105,11 @@ export function EditJobOrderDialog({
     }
   }, [open]);
 
-  const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } =
+  const { register, handleSubmit, control, reset, watch, setValue, formState: { errors, isSubmitting } } =
     useForm<CreateJobOrderInput>({
       resolver: zodResolver(createJobOrderSchema as any),
       defaultValues: {
+        customerId: jobOrder.customerId ?? "",
         customerName: jobOrder.customerName,
         contactNo: jobOrder.contactNo ?? "",
         notes: jobOrder.notes ?? "",
@@ -111,6 +122,7 @@ export function EditJobOrderDialog({
   useEffect(() => {
     if (open) {
       reset({
+        customerId: jobOrder.customerId ?? "",
         customerName: jobOrder.customerName,
         contactNo: jobOrder.contactNo ?? "",
         notes: jobOrder.notes ?? "",
@@ -131,10 +143,24 @@ export function EditJobOrderDialog({
         return updated;
       }
       if (svc.pricingType === "per_kilo") {
-        return [...prev, { name: svc.name, quantity: 1, weight: 0, unitPrice: svc.price, total: 0, pricingType: "per_kilo" }];
+        return [...prev, { name: svc.name, quantity: 1, weight: 0, unitPrice: svc.price, total: 0, pricingType: "per_kilo", isCustom: false }];
       }
-      return [...prev, { name: svc.name, quantity: 1, unitPrice: svc.price, total: svc.price, pricingType: svc.pricingType }];
+      return [...prev, { name: svc.name, quantity: 1, unitPrice: svc.price, total: svc.price, pricingType: svc.pricingType, isCustom: false }];
     });
+  }
+
+  function addCustomCharge() {
+    setItems((prev) => [
+      ...prev,
+      {
+        name: "",
+        quantity: 1,
+        unitPrice: 0,
+        total: 0,
+        pricingType: "per_piece",
+        isCustom: true,
+      },
+    ]);
   }
 
   function updateWeight(index: number, kg: number) {
@@ -151,12 +177,32 @@ export function EditJobOrderDialog({
     }));
   }
 
+  function updateName(index: number, name: string) {
+    setItems((prev) => prev.map((item, i) =>
+      i === index ? { ...item, name } : item
+    ));
+  }
+
+  function updateUnitPrice(index: number, unitPrice: number) {
+    setItems((prev) => prev.map((item, i) => {
+      if (i !== index) return item;
+      const total = item.pricingType === "per_kilo"
+        ? (item.weight ?? 0) * unitPrice
+        : item.quantity * unitPrice;
+      return { ...item, unitPrice, total };
+    }));
+  }
+
   function removeItem(index: number) {
     setItems((prev) => prev.filter((_, i) => i !== index));
   }
 
   const grandTotal = items.reduce((s, i) => s + i.total, 0);
   const incompleteWeights = items.filter((i) => i.pricingType === "per_kilo" && (!i.weight || i.weight <= 0));
+  const invalidCustomCharges = items.filter((i) => i.isCustom && (!i.name.trim() || i.unitPrice <= 0));
+  const selectedCustomerId = watch("customerId");
+  const normalizedCustomerId = selectedCustomerId ?? "";
+  const selectedCustomer = customers.find((customer) => customer.id === normalizedCustomerId);
 
   const filteredServices = services.filter((s) => {
     const q = serviceSearch.toLowerCase();
@@ -166,6 +212,10 @@ export function EditJobOrderDialog({
   async function onSubmit(data: CreateJobOrderInput) {
     if (incompleteWeights.length > 0) {
       toast.error(`Enter weight for: ${incompleteWeights.map((i) => i.name).join(", ")}`);
+      return;
+    }
+    if (invalidCustomCharges.length > 0) {
+      toast.error("Complete each custom charge with a name and price");
       return;
     }
     try {
@@ -187,6 +237,13 @@ export function EditJobOrderDialog({
     }
   }
 
+  function handleCustomerChange(customerId: string | null) {
+    const customer = customers.find((entry) => entry.id === customerId);
+    setValue("customerId", customerId ?? "");
+    setValue("customerName", customer?.name ?? "");
+    setValue("contactNo", customer?.phone ?? "");
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -197,14 +254,31 @@ export function EditJobOrderDialog({
 
           {/* Customer */}
           <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Existing Customer</Label>
+              <Select value={normalizedCustomerId} onValueChange={handleCustomerChange}>
+                <SelectTrigger>
+                  {selectedCustomer
+                    ? `${selectedCustomer.name}${selectedCustomer.phone ? ` · ${selectedCustomer.phone}` : ""}`
+                    : <SelectValue placeholder="Select a customer from CRM" />}
+                </SelectTrigger>
+                <SelectContent>
+                  {customers.map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name}{customer.phone ? ` · ${customer.phone}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>Customer Name *</Label>
-              <Input placeholder="Juan dela Cruz" {...register("customerName")} />
+              <Input placeholder="Alex Morgan" {...register("customerName")} readOnly={Boolean(selectedCustomerId)} />
               {errors.customerName && <p className="text-sm text-destructive">{errors.customerName.message}</p>}
             </div>
             <div className="space-y-2">
               <Label>Contact No. <span className="text-zinc-400 font-normal">(optional)</span></Label>
-              <Input placeholder="09xxxxxxxxx" {...register("contactNo")} />
+              <Input placeholder="+31 6 12345678" {...register("contactNo")} readOnly={Boolean(selectedCustomerId)} />
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label>Notes <span className="text-zinc-400 font-normal">(optional)</span></Label>
@@ -216,8 +290,19 @@ export function EditJobOrderDialog({
 
           {/* Services */}
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-zinc-800">Services</p>
-            {services.length > 0 && (
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-zinc-800">Charges</p>
+                <p className="text-xs text-zinc-500">
+                  Add predefined services or enter manual charges for one-off work.
+                </p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addCustomCharge}>
+                <Plus className="mr-1 h-3 w-3" />
+                Custom Charge
+              </Button>
+            </div>
+            {services.length > 0 ? (
               <div className="space-y-2">
                 <Input
                   placeholder="Search services..."
@@ -239,6 +324,10 @@ export function EditJobOrderDialog({
                   ))}
                 </div>
               </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-zinc-200 px-3 py-4 text-sm text-zinc-500">
+                No service templates yet. Use <span className="font-medium text-zinc-700">Custom Charge</span> to add billable work manually.
+              </div>
             )}
 
             {items.length > 0 && (
@@ -246,7 +335,16 @@ export function EditJobOrderDialog({
                 {items.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-3 px-3 py-2">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-zinc-800">{item.name}</p>
+                      {item.isCustom ? (
+                        <Input
+                          value={item.name}
+                          onChange={(e) => updateName(idx, e.target.value)}
+                          placeholder="Custom charge name"
+                          className="h-8 text-sm"
+                        />
+                      ) : (
+                        <p className="text-sm font-medium text-zinc-800">{item.name}</p>
+                      )}
                       {item.pricingType === "per_kilo" ? (
                         <div className="flex items-center gap-1.5 mt-1">
                           <Input
@@ -267,7 +365,22 @@ export function EditJobOrderDialog({
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs text-zinc-400">{currencySymbol}{item.unitPrice.toFixed(2)} each</p>
+                        item.isCustom ? (
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="0.00"
+                              value={item.unitPrice || ""}
+                              onChange={(e) => updateUnitPrice(idx, parseFloat(e.target.value) || 0)}
+                              className="h-6 w-24 text-xs"
+                            />
+                            <span className="text-xs text-zinc-400">unit price</span>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-zinc-400">{currencySymbol}{item.unitPrice.toFixed(2)} each</p>
+                        )
                       )}
                     </div>
 

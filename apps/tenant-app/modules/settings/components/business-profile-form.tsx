@@ -53,16 +53,16 @@ export function BusinessProfileForm({ tenantSlug, tenantId, defaultValues }: Bus
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
           <Label className="text-sm font-medium text-zinc-700">Business Name *</Label>
-          <Input {...register("name")} placeholder="Glow & Co. Salon" />
+          <Input {...register("name")} placeholder="Northwind Service Co." />
           {errors.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label className="text-sm font-medium text-zinc-700">Address</Label>
-          <Input {...register("address")} placeholder="123 Rizal St., Makati City" />
+          <Input {...register("address")} placeholder="123 Main Street, City" />
         </div>
         <div className="space-y-1.5">
           <Label className="text-sm font-medium text-zinc-700">Phone</Label>
-          <Input {...register("phone")} placeholder="+63 2 8123 4567" />
+          <Input {...register("phone")} placeholder="+31 6 12345678" />
         </div>
         <div className="space-y-1.5">
           <Label className="text-sm font-medium text-zinc-700">Email</Label>

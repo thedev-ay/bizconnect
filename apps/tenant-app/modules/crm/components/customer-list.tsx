@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -28,6 +29,7 @@ interface CustomerListProps {
   customers: Customer[];
   tenantSlug: string;
   tenantId: string;
+  jobOrderCounts: Record<string, number>;
 }
 
 const TAG_STYLES: Record<string, string> = {
@@ -45,7 +47,7 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-export function CustomerList({ customers, tenantSlug, tenantId }: CustomerListProps) {
+export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }: CustomerListProps) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
 
@@ -70,6 +72,7 @@ export function CustomerList({ customers, tenantSlug, tenantId }: CustomerListPr
           <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Name</TableHead>
           <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Contact</TableHead>
           <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Address</TableHead>
+          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Jobs</TableHead>
           <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Tags</TableHead>
           <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Since</TableHead>
           <TableHead />
@@ -78,7 +81,7 @@ export function CustomerList({ customers, tenantSlug, tenantId }: CustomerListPr
       <TableBody>
         {customers.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={6} className="py-12 text-center text-sm text-zinc-400">
+            <TableCell colSpan={7} className="py-12 text-center text-sm text-zinc-400">
               No customers yet.
             </TableCell>
           </TableRow>
@@ -109,6 +112,19 @@ export function CustomerList({ customers, tenantSlug, tenantId }: CustomerListPr
               </TableCell>
               <TableCell className="text-sm text-zinc-500">
                 {customer.address ?? <span className="text-zinc-300">—</span>}
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-zinc-700">
+                    {jobOrderCounts[customer.id] ?? 0}
+                  </span>
+                  <Link
+                    href={`/${tenantSlug}/job-orders?customerId=${customer.id}`}
+                    className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                  >
+                    New Job
+                  </Link>
+                </div>
               </TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-1">

@@ -53,6 +53,7 @@ export function AddShiftDialog({
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateShiftInput>({
     resolver: zodResolver(createShiftSchema),
@@ -83,7 +84,7 @@ export function AddShiftDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="min-w-lg">
         <DialogHeader>
           <DialogTitle>Add Shift</DialogTitle>
         </DialogHeader>
@@ -92,7 +93,7 @@ export function AddShiftDialog({
             <Label>Employee *</Label>
             <Select onValueChange={(v) => { if (v) setValue("employeeId", v as string); }}>
               <SelectTrigger>
-                <SelectValue placeholder="Select employee..." />
+                {watch("employeeId") ? employees.find((e) => e.id === watch("employeeId"))?.name : <span className="text-muted-foreground">Select...</span>}
               </SelectTrigger>
               <SelectContent>
                 {employees.map((emp) => (

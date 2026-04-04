@@ -1,5 +1,6 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
+import { getActiveModules } from "@/lib/module-registry";
 import { JobOrderBoard, CreateJobOrderDialog, WorkflowStageEditor } from "@/modules/job-orders";
 import type { JobOrder, WorkflowStage } from "@/modules/job-orders";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,19 +8,40 @@ import { ClipboardList, Waves, CheckCircle, Star } from "lucide-react";
 
 interface JobOrdersPageProps {
   params: Promise<{ tenant: string }>;
+  searchParams: Promise<{ customerId?: string }>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = prisma as any;
 
-export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
+export default async function JobOrdersPage({ params, searchParams }: JobOrdersPageProps) {
   const { tenant: tenantSlug } = await params;
-  const tenant = await getTenant(tenantSlug);
+  const { customerId } = await searchParams;
+  const [tenant, activeModules] = await Promise.all([
+    getTenant(tenantSlug),
+    getActiveModules(tenantSlug),
+  ]);
+  const billingEnabled = activeModules.some((module) => module.slug === "billing");
 
-  const [rawOrders, rawServices, rawStages] = await Promise.all([
-    prisma.jobOrder.findMany({
+  let rawOrders: any[] = [];
+  try {
+    rawOrders = await prisma.jobOrder.findMany({
       where: { tenantId: tenant.id },
-      include: {
+      select: {
+        id: true,
+        customerId: true,
+        jobNo: true,
+        customerName: true,
+        contactNo: true,
+        notes: true,
+        status: true,
+        priority: true,
+        assignedTo: true,
+        dueDate: true,
+        completedAt: true,
+        claimedAt: true,
+        createdAt: true,
+        invoice: { select: { id: true, status: true } },
         items: {
           select: {
             id: true,
@@ -32,7 +54,44 @@ export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
         },
       },
       orderBy: { createdAt: "desc" },
-    }),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (!message.includes("customer_id") && !message.includes("job_order_id")) {
+      throw error;
+    }
+
+    rawOrders = await prisma.jobOrder.findMany({
+      where: { tenantId: tenant.id },
+      select: {
+        id: true,
+        jobNo: true,
+        customerName: true,
+        contactNo: true,
+        notes: true,
+        status: true,
+        priority: true,
+        assignedTo: true,
+        dueDate: true,
+        completedAt: true,
+        claimedAt: true,
+        createdAt: true,
+        items: {
+          select: {
+            id: true,
+            name: true,
+            quantity: true,
+            weight: true,
+            unitPrice: true,
+            total: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  const [rawServices, rawStages, rawCustomers] = await Promise.all([
     db.serviceCatalog.findMany({
       where: { tenantId: tenant.id, isActive: true },
       orderBy: [{ category: "asc" }, { name: "asc" }],
@@ -40,6 +99,11 @@ export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
     db.workflowStage.findMany({
       where: { tenantId: tenant.id },
       orderBy: { sortOrder: "asc" },
+    }),
+    prisma.customer.findMany({
+      where: { tenantId: tenant.id },
+      select: { id: true, name: true, phone: true },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -55,6 +119,7 @@ export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
   const jobOrders: JobOrder[] = rawOrders.map((jo: any) => ({
     id: jo.id,
     jobNo: jo.jobNo,
+    customerId: jo.customerId ?? null,
     customerName: jo.customerName,
     contactNo: jo.contactNo ?? null,
     notes: jo.notes ?? null,
@@ -65,6 +130,8 @@ export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
     completedAt: jo.completedAt,
     claimedAt: jo.claimedAt ?? null,
     createdAt: jo.createdAt,
+    invoiceId: jo.invoice?.id ?? null,
+    invoiceStatus: jo.invoice?.status ?? null,
     items: jo.items.map((i: any) => ({
       id: i.id,
       name: i.name,
@@ -82,6 +149,11 @@ export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
     price: Number(s.price),
     category: s.category as string | null,
   }));
+  const customers = rawCustomers.map((customer) => ({
+    id: customer.id,
+    name: customer.name,
+    phone: customer.phone,
+  }));
 
   const completedStage = stages.find((s) => s.type === "completed");
   const activeStages = stages.filter((s) => s.type === "active");
@@ -93,8 +165,8 @@ export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
     return lastActive && j.status === lastActive.slug;
   });
   const completedToday = jobOrders.filter((j) => {
-    if (!completedStage || j.status !== completedStage.slug || !j.claimedAt) return false;
-    const d = new Date(j.claimedAt);
+    if (!completedStage || j.status !== completedStage.slug || !j.completedAt) return false;
+    const d = new Date(j.completedAt);
     const now = new Date();
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
   });
@@ -121,9 +193,11 @@ export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
             tenantSlug={tenantSlug}
             tenantId={tenant.id}
             services={services}
+            customers={customers}
             currencySymbol={tenant.currencySymbol}
             currencyLocale={tenant.currencyLocale}
             firstStageSlug={firstActiveSlug ?? "received"}
+            initialCustomerId={customerId}
           />
         </div>
       </div>
@@ -163,6 +237,8 @@ export default async function JobOrdersPage({ params }: JobOrdersPageProps) {
           currencySymbol={tenant.currencySymbol}
           currencyLocale={tenant.currencyLocale}
           services={services}
+          customers={customers}
+          billingEnabled={billingEnabled}
         />
       </div>
     </div>

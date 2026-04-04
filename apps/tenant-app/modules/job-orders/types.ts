@@ -25,7 +25,10 @@ export function getStageColors(color: string) {
 export function getNextStage(stages: WorkflowStage[], currentSlug: string): WorkflowStage | null {
   const active = stages.filter((s) => s.type === "active").sort((a, b) => a.sortOrder - b.sortOrder);
   const idx = active.findIndex((s) => s.slug === currentSlug);
-  if (idx === -1 || idx === active.length - 1) return null;
+  if (idx === -1) return null;
+  if (idx === active.length - 1) {
+    return getCompletedStage(stages);
+  }
   return active[idx + 1];
 }
 
@@ -52,6 +55,7 @@ export interface JobOrderItem {
 export interface JobOrder {
   id: string;
   jobNo: string;
+  customerId: string | null;
   customerName: string;
   contactNo: string | null;
   notes: string | null;
@@ -62,5 +66,7 @@ export interface JobOrder {
   completedAt: Date | null;
   claimedAt: Date | null;
   createdAt: Date;
+  invoiceId?: string | null;
+  invoiceStatus?: string | null;
   items: JobOrderItem[];
 }

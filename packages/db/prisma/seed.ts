@@ -1,4 +1,6 @@
 import { PrismaClient } from "../src/generated";
+import { faker } from "@faker-js/faker";
+import { getCountryConfig, getCurrencyConfig, getFakerLocale } from "../src/locale";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -37,19 +39,24 @@ async function main() {
   console.log("✅ Super admin: admin@bizconnect.app / SuperAdmin123!");
 
   // ── Demo tenant ────────────────────────────────────────────────────────────
+  const demoCountry = "nl";
+  faker.locale = getFakerLocale(demoCountry);
+  const currencyConfig = getCurrencyConfig(demoCountry);
+  
   const tenant = await prisma.tenant.upsert({
     where: { slug: "demo" },
     update: {},
     create: {
       slug: "demo",
       name: "Glow & Co. Salon",
+      country: demoCountry,
       plan: "growth",
       isActive: true,
-      address: "123 Rizal Ave., Makati City, Metro Manila",
-      phone: "+63 2 8123 4567",
-      email: "hello@glowandco.ph",
-      currencySymbol: "₱",
-      currencyLocale: "en-PH",
+      address: faker.location.streetAddress(),
+      phone: faker.phone.number(),
+      email: "hello@glowandco.nl",
+      currencySymbol: currencyConfig.symbol,
+      currencyLocale: currencyConfig.locale,
       defaultTaxRate: "12.00",
     },
   });

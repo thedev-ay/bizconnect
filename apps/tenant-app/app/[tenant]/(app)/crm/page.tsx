@@ -17,10 +17,28 @@ export default async function CRMPage({ params }: CRMPageProps) {
     where: { tenantId: tenant.id },
     orderBy: { name: "asc" },
   });
+  let jobOrderCounts: Array<{ customerId: string | null; _count: { customerId: number } }> = [];
+  try {
+    jobOrderCounts = await (prisma.jobOrder as any).groupBy({
+      by: ["customerId"],
+      where: { tenantId: tenant.id, customerId: { not: null } },
+      _count: { customerId: true },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (!message.includes("customer_id")) {
+      throw error;
+    }
+  }
 
   const uniqueTags = new Set(customers.flatMap((c) => c.tags)).size;
   const vipCount = customers.filter((c) => c.tags.includes("vip")).length;
   const typedCustomers: Customer[] = customers;
+  const jobsByCustomer = Object.fromEntries(
+    jobOrderCounts
+      .filter((entry) => entry.customerId)
+      .map((entry) => [entry.customerId as string, entry._count.customerId])
+  );
 
   return (
     <div className="space-y-6">
@@ -80,7 +98,12 @@ export default async function CRMPage({ params }: CRMPageProps) {
 
       {/* Table */}
       <Card className="shadow-none border-zinc-200">
-        <CustomerList customers={typedCustomers} tenantSlug={tenantSlug} tenantId={tenant.id} />
+        <CustomerList
+          customers={typedCustomers}
+          tenantSlug={tenantSlug}
+          tenantId={tenant.id}
+          jobOrderCounts={jobsByCustomer}
+        />
       </Card>
     </div>
   );

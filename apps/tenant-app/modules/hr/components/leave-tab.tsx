@@ -10,9 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createLeaveRequest, updateLeaveStatus } from "../actions";
+import { createLeaveRequest, updateLeaveStatus, updateLeaveRequestEndDate } from "../actions";
 import type { Employee, LeaveRequest } from "../types";
 
 interface LeaveTabProps {
@@ -45,20 +46,28 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingLeaveId, setEditingLeaveId] = useState<string | null>(null);
+  const [editingEndDate, setEditingEndDate] = useState("");
+  const [editingStartDate, setEditingStartDate] = useState("");
 
   async function handleSubmit() {
-    if (!employeeId || !type || !startDate || !endDate) {
-      toast.error("Employee, type, and dates are required");
+    if (!employeeId || !type || !startDate) {
+      toast.error("Employee, type, and start date are required");
       return;
     }
-    if (new Date(endDate) < new Date(startDate)) {
+    if (type !== "sick" && !endDate) {
+      toast.error("End date is required for this leave type");
+      return;
+    }
+    if (endDate && new Date(endDate) < new Date(startDate)) {
       toast.error("End date must be on or after start date");
       return;
     }
     setSaving(true);
     try {
       await createLeaveRequest(tenantSlug, tenantId, { employeeId, type, startDate, endDate, reason });
-      toast.success("Leave request created");
+      toast.success(type === "sick" ? "Sick leave approved" : "Leave request created");
       setFormKey((k) => k + 1);
       setEmployeeId("");
       setType("");
@@ -86,6 +95,30 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
     }
   }
 
+  async function handleUpdateEndDate() {
+    if (!editingLeaveId || !editingEndDate) {
+      toast.error("End date is required");
+      return;
+    }
+    if (new Date(editingEndDate) < new Date(editingStartDate)) {
+      toast.error("End date must be on or after start date");
+      return;
+    }
+    setLoading(editingLeaveId);
+    try {
+      await updateLeaveRequestEndDate(tenantSlug, tenantId, editingLeaveId, editingEndDate);
+      toast.success("Leave end date updated");
+      setEditDialogOpen(false);
+      setEditingLeaveId(null);
+      setEditingEndDate("");
+      router.refresh();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to update end date");
+    } finally {
+      setLoading(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-zinc-200 p-4">
@@ -93,20 +126,23 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
         <div key={formKey} className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <Label className="text-xs text-zinc-600">Employee</Label>
-            <Select onValueChange={(v) => { if (v) setEmployeeId(v); }}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
+            <Select value={employeeId} onValueChange={(v) => { if (v) setEmployeeId(v); }}>
+              <SelectTrigger className="h-8 text-xs">
+                {employeeId ? employees.find((e) => e.id === employeeId)?.name : <span className="text-muted-foreground">Select...</span>}
+              </SelectTrigger>
               <SelectContent>{employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
             <Label className="text-xs text-zinc-600">Leave Type</Label>
-            <Select onValueChange={(v) => { if (v) setType(v); }}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
+            <Select value={type} onValueChange={(v) => { if (v) setType(v); }}>
+              <SelectTrigger className="h-8 text-xs">
+                {type ? LEAVE_TYPE[type] : <span className="text-muted-foreground">Select...</span>}
+              </SelectTrigger>
               <SelectContent>
-                <SelectItem value="sick">Sick Leave</SelectItem>
-                <SelectItem value="vacation">Vacation</SelectItem>
-                <SelectItem value="personal">Personal</SelectItem>
-                <SelectItem value="unpaid">Unpaid</SelectItem>
+                {Object.entries(LEAVE_TYPE).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -115,7 +151,7 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
             <Input type="date" className="h-8 text-xs" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-zinc-600">End Date</Label>
+            <Label className="text-xs text-zinc-600">End Date {type === "sick" ? <span className="text-zinc-400">(optional)</span> : <span className="text-red-500">*</span>}</Label>
             <Input type="date" className="h-8 text-xs" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
           </div>
           <div className="space-y-1 sm:col-span-2">
@@ -127,6 +163,24 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
           </div>
         </div>
       </div>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Update Leave End Date</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-zinc-600">End Date</Label>
+              <Input type="date" className="h-8 text-xs" value={editingEndDate} min={editingStartDate} onChange={(e) => setEditingEndDate(e.target.value)} />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleUpdateEndDate} disabled={loading !== null}>{loading !== null ? "Saving..." : "Save"}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Table>
         <TableHeader>
@@ -149,7 +203,7 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
                 <TableCell className="text-sm font-medium text-zinc-900">{r.employeeName}</TableCell>
                 <TableCell className="text-sm text-zinc-700">{LEAVE_TYPE[r.type] ?? r.type}</TableCell>
                 <TableCell className="text-sm text-zinc-500">{format(new Date(r.startDate), "MMM d, yyyy")}</TableCell>
-                <TableCell className="text-sm text-zinc-500">{format(new Date(r.endDate), "MMM d, yyyy")}</TableCell>
+                <TableCell className="text-sm text-zinc-500">{r.endDate ? format(new Date(r.endDate), "MMM d, yyyy") : <span className="text-zinc-300">—</span>}</TableCell>
                 <TableCell className="max-w-[160px] truncate text-sm text-zinc-400">{r.reason ?? <span className="text-zinc-300">—</span>}</TableCell>
                 <TableCell>
                   <span className={cn(
@@ -160,7 +214,7 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
                   </span>
                 </TableCell>
                 <TableCell>
-                  {r.status === "pending" && (
+                  {r.status === "pending" && r.type !== "sick" && (
                     <div className="flex gap-1">
                       <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600 hover:text-emerald-700" onClick={() => handleStatus(r.id, "approved")}>
                         <CheckCircle className="h-4 w-4" />
@@ -169,6 +223,16 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
                         <XCircle className="h-4 w-4" />
                       </Button>
                     </div>
+                  )}
+                  {r.status === "approved" && !r.endDate && (
+                    <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => { setEditingLeaveId(r.id); setEditingStartDate(format(new Date(r.startDate), "yyyy-MM-dd")); setEditingEndDate(""); setEditDialogOpen(true); }}>
+                      Add End Date
+                    </Button>
+                  )}
+                  {r.status === "approved" && r.endDate && (
+                    <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => { setEditingLeaveId(r.id); setEditingStartDate(format(new Date(r.startDate), "yyyy-MM-dd")); setEditingEndDate(format(new Date(r.endDate!), "yyyy-MM-dd")); setEditDialogOpen(true); }}>
+                      Edit Date
+                    </Button>
                   )}
                 </TableCell>
               </TableRow>

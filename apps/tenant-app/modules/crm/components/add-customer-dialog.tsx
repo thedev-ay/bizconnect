@@ -65,7 +65,7 @@ export function AddCustomerDialog({ tenantSlug, tenantId }: AddCustomerDialogPro
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
               <Label>Name *</Label>
-              <Input placeholder="Juan dela Cruz" {...register("name")} />
+              <Input placeholder="Alex Morgan" {...register("name")} />
               {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">
@@ -74,7 +74,7 @@ export function AddCustomerDialog({ tenantSlug, tenantId }: AddCustomerDialogPro
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>
-              <Input placeholder="+63 9XX XXX XXXX" {...register("phone")} />
+              <Input placeholder="+31 6 12345678" {...register("phone")} />
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label>Address</Label>

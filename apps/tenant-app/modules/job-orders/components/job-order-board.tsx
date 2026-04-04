@@ -9,10 +9,9 @@ import { Phone, ChevronRight, Search, Clock, CheckCircle2, XCircle } from "lucid
 import { Input } from "@/components/ui/input";
 import type { JobOrder, WorkflowStage } from "../types";
 import { getNextStage, getStageColors } from "../types";
-import { updateJobOrderStatus } from "../actions";
+import { createInvoiceForJobOrder, updateJobOrderStatus } from "../actions";
 import { JobOrderDetailDialog } from "./job-order-detail-dialog";
 import { EditJobOrderDialog } from "./edit-job-order-dialog";
-import { ClaimPaymentDialog } from "./claim-payment-dialog";
 
 interface ServiceOption {
   id: string;
@@ -20,6 +19,12 @@ interface ServiceOption {
   pricingType: "per_piece" | "per_kilo" | "flat";
   price: number;
   category: string | null;
+}
+
+interface CustomerOption {
+  id: string;
+  name: string;
+  phone: string | null;
 }
 
 interface JobOrderBoardProps {
@@ -31,6 +36,8 @@ interface JobOrderBoardProps {
   currencySymbol: string;
   currencyLocale: string;
   services: ServiceOption[];
+  customers: CustomerOption[];
+  billingEnabled: boolean;
 }
 
 const PRIORITY_STYLES: Record<string, { dot: string; badge: string; label: string }> = {
@@ -39,6 +46,27 @@ const PRIORITY_STYLES: Record<string, { dot: string; badge: string; label: strin
   high:   { dot: "bg-amber-400", badge: "bg-amber-50 text-amber-700 border border-amber-200", label: "High" },
   urgent: { dot: "bg-red-500 animate-pulse", badge: "bg-red-100 text-red-700 border border-red-300", label: "Urgent" },
 };
+
+const INVOICE_STATUS_STYLES: Record<string, string> = {
+  draft: "bg-zinc-100 text-zinc-600 border-zinc-200",
+  sent: "bg-blue-50 text-blue-700 border-blue-200",
+  paid: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  void: "bg-zinc-100 text-zinc-400 border-zinc-200",
+};
+
+function getBillingBadge(jobOrder: JobOrder) {
+  if (!jobOrder.invoiceId) {
+    return {
+      label: "Uninvoiced",
+      className: "bg-amber-50 text-amber-700 border-amber-200",
+    };
+  }
+
+  return {
+    label: jobOrder.invoiceStatus === "void" ? "Voided" : jobOrder.invoiceStatus ?? "Invoiced",
+    className: INVOICE_STATUS_STYLES[jobOrder.invoiceStatus ?? ""] ?? "bg-zinc-100 text-zinc-600 border-zinc-200",
+  };
+}
 
 export function JobOrderBoard({
   jobOrders,
@@ -49,6 +77,8 @@ export function JobOrderBoard({
   currencySymbol,
   currencyLocale,
   services,
+  customers,
+  billingEnabled,
 }: JobOrderBoardProps) {
   const router = useRouter();
   const firstStage = stages[0];
@@ -56,7 +86,6 @@ export function JobOrderBoard({
   const [advancing, setAdvancing] = useState<string | null>(null);
   const [selected, setSelected] = useState<JobOrder | null>(null);
   const [editing, setEditing] = useState<JobOrder | null>(null);
-  const [claiming, setClaiming] = useState<JobOrder | null>(null);
   const [search, setSearch] = useState("");
 
   const q = search.toLowerCase();
@@ -83,11 +112,6 @@ export function JobOrderBoard({
     const next = getNextStage(stages, jo.status);
     if (!next) return;
 
-    if (next.type === "completed") {
-      setClaiming(jo);
-      return;
-    }
-
     setAdvancing(jo.id);
     try {
       await updateJobOrderStatus(tenantSlug, tenantId, jo.id, next.slug, next.type);
@@ -95,6 +119,23 @@ export function JobOrderBoard({
       router.refresh();
     } catch {
       toast.error("Failed to update");
+    } finally {
+      setAdvancing(null);
+    }
+  }
+
+  async function handleCreateInvoice(jobOrderId: string) {
+    setAdvancing(jobOrderId);
+    try {
+      const result = await createInvoiceForJobOrder(tenantSlug, tenantId, jobOrderId);
+      toast.success("Draft invoice created");
+      if (billingEnabled && result?.invoiceId) {
+        router.push(`/${tenantSlug}/billing?invoiceId=${result.invoiceId}`);
+        return;
+      }
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create invoice");
     } finally {
       setAdvancing(null);
     }
@@ -194,6 +235,31 @@ export function JobOrderBoard({
                 >
                   <span className="font-mono text-xs font-semibold text-zinc-400 shrink-0">{jo.jobNo}</span>
                   <span className="flex-1 text-sm font-medium text-zinc-800 truncate">{jo.customerName}</span>
+                  {isCompletedTab && (() => {
+                    const badge = getBillingBadge(jo);
+                    return (
+                      <span
+                        className={cn(
+                          "rounded-full border px-2 py-1 text-[10px] font-semibold capitalize",
+                          badge.className
+                        )}
+                      >
+                        {badge.label}
+                      </span>
+                    );
+                  })()}
+                  {!jo.invoiceId && isCompletedTab && (
+                    <button
+                      type="button"
+                      className="rounded-full border border-zinc-200 px-2 py-1 text-[10px] font-semibold text-zinc-600 hover:bg-zinc-50"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleCreateInvoice(jo.id);
+                      }}
+                    >
+                      Create Invoice
+                    </button>
+                  )}
                   {jo.contactNo && (
                     <span className="hidden sm:flex items-center gap-1 text-xs text-zinc-400 shrink-0">
                       <Phone className="h-3 w-3" />
@@ -246,9 +312,19 @@ export function JobOrderBoard({
                   </div>
 
                   {/* Customer */}
-                  <div>
-                    <p className="text-sm font-bold text-zinc-900 leading-tight">{jo.customerName}</p>
-                    {jo.contactNo && (
+                <div>
+                  <p className="text-sm font-bold text-zinc-900 leading-tight">{jo.customerName}</p>
+                  {jo.invoiceStatus && (
+                    <span
+                      className={cn(
+                        "mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize",
+                        INVOICE_STATUS_STYLES[jo.invoiceStatus] ?? "bg-zinc-100 text-zinc-600 border-zinc-200"
+                      )}
+                    >
+                      Invoice {jo.invoiceStatus}
+                    </span>
+                  )}
+                  {jo.contactNo && (
                       <div className="mt-0.5 flex items-center gap-1 text-xs text-zinc-400">
                         <Phone className="h-3 w-3 shrink-0" />
                         {jo.contactNo}
@@ -332,7 +408,7 @@ export function JobOrderBoard({
           open={!!selected}
           onOpenChange={(o) => { if (!o) setSelected(null); }}
           onEdit={(jo) => { setSelected(null); setEditing(jo); }}
-          onClaim={() => { const jo = selected; setSelected(null); setClaiming(jo); }}
+          billingEnabled={billingEnabled}
         />
       )}
 
@@ -342,22 +418,11 @@ export function JobOrderBoard({
           tenantSlug={tenantSlug}
           tenantId={tenantId}
           services={services}
+          customers={customers}
           currencySymbol={currencySymbol}
           currencyLocale={currencyLocale}
           open={!!editing}
           onOpenChange={(o) => { if (!o) setEditing(null); }}
-        />
-      )}
-
-      {claiming && (
-        <ClaimPaymentDialog
-          jobOrder={claiming}
-          tenantSlug={tenantSlug}
-          tenantId={tenantId}
-          currencySymbol={currencySymbol}
-          currencyLocale={currencyLocale}
-          open={!!claiming}
-          onOpenChange={(o) => { if (!o) setClaiming(null); }}
         />
       )}
     </div>

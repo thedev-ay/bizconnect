@@ -101,8 +101,8 @@ export function PayrollTab({ employees, records, tenantSlug, tenantId, currencyS
         <div key={formKey} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1">
             <Label className="text-xs text-zinc-600">Employee</Label>
-            <Select onValueChange={(v) => { if (v) setEmployeeId(v); }}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
+            <Select value={employeeId} onValueChange={(v) => { if (v) setEmployeeId(v); }}>
+              <SelectTrigger className="h-8 text-xs">{employeeId ? employees.find((e) => e.id === employeeId)?.name : <span className="text-muted-foreground">Select...</span>}</SelectTrigger>
               <SelectContent>{employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>

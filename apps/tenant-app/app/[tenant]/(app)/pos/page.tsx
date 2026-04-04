@@ -1,5 +1,6 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
+import { tenantHasModule } from "@/lib/module-registry";
 import { POSTerminal } from "@/modules/pos";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ export default async function POSPage({ params }: POSPageProps) {
   const { tenant: tenantSlug } = await params;
   const tenant = await getTenant(tenantSlug);
   const now = new Date();
+  const servicesEnabled = await tenantHasModule(tenantSlug, "services");
 
   const [rawProducts, activePromos, rawServices] = await Promise.all([
     prisma.inventoryItem.findMany({
@@ -50,10 +52,13 @@ export default async function POSPage({ params }: POSPageProps) {
       },
     }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (prisma as any).serviceCatalog.findMany({
-      where: { tenantId: tenant.id, isActive: true },
-      orderBy: [{ category: "asc" }, { name: "asc" }],
-    }),
+    servicesEnabled
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (prisma as any).serviceCatalog.findMany({
+          where: { tenantId: tenant.id, isActive: true },
+          orderBy: [{ category: "asc" }, { name: "asc" }],
+        })
+      : Promise.resolve([]),
   ]);
 
   interface RawPromo {
@@ -125,6 +130,7 @@ export default async function POSPage({ params }: POSPageProps) {
         <POSTerminal
           products={products}
           services={services}
+          servicesEnabled={servicesEnabled}
           tenantSlug={tenantSlug}
           tenantId={tenant.id}
           tenantName={tenant.name}

@@ -30,7 +30,7 @@ export interface LeaveRequest {
   employeeName: string;
   type: string;
   startDate: Date;
-  endDate: Date;
+  endDate: Date | null;
   reason: string | null;
   status: string;
   createdAt: Date;

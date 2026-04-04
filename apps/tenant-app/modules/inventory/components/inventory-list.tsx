@@ -19,12 +19,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, AlertTriangle, ArrowUpDown, Pencil } from "lucide-react";
+import { MoreHorizontal, AlertTriangle, ArrowUpDown, Pencil, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { InventoryItem } from "../types";
-import { deleteItem } from "../actions";
+import { deleteItem, getAdjustmentHistory } from "../actions";
 import { EditItemDialog } from "./edit-item-dialog";
 import { AdjustStockDialog } from "./adjust-stock-dialog";
+import { AdjustmentHistory } from "./adjustment-history";
 
 interface InventoryListProps {
   items: InventoryItem[];
@@ -39,6 +40,9 @@ export function InventoryList({ items, tenantSlug, tenantId, currencySymbol, cur
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [adjustingItem, setAdjustingItem] = useState<InventoryItem | null>(null);
+  const [historyItem, setHistoryItem] = useState<InventoryItem | null>(null);
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   async function handleDelete(item: InventoryItem) {
     if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
@@ -51,6 +55,19 @@ export function InventoryList({ items, tenantSlug, tenantId, currencySymbol, cur
       toast.error("Failed to delete item");
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleViewHistory(item: InventoryItem) {
+    setHistoryItem(item);
+    setLoadingHistory(true);
+    try {
+      const adjustments = await getAdjustmentHistory(tenantSlug, tenantId, item.id);
+      setHistoryData(adjustments);
+    } catch {
+      toast.error("Failed to load adjustment history");
+    } finally {
+      setLoadingHistory(false);
     }
   }
 
@@ -136,6 +153,9 @@ export function InventoryList({ items, tenantSlug, tenantId, currencySymbol, cur
                       <DropdownMenuItem onClick={() => setAdjustingItem(item)}>
                         <ArrowUpDown className="mr-2 h-4 w-4" /> Adjust Stock
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleViewHistory(item)}>
+                        <History className="mr-2 h-4 w-4" /> View History
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
@@ -170,6 +190,15 @@ export function InventoryList({ items, tenantSlug, tenantId, currencySymbol, cur
           tenantId={tenantId}
           open={!!adjustingItem}
           onOpenChange={(o) => { if (!o) setAdjustingItem(null); }}
+        />
+      )}
+
+      {historyItem && (
+        <AdjustmentHistory
+          open={!!historyItem}
+          onOpenChange={(o) => { if (!o) setHistoryItem(null); }}
+          itemName={historyItem.name}
+          adjustments={historyData}
         />
       )}
     </>

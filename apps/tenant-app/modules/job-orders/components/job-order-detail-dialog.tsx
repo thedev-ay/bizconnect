@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
@@ -16,8 +16,13 @@ import { Pencil, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { JobOrder, WorkflowStage } from "../types";
 import { getNextStage, getPrevStage, getStageColors } from "../types";
-import { updateJobOrderStatus, deleteJobOrder } from "../actions";
-import { ClaimPaymentDialog } from "./claim-payment-dialog";
+import {
+  createInvoiceForJobOrder,
+  updateJobOrderStatus,
+  deleteJobOrder,
+  getJobOrderTimeLogs,
+} from "../actions";
+import { TimeTracking } from "./time-tracking";
 
 interface JobOrderDetailDialogProps {
   jobOrder: JobOrder;
@@ -30,7 +35,7 @@ interface JobOrderDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: (jobOrder: JobOrder) => void;
-  onClaim?: () => void;
+  billingEnabled: boolean;
 }
 
 type ConfirmMode = "cancel" | "delete" | null;
@@ -46,12 +51,23 @@ export function JobOrderDetailDialog({
   open,
   onOpenChange,
   onEdit,
-  onClaim,
+  billingEnabled,
 }: JobOrderDetailDialogProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [confirmMode, setConfirmMode] = useState<ConfirmMode>(null);
-  const [claimOpen, setClaimOpen] = useState(false);
+  const [timeLogs, setTimeLogs] = useState<any[]>([]);
+  const [loadingTimeLogs, setLoadingTimeLogs] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setLoadingTimeLogs(true);
+      getJobOrderTimeLogs(tenantSlug, tenantId, jobOrder.id)
+        .then(setTimeLogs)
+        .catch(() => toast.error("Failed to load time logs"))
+        .finally(() => setLoadingTimeLogs(false));
+    }
+  }, [open, jobOrder.id, tenantSlug, tenantId]);
 
   const currentStage = stages.find((s) => s.slug === jobOrder.status);
   const nextStage = getNextStage(stages, jobOrder.status);
@@ -116,6 +132,24 @@ export function JobOrderDetailDialog({
     }
   }
 
+  async function handleCreateInvoice() {
+    setLoading(true);
+    try {
+      const result = await createInvoiceForJobOrder(tenantSlug, tenantId, jobOrder.id);
+      toast.success("Draft invoice created");
+      onOpenChange(false);
+      if (billingEnabled && result?.invoiceId) {
+        router.push(`/${tenantSlug}/billing?invoiceId=${result.invoiceId}`);
+        return;
+      }
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create invoice");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -164,6 +198,18 @@ export function JobOrderDetailDialog({
                 )}>
                   {currentStage?.name ?? jobOrder.status}
                 </span>
+                {currentStage?.type === "completed" && (
+                  <span className={cn(
+                    "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                    !jobOrder.invoiceId && "bg-amber-50 text-amber-700 border-amber-200",
+                    jobOrder.invoiceStatus === "draft" && "bg-zinc-100 text-zinc-600 border-zinc-200",
+                    jobOrder.invoiceStatus === "sent" && "bg-blue-50 text-blue-700 border-blue-200",
+                    jobOrder.invoiceStatus === "paid" && "bg-emerald-50 text-emerald-700 border-emerald-200",
+                    jobOrder.invoiceStatus === "void" && "bg-zinc-100 text-zinc-400 border-zinc-200",
+                  )}>
+                    {!jobOrder.invoiceId ? "Uninvoiced" : jobOrder.invoiceStatus === "void" ? "Voided" : jobOrder.invoiceStatus}
+                  </span>
+                )}
                 {jobOrder.priority !== "normal" && (
                   <span className={cn(
                     "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize",
@@ -228,6 +274,26 @@ export function JobOrderDetailDialog({
               ) : (
                 <p className="text-sm text-zinc-400 italic">No services added.</p>
               )}
+
+              {/* Time Tracking */}
+              <div className="space-y-2 pt-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Time Tracking</p>
+                {loadingTimeLogs ? (
+                  <p className="text-xs text-zinc-400">Loading time logs...</p>
+                ) : (
+                  <TimeTracking
+                    jobOrderId={jobOrder.id}
+                    tenantSlug={tenantSlug}
+                    tenantId={tenantId}
+                    timeLogs={timeLogs}
+                    onUpdated={() => {
+                      getJobOrderTimeLogs(tenantSlug, tenantId, jobOrder.id)
+                        .then(setTimeLogs)
+                        .catch(() => toast.error("Failed to reload time logs"));
+                    }}
+                  />
+                )}
+              </div>
             </div>
           )}
 
@@ -235,6 +301,11 @@ export function JobOrderDetailDialog({
           {!confirmMode && (
             <div className="flex items-center justify-between gap-2 pt-2">
               <div className="flex gap-2">
+                {jobOrder.completedAt && !jobOrder.invoiceId && (
+                  <Button size="sm" variant="outline" onClick={handleCreateInvoice} disabled={loading}>
+                    Create Invoice
+                  </Button>
+                )}
                 {canEdit && cancelledStage && (
                   <Button
                     variant="outline"
@@ -274,9 +345,7 @@ export function JobOrderDetailDialog({
                 )}
                 {nextStage && (
                   <Button
-                    onClick={nextStage.type === "completed"
-                      ? () => { onOpenChange(false); if (onClaim) onClaim(); else setClaimOpen(true); }
-                      : handleAdvance}
+                    onClick={handleAdvance}
                     disabled={loading}
                     className={cn(
                       nextStage.type === "completed" && "bg-emerald-600 hover:bg-emerald-700"
@@ -290,17 +359,6 @@ export function JobOrderDetailDialog({
           )}
         </DialogContent>
       </Dialog>
-
-      <ClaimPaymentDialog
-        jobOrder={jobOrder}
-        tenantSlug={tenantSlug}
-        tenantId={tenantId}
-        tenantName={tenantName}
-        currencySymbol={currencySymbol}
-        currencyLocale={currencyLocale}
-        open={claimOpen}
-        onOpenChange={setClaimOpen}
-      />
     </>
   );
 }

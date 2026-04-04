@@ -33,7 +33,7 @@ export async function getReportsSummary(tenantId: string): Promise<ReportsSummar
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = d.toLocaleDateString("en-PH", { month: "short", year: "numeric" });
+    const label = d.toLocaleDateString("nl-NL", { month: "short", year: "numeric" });
     monthMap.set(key, { month: label, sales: 0, invoices: 0 });
   }
 

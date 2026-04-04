@@ -155,7 +155,7 @@ export function PromotionDialog({
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={(v) => { if (v) field.onChange(v); }}>
                     <SelectTrigger>
-                      <SelectValue />
+                      {field.value ? PROMO_TYPE_LABELS[field.value] : <span className="text-muted-foreground">Select...</span>}
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(PROMO_TYPE_LABELS).map(([k, v]) => (

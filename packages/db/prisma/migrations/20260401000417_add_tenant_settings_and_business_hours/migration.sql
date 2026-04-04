@@ -1,7 +1,7 @@
 -- AlterTable
 ALTER TABLE "tenants" ADD COLUMN     "address" TEXT,
-ADD COLUMN     "currency_locale" TEXT NOT NULL DEFAULT 'en-PH',
-ADD COLUMN     "currency_symbol" TEXT NOT NULL DEFAULT '₱',
+ADD COLUMN     "currency_locale" TEXT NOT NULL DEFAULT 'nl-NL',
+ADD COLUMN     "currency_symbol" TEXT NOT NULL DEFAULT '€',
 ADD COLUMN     "default_tax_rate" DECIMAL(5,2) NOT NULL DEFAULT 0,
 ADD COLUMN     "email" TEXT,
 ADD COLUMN     "phone" TEXT;

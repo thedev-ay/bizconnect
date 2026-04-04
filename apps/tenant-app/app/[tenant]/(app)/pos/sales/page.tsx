@@ -8,10 +8,12 @@ import { SalesList } from "@/modules/pos/components/sales-list";
 
 interface SalesPageProps {
   params: Promise<{ tenant: string }>;
+  searchParams?: Promise<{ saleId?: string }>;
 }
 
-export default async function SalesPage({ params }: SalesPageProps) {
+export default async function SalesPage({ params, searchParams }: SalesPageProps) {
   const { tenant: tenantSlug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const tenant = await getTenant(tenantSlug);
 
   const sales = await prisma.sale.findMany({
@@ -25,6 +27,18 @@ export default async function SalesPage({ params }: SalesPageProps) {
           unitPrice: true,
           total: true,
         },
+      },
+      returns: {
+        include: {
+          items: {
+            select: {
+              id: true,
+              saleItemId: true,
+              quantity: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
       },
     },
     orderBy: { createdAt: "desc" },
@@ -135,12 +149,20 @@ export default async function SalesPage({ params }: SalesPageProps) {
               unitPrice: i.unitPrice.toString(),
               total: i.total.toString(),
             })),
+            returns: s.returns.map((saleReturn) => ({
+              ...saleReturn,
+              refundAmount: saleReturn.refundAmount?.toString() ?? null,
+              items: saleReturn.items.map((item) => ({
+                ...item,
+              })),
+            })),
           }))}
           tenantSlug={tenantSlug}
           tenantId={tenant.id}
           tenantName={tenant.name}
           currencySymbol={tenant.currencySymbol}
           currencyLocale={tenant.currencyLocale}
+          highlightedSaleId={resolvedSearchParams?.saleId}
         />
       </Card>
     </div>

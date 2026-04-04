@@ -4,12 +4,61 @@ import { getActiveModules } from "@/lib/module-registry";
 import { prisma } from "@bizconnect/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, ShoppingCart, Package, AlertTriangle, Clock, ArrowRight } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  ShoppingCart,
+  Package,
+  AlertTriangle,
+  Clock,
+  ArrowRight,
+  RotateCcw,
+  ClipboardList,
+  ReceiptText,
+} from "lucide-react";
 import Link from "next/link";
+import { RevenueChart, TransactionChart } from "@/components/dashboard/revenue-chart";
 
 interface DashboardPageProps {
   params: Promise<{ tenant: string }>;
   searchParams: Promise<{ error?: string }>;
+}
+
+async function getServiceShopBillingStats(tenantId: string, modules: Set<string>) {
+  if (!modules.has("job-orders")) {
+    return { readyToInvoice: null, recentCompletedJobs: null };
+  }
+
+  try {
+    const [readyToInvoice, recentCompletedJobs] = await Promise.all([
+      modules.has("billing")
+        ? prisma.jobOrder.findMany({
+            where: { tenantId, completedAt: { not: null }, invoice: null },
+            include: { items: { select: { total: true } } },
+          })
+        : Promise.resolve(null),
+      prisma.jobOrder.findMany({
+        where: { tenantId, completedAt: { not: null } },
+        select: {
+          id: true,
+          jobNo: true,
+          customerName: true,
+          completedAt: true,
+          invoice: { select: { id: true } },
+        },
+        orderBy: { completedAt: "desc" },
+        take: 5,
+      }),
+    ]);
+
+    return { readyToInvoice, recentCompletedJobs };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("job_order_id")) {
+      return { readyToInvoice: null, recentCompletedJobs: null };
+    }
+    throw error;
+  }
 }
 
 async function getDashboardStats(tenantId: string, modules: Set<string>) {
@@ -17,6 +66,9 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
   const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30);
+
+  const serviceShopBillingStatsPromise = getServiceShopBillingStats(tenantId, modules);
 
   const [
     todayAppointments,
@@ -26,6 +78,15 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
     lowStockCount,
     pendingJobOrders,
     pendingLeaveRequests,
+    last30DaysSales,
+    pendingReturns,
+    monthlyReturns,
+    approvedReturns,
+    activeJobOrders,
+    overdueJobOrders,
+    completedToday,
+    monthlyInvoiced,
+    monthlyCollected,
   ] = await Promise.all([
     modules.has("appointments")
       ? prisma.appointment.count({ where: { tenantId, startAt: { gte: todayStart, lte: todayEnd } } })
@@ -66,7 +127,98 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
     modules.has("hr")
       ? prisma.leaveRequest.count({ where: { tenantId, status: "pending" } })
       : Promise.resolve(null),
+
+    modules.has("pos")
+      ? prisma.sale.findMany({
+          where: { tenantId, createdAt: { gte: thirtyDaysAgo }, status: "completed" },
+          select: { createdAt: true, total: true },
+          orderBy: { createdAt: "asc" },
+        })
+      : Promise.resolve(null),
+
+    modules.has("pos")
+      ? prisma.saleReturn.count({ where: { tenantId, status: "pending" } })
+      : Promise.resolve(null),
+
+    modules.has("pos")
+      ? prisma.saleReturn.aggregate({
+          where: { tenantId, createdAt: { gte: monthStart } },
+          _sum: { refundAmount: true },
+          _count: true,
+        })
+      : Promise.resolve(null),
+
+    modules.has("pos")
+      ? prisma.saleReturn.aggregate({
+          where: { tenantId, status: "approved", createdAt: { gte: monthStart } },
+          _sum: { refundAmount: true },
+          _count: true,
+        })
+      : Promise.resolve(null),
+
+    modules.has("job-orders")
+      ? prisma.jobOrder.count({
+          where: { tenantId, completedAt: null, status: { not: "cancelled" } },
+        })
+      : Promise.resolve(null),
+
+    modules.has("job-orders")
+      ? prisma.jobOrder.count({
+          where: {
+            tenantId,
+            completedAt: null,
+            status: { not: "cancelled" },
+            dueDate: { lt: now },
+          },
+        })
+      : Promise.resolve(null),
+
+    modules.has("job-orders")
+      ? prisma.jobOrder.count({
+          where: {
+            tenantId,
+            completedAt: { gte: todayStart, lte: todayEnd },
+          },
+        })
+      : Promise.resolve(null),
+
+    modules.has("billing")
+      ? prisma.invoice.aggregate({
+          where: { tenantId, createdAt: { gte: monthStart } },
+          _sum: { total: true },
+          _count: true,
+        })
+      : Promise.resolve(null),
+
+    modules.has("billing")
+      ? prisma.invoice.aggregate({
+          where: { tenantId, paidAt: { gte: monthStart }, status: "paid" },
+          _sum: { total: true },
+          _count: true,
+        })
+      : Promise.resolve(null),
   ]);
+
+  const { readyToInvoice, recentCompletedJobs } = await serviceShopBillingStatsPromise;
+
+  // Aggregate sales by day for charting
+  const salesByDay = new Map<string, { revenue: number; count: number }>();
+  if (last30DaysSales) {
+    for (const sale of last30DaysSales) {
+      const dayKey = sale.createdAt.toLocaleDateString("nl-NL", { month: "short", day: "numeric" });
+      const existing = salesByDay.get(dayKey) || { revenue: 0, count: 0 };
+      salesByDay.set(dayKey, {
+        revenue: existing.revenue + Number(sale.total),
+        count: existing.count + 1,
+      });
+    }
+  }
+
+  const chartData = Array.from(salesByDay.entries()).map(([day, data]) => ({
+    day,
+    revenue: Math.round(data.revenue),
+    transactions: data.count,
+  }));
 
   return {
     todayAppointments,
@@ -77,6 +229,24 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
     lowStockItems: lowStockCount,
     pendingJobOrders,
     pendingLeaveRequests,
+    pendingReturns,
+    monthlyReturnCount: monthlyReturns?._count ?? 0,
+    monthlyRefundAmount: monthlyReturns ? Number(monthlyReturns._sum.refundAmount ?? 0) : 0,
+    approvedReturnCount: approvedReturns?._count ?? 0,
+    approvedRefundAmount: approvedReturns ? Number(approvedReturns._sum.refundAmount ?? 0) : 0,
+    activeJobOrders,
+    overdueJobOrders,
+    completedToday,
+    readyToInvoiceCount: readyToInvoice?.length ?? 0,
+    readyToInvoiceValue: readyToInvoice?.reduce(
+      (sum, jobOrder) => sum + jobOrder.items.reduce((lineSum, item) => lineSum + Number(item.total), 0),
+      0
+    ) ?? 0,
+    monthlyInvoicedTotal: monthlyInvoiced ? Number(monthlyInvoiced._sum.total ?? 0) : 0,
+    monthlyInvoicedCount: monthlyInvoiced?._count ?? 0,
+    monthlyCollectedTotal: monthlyCollected ? Number(monthlyCollected._sum.total ?? 0) : 0,
+    recentCompletedJobs,
+    chartData,
   };
 }
 
@@ -96,20 +266,42 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
   // Build stat cards only for active modules
   const statCards = [
+    moduleSet.has("job-orders") && {
+      label: "Active Jobs",
+      value: data.activeJobOrders ?? 0,
+      icon: ClipboardList,
+      href: `/${tenantSlug}/job-orders`,
+      color: "blue" as const,
+    },
+    moduleSet.has("job-orders") && {
+      label: "Completed Today",
+      value: data.completedToday ?? 0,
+      icon: Package,
+      href: `/${tenantSlug}/job-orders`,
+      color: "zinc" as const,
+    },
+    moduleSet.has("billing") && {
+      label: "Ready to Invoice",
+      value: `${tenant.currencySymbol}${(data.readyToInvoiceValue ?? 0).toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 0 })}`,
+      sub: `${data.readyToInvoiceCount ?? 0} completed jobs`,
+      icon: ReceiptText,
+      href: `/${tenantSlug}/billing`,
+      color: "violet" as const,
+    },
+    moduleSet.has("billing") && {
+      label: "Collected This Month",
+      value: `${tenant.currencySymbol}${(data.monthlyCollectedTotal ?? 0).toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 0 })}`,
+      sub: `${data.monthlyInvoicedCount ?? 0} invoices raised`,
+      icon: ShoppingCart,
+      href: `/${tenantSlug}/billing`,
+      color: "green" as const,
+    },
     moduleSet.has("appointments") && {
       label: "Today's Appointments",
       value: data.todayAppointments ?? 0,
       icon: Calendar,
       href: `/${tenantSlug}/appointments`,
       color: "blue" as const,
-    },
-    moduleSet.has("pos") && {
-      label: "Monthly Revenue",
-      value: `${tenant.currencySymbol}${(data.monthlyRevenue ?? 0).toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 0 })}`,
-      sub: `${data.monthlySalesCount ?? 0} sales`,
-      icon: ShoppingCart,
-      href: `/${tenantSlug}/pos`,
-      color: "green" as const,
     },
     moduleSet.has("crm") && {
       label: "Total Customers",
@@ -131,9 +323,14 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   // Build attention rows only for active modules
   const attentionRows = [
     moduleSet.has("job-orders") && {
-      label: "Pending job orders",
-      value: data.pendingJobOrders ?? 0,
+      label: "Overdue job orders",
+      value: data.overdueJobOrders ?? 0,
       href: `/${tenantSlug}/job-orders`,
+    },
+    moduleSet.has("billing") && {
+      label: "Completed work awaiting invoices",
+      value: data.readyToInvoiceCount ?? 0,
+      href: `/${tenantSlug}/billing`,
     },
     moduleSet.has("hr") && {
       label: "Leave requests",
@@ -144,6 +341,11 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       label: "Low stock items",
       value: data.lowStockItems ?? 0,
       href: `/${tenantSlug}/inventory`,
+    },
+    moduleSet.has("pos") && {
+      label: "Pending returns",
+      value: data.pendingReturns ?? 0,
+      href: `/${tenantSlug}/pos/returns`,
     },
   ].filter(Boolean) as { label: string; value: number; href: string }[];
 
@@ -162,7 +364,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           Good {getTimeGreeting()}, {firstName}
         </h1>
         <p className="text-sm text-zinc-500 mt-0.5">
-          {new Date().toLocaleDateString("en-PH", {
+          {new Date().toLocaleDateString("nl-NL", {
             weekday: "long", month: "long", day: "numeric", year: "numeric",
           })}
         </p>
@@ -187,6 +389,14 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           {statCards.map((card) => (
             <StatCard key={card.label} {...card} />
           ))}
+        </div>
+      )}
+
+      {/* Charts — only rendered if POS module is active */}
+      {moduleSet.has("pos") && data.chartData && data.chartData.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <RevenueChart data={data.chartData} currencySymbol={tenant.currencySymbol} />
+          <TransactionChart data={data.chartData} />
         </div>
       )}
 
@@ -226,13 +436,57 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-xs font-medium text-zinc-700">
-                            {apt.startAt.toLocaleDateString("en-PH", { month: "short", day: "numeric" })}
+                            {apt.startAt.toLocaleDateString("nl-NL", { month: "short", day: "numeric" })}
                           </p>
                           <p className="text-xs text-zinc-400">
-                            {apt.startAt.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}
+                            {apt.startAt.toLocaleTimeString("nl-NL", { hour: "numeric", minute: "2-digit" })}
                           </p>
                         </div>
                         <StatusDot status={apt.status} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {moduleSet.has("job-orders") && !moduleSet.has("appointments") && (
+          <div className="lg:col-span-2">
+            <Card className="shadow-none border-zinc-200">
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <CardTitle className="text-sm font-semibold text-zinc-700">
+                  Recently Completed Jobs
+                </CardTitle>
+                <Link
+                  href={`/${tenantSlug}/job-orders`}
+                  className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                >
+                  View board <ArrowRight className="h-3 w-3" />
+                </Link>
+              </CardHeader>
+              <CardContent className="p-0">
+                {!data.recentCompletedJobs?.length ? (
+                  <div className="px-6 py-8 text-center text-sm text-zinc-400">
+                    No completed jobs yet
+                  </div>
+                ) : (
+                  <div className="divide-y divide-zinc-100">
+                    {data.recentCompletedJobs.map((job) => (
+                      <div key={job.id} className="flex items-center justify-between gap-3 px-6 py-3">
+                        <div>
+                          <p className="font-mono text-xs text-zinc-400">{job.jobNo}</p>
+                          <p className="text-sm font-medium text-zinc-800">{job.customerName}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-zinc-500">
+                            {job.completedAt?.toLocaleDateString("nl-NL", { month: "short", day: "numeric" })}
+                          </p>
+                          <p className="text-[11px] text-zinc-400">
+                            {job.invoice ? "Invoiced" : "Needs invoice"}
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -1,5 +1,7 @@
 export interface Invoice {
   id: string;
+  customerId?: string | null;
+  jobOrderId?: string | null;
   invoiceNo: string;
   customerName: string;
   customerEmail: string | null;

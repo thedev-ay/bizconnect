@@ -22,14 +22,29 @@ import { Separator } from "@/components/ui/separator";
 import { createInvoiceSchema, type CreateInvoiceInput } from "../schema";
 import { createInvoice } from "../actions";
 
+interface CustomerOption {
+  id: string;
+  name: string;
+  email: string | null;
+}
+
 interface CreateInvoiceDialogProps {
   tenantSlug: string;
   tenantId: string;
   currencySymbol: string;
   defaultTaxRate: number;
+  customers: CustomerOption[];
+  crmEnabled: boolean;
 }
 
-export function CreateInvoiceDialog({ tenantSlug, tenantId, currencySymbol, defaultTaxRate }: CreateInvoiceDialogProps) {
+export function CreateInvoiceDialog({
+  tenantSlug,
+  tenantId,
+  currencySymbol,
+  defaultTaxRate,
+  customers,
+  crmEnabled,
+}: CreateInvoiceDialogProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -46,8 +61,10 @@ export function CreateInvoiceDialog({ tenantSlug, tenantId, currencySymbol, defa
     defaultValues: {
       tax: 0,
       items: [{ description: "", quantity: 1, unitPrice: 0 }],
-    },
+      },
   });
+
+  const selectedCustomerId = watch("customerId");
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
@@ -71,28 +88,58 @@ export function CreateInvoiceDialog({ tenantSlug, tenantId, currencySymbol, defa
     }
   }
 
+  function handleCustomerChange(customerId: string) {
+    const customer = customers.find((entry) => entry.id === customerId);
+    setValue("customerId", customerId);
+    setValue("customerName", customer?.name ?? "");
+    setValue("customerEmail", customer?.email ?? "");
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button />}>
         <Plus className="mr-2 h-4 w-4" />
         New Invoice
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[92vh] overflow-hidden sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Create Invoice</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <div className="max-h-[calc(92vh-10rem)] overflow-y-auto pr-2">
+          <div className="grid gap-5 sm:grid-cols-2">
+            {crmEnabled && (
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Existing Customer</Label>
+                <select
+                  value={selectedCustomerId ?? ""}
+                  onChange={(event) => handleCustomerChange(event.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                >
+                  <option value="">Select a customer from CRM</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name}{customer.email ? ` · ${customer.email}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Customer Name *</Label>
-              <Input placeholder="Juan dela Cruz" {...register("customerName")} />
+              <Input placeholder="Juan dela Cruz" {...register("customerName")} readOnly={Boolean(selectedCustomerId)} />
               {errors.customerName && (
                 <p className="text-sm text-destructive">{errors.customerName.message}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label>Customer Email</Label>
-              <Input type="email" placeholder="juan@example.com" {...register("customerEmail")} />
+              <Input
+                type="email"
+                placeholder="juan@example.com"
+                {...register("customerEmail")}
+                readOnly={Boolean(selectedCustomerId)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Due Date *</Label>
@@ -120,7 +167,7 @@ export function CreateInvoiceDialog({ tenantSlug, tenantId, currencySymbol, defa
             </div>
           </div>
 
-          <Separator />
+          <Separator className="my-5" />
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -136,14 +183,14 @@ export function CreateInvoiceDialog({ tenantSlug, tenantId, currencySymbol, defa
             </div>
 
             <div className="space-y-2">
-              <div className="grid grid-cols-[1fr_80px_100px_32px] gap-2 text-xs font-medium text-muted-foreground">
+              <div className="grid grid-cols-[minmax(0,1.5fr)_90px_130px_40px] gap-3 text-xs font-medium text-muted-foreground">
                 <span>Description</span>
                 <span>Qty</span>
                 <span>Unit Price</span>
                 <span />
               </div>
               {fields.map((field, index) => (
-                <div key={field.id} className="grid grid-cols-[1fr_80px_100px_32px] gap-2">
+                <div key={field.id} className="grid grid-cols-[minmax(0,1.5fr)_90px_130px_40px] gap-3">
                   <Input
                     placeholder="Service or product"
                     {...register(`items.${index}.description`)}
@@ -192,6 +239,7 @@ export function CreateInvoiceDialog({ tenantSlug, tenantId, currencySymbol, defa
           <div className="space-y-2">
             <Label>Notes</Label>
             <Textarea placeholder="Optional notes for the customer..." rows={2} {...register("notes")} />
+          </div>
           </div>
 
           <DialogFooter>

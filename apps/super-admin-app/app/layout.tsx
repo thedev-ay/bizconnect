@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={cn("font-sans", geist.variable)}>
       <body className="antialiased">
         {children}
-        <Toaster richColors position="top-right" />
+        <Toaster richColors position="bottom-center" />
       </body>
     </html>
   );

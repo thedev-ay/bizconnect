@@ -28,7 +28,7 @@ interface CurrencyFormProps {
 const COMMON_CURRENCIES = [
   { label: "Philippine Peso (₱)", symbol: "₱", locale: "en-PH" },
   { label: "US Dollar ($)", symbol: "$", locale: "en-US" },
-  { label: "Euro (€)", symbol: "€", locale: "de-DE" },
+  { label: "Euro (€)", symbol: "€", locale: "nl-NL" },
   { label: "British Pound (£)", symbol: "£", locale: "en-GB" },
   { label: "Japanese Yen (¥)", symbol: "¥", locale: "ja-JP" },
   { label: "Indonesian Rupiah (Rp)", symbol: "Rp", locale: "id-ID" },
@@ -87,13 +87,13 @@ export function CurrencyForm({ tenantSlug, tenantId, defaultValues }: CurrencyFo
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label className="text-sm font-medium text-zinc-700">Currency Symbol</Label>
-          <Input {...register("currencySymbol")} placeholder="₱" />
+          <Input {...register("currencySymbol")} placeholder="€" />
           {errors.currencySymbol && <p className="text-xs text-red-600">{errors.currencySymbol.message}</p>}
         </div>
         <div className="space-y-1.5">
           <Label className="text-sm font-medium text-zinc-700">Locale</Label>
-          <Input {...register("currencyLocale")} placeholder="en-PH" />
-          <p className="text-xs text-zinc-400">Controls number formatting (e.g. en-PH, en-US)</p>
+          <Input {...register("currencyLocale")} placeholder="nl-NL" />
+          <p className="text-xs text-zinc-400">Controls number formatting (e.g. nl-NL, en-US)</p>
           {errors.currencyLocale && <p className="text-xs text-red-600">{errors.currencyLocale.message}</p>}
         </div>
         <div className="space-y-1.5">
