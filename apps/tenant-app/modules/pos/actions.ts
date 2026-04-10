@@ -112,7 +112,7 @@ export async function createSale(tenantSlug: string, tenantId: string, input: Cr
   });
 
   revalidatePath(`/${tenantSlug}/pos`);
-  revalidatePath(`/${tenantSlug}/pos/sales`);
+  revalidatePath(`/${tenantSlug}/sales`);
   return {
     ...sale,
     subtotal: sale.subtotal.toString(),
@@ -181,7 +181,7 @@ export async function voidSale(tenantSlug: string, tenantId: string, saleId: str
     }
   });
 
-  revalidatePath(`/${tenantSlug}/pos/sales`);
+  revalidatePath(`/${tenantSlug}/sales`);
 }
 
 // ─── Returns/Refunds ─────────────────────────────────────────────────────────
@@ -264,7 +264,7 @@ export async function createReturn(
     include: { items: true },
   });
 
-  revalidatePath(`/${tenantSlug}/pos/sales`);
+  revalidatePath(`/${tenantSlug}/sales`);
   return serialize(saleReturn);
 }
 
@@ -318,7 +318,7 @@ export async function approveReturn(
     }
   });
 
-  revalidatePath(`/${tenantSlug}/pos/sales`);
+  revalidatePath(`/${tenantSlug}/sales`);
   return serialize(
     await prisma.saleReturn.findUnique({
       where: { id: returnId },
@@ -341,7 +341,7 @@ export async function rejectReturn(tenantSlug: string, tenantId: string, returnI
     data: { status: "rejected" },
   });
 
-  revalidatePath(`/${tenantSlug}/pos/sales`);
+  revalidatePath(`/${tenantSlug}/sales`);
   return serialize(updatedSaleReturn);
 }
 
@@ -368,6 +368,6 @@ export async function processRefund(
     },
   });
 
-  revalidatePath(`/${tenantSlug}/pos/sales`);
+  revalidatePath(`/${tenantSlug}/sales`);
   return serialize(updatedSaleReturn);
 }

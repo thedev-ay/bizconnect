@@ -119,7 +119,7 @@ export default async function POSPage({ params }: POSPageProps) {
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Point of Sale</h1>
           <p className="text-sm text-zinc-500 mt-0.5">{products.length} products available</p>
         </div>
-        <Link href={`/${tenantSlug}/pos/sales`}>
+        <Link href={`/${tenantSlug}/sales`}>
           <Button variant="outline" size="sm">
             <History className="mr-2 h-4 w-4" />
             Sales History

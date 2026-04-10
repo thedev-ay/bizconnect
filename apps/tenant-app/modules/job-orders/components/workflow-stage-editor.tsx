@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Settings, Plus, Trash2, ChevronUp, ChevronDown, CheckCircle2, XCircle, ArrowRight } from "lucide-react";
+import { Settings, Plus, Trash2, GripVertical, CheckCircle2, XCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,23 +16,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { WorkflowStage } from "../types";
-import { STAGE_COLOR_MAP } from "../types";
 import { saveWorkflowStages, deleteWorkflowStage } from "../actions";
-
-const COLORS = Object.keys(STAGE_COLOR_MAP) as (keyof typeof STAGE_COLOR_MAP)[];
-
-const COLOR_LABELS: Record<string, string> = {
-  zinc: "Gray", blue: "Blue", orange: "Orange", violet: "Purple",
-  emerald: "Green", red: "Red", amber: "Yellow", sky: "Sky",
-};
+import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type StageType = "active" | "completed" | "cancelled";
 
 interface EditableStage {
-  id?: string;
+  id: string;
   name: string;
   slug: string;
-  color: string;
   sortOrder: number;
   type: StageType;
   isNew?: boolean;
@@ -42,17 +36,67 @@ interface WorkflowStageEditorProps {
   tenantSlug: string;
   tenantId: string;
   stages: WorkflowStage[];
+  stageCounts: Record<string, number>;
 }
 
 function slugify(name: string) {
   return name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 }
 
-export function WorkflowStageEditor({ tenantSlug, tenantId, stages }: WorkflowStageEditorProps) {
+function SortableStepRow({
+  stage,
+  onUpdate,
+  onDelete,
+  deleting,
+}: {
+  stage: EditableStage;
+  onUpdate: (patch: Partial<EditableStage>) => void;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: stage.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      className="flex items-center gap-2"
+    >
+      <button
+        type="button"
+        className="shrink-0 cursor-grab text-zinc-300 hover:text-zinc-500 active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+
+      <Input
+        value={stage.name}
+        onChange={(e) => onUpdate({ name: e.target.value })}
+        placeholder="Step name"
+        className={cn("h-8 text-sm flex-1", !stage.name.trim() && "border-amber-300 focus-visible:ring-amber-300")}
+      />
+
+
+      <button
+        type="button"
+        onClick={onDelete}
+        disabled={deleting}
+        className="shrink-0 text-zinc-300 hover:text-red-400 transition-colors disabled:opacity-40"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts }: WorkflowStageEditorProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<EditableStage | null>(null);
   const [local, setLocal] = useState<EditableStage[]>([]);
 
   // Split into steps (active), done (completed), cancelled
@@ -61,7 +105,15 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages }: WorkflowSt
   const cancelStage = local.find((s) => s.type === "cancelled");
 
   function initLocal() {
-    setLocal(stages.map((s) => ({ ...s, isNew: false })));
+    if (stages.length > 0) {
+      setLocal(stages.map((s) => ({ ...s, isNew: false })));
+    } else {
+      // Start with empty active steps + the required completed and cancelled terminals
+      setLocal([
+        { id: crypto.randomUUID(), name: "Claimed", slug: "claimed", sortOrder: 0, type: "completed", isNew: true },
+        { id: crypto.randomUUID(), name: "Cancelled", slug: "cancelled", sortOrder: 1, type: "cancelled", isNew: true },
+      ]);
+    }
   }
 
   function handleOpenChange(o: boolean) {
@@ -69,13 +121,20 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages }: WorkflowSt
     setOpen(o);
   }
 
-  function updateStep(idx: number, patch: Partial<EditableStage>) {
-    setLocal((prev) => {
-      const stepIds = steps.map((s) => s.id ?? s.slug);
-      const globalIdx = prev.findIndex((s) => (s.id ?? s.slug) === stepIds[idx]);
-      if (globalIdx === -1) return prev;
-      return prev.map((s, i) => i === globalIdx ? { ...s, ...patch } : s);
-    });
+  function updateStep(stageId: string, patch: Partial<EditableStage>) {
+    setLocal((prev) =>
+      prev.map((step) => {
+        if (step.id !== stageId) return step;
+
+        return {
+          ...step,
+          ...patch,
+          slug: patch?.name
+            ? slugify(patch.name)
+            : step.slug,
+        };
+      })
+    );
   }
 
   function updateSpecial(type: "completed" | "cancelled", patch: Partial<EditableStage>) {
@@ -86,32 +145,40 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages }: WorkflowSt
     const maxOrder = Math.max(...local.map((s) => s.sortOrder), -1);
     setLocal((prev) => [
       ...prev,
-      { name: "", slug: "", color: "zinc", sortOrder: maxOrder + 1, type: "active", isNew: true },
+      { id: crypto.randomUUID(), name: "", slug: "", sortOrder: maxOrder + 1, type: "active", isNew: true },
     ]);
   }
 
-  function move(idx: number, dir: -1 | 1) {
-    const next = idx + dir;
-    if (next < 0 || next >= steps.length) return;
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
     setLocal((prev) => {
-      const stepIds = steps.map((s) => s.id ?? s.slug);
-      const idxA = prev.findIndex((s) => (s.id ?? s.slug) === stepIds[idx]);
-      const idxB = prev.findIndex((s) => (s.id ?? s.slug) === stepIds[next]);
-      if (idxA === -1 || idxB === -1) return prev;
-      const arr = [...prev];
-      const tmpOrder = arr[idxA].sortOrder;
-      arr[idxA] = { ...arr[idxA], sortOrder: arr[idxB].sortOrder };
-      arr[idxB] = { ...arr[idxB], sortOrder: tmpOrder };
-      return arr;
+      const activeSteps = prev.filter((s) => s.type === "active").sort((a, b) => a.sortOrder - b.sortOrder);
+      const oldIdx = activeSteps.findIndex((s) => s.id === active.id);
+      const newIdx = activeSteps.findIndex((s) => s.id === over.id);
+      const reordered = arrayMove(activeSteps, oldIdx, newIdx).map((s, i) => ({ ...s, sortOrder: i }));
+      const nonActive = prev.filter((s) => s.type !== "active");
+      return [...reordered, ...nonActive];
     });
   }
 
   async function handleDeleteStep(stage: EditableStage) {
-    if (!stage.id) {
+    if (!stage.id || stage.isNew) {
       setLocal((prev) => prev.filter((s) => s !== stage));
       return;
     }
+    const count = stageCounts[stage.slug] ?? 0;
+    if (count > 0) {
+      setPendingDelete(stage);
+      return;
+    }
+    await doDeleteStep(stage);
+  }
+
+  async function doDeleteStep(stage: EditableStage) {
+    if (!stage.id) return;
     setDeletingId(stage.id);
+    setPendingDelete(null);
     try {
       await deleteWorkflowStage(tenantSlug, tenantId, stage.id);
       setLocal((prev) => prev.filter((s) => s.id !== stage.id));
@@ -134,40 +201,49 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages }: WorkflowSt
       // Recalculate sortOrders: active steps first (sorted), then completed, then cancelled
       const sorted = [...steps].sort((a, b) => a.sortOrder - b.sortOrder);
       const toSave: Array<{
-        id?: string; name: string; slug: string; color: string;
+        id: string; name: string; slug: string;
         sortOrder: number; type: StageType;
       }> = [
         ...sorted.map((s, i) => ({
-          id: s.isNew ? undefined : s.id,
+          id: s.id,
           name: s.name.trim(),
-          slug: s.id ? s.slug : (slugify(s.name.trim()) || `step-${i}`),
-          color: s.color,
+          slug: s.isNew ? (slugify(s.name.trim()) || `step-${i}`) : s.slug,
           sortOrder: i,
           type: "active" as StageType,
         })),
         ...(doneStage ? [{
-          id: doneStage.isNew ? undefined : doneStage.id,
-          name: doneStage.name.trim(),
-          slug: doneStage.id ? doneStage.slug : (slugify(doneStage.name.trim()) || "completed"),
-          color: doneStage.color,
+          id: doneStage.id,
+          name: doneStage.name.trim() || "Completed",
+          slug: doneStage.isNew ? (slugify(doneStage.name.trim()) || "completed") : doneStage.slug,
           sortOrder: sorted.length,
           type: "completed" as StageType,
         }] : []),
         ...(cancelStage ? [{
-          id: cancelStage.isNew ? undefined : cancelStage.id,
-          name: cancelStage.name.trim(),
-          slug: cancelStage.id ? cancelStage.slug : (slugify(cancelStage.name.trim()) || "cancelled"),
-          color: cancelStage.color,
+          id: cancelStage.id,
+          name: cancelStage.name.trim() || "Cancelled",
+          slug: cancelStage.isNew ? (slugify(cancelStage.name.trim()) || "cancelled") : cancelStage.slug,
           sortOrder: sorted.length + 1,
           type: "cancelled" as StageType,
         }] : []),
       ];
+      // Silently deduplicate new stage slugs against existing ones
+      const usedSlugs = new Set(toSave.filter((s) => s.id).map((s) => s.slug));
+      for (const stage of toSave) {
+        if (stage.id) continue;
+        let slug = stage.slug;
+        let n = 2;
+        while (usedSlugs.has(slug)) slug = `${stage.slug}-${n++}`;
+        stage.slug = slug;
+        usedSlugs.add(slug);
+      }
+
       await saveWorkflowStages(tenantSlug, tenantId, toSave);
       toast.success("Workflow saved");
       setOpen(false);
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save");
+      router.refresh(); // re-sync editor with actual DB state
     } finally {
       setSaving(false);
     }
@@ -195,73 +271,36 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages }: WorkflowSt
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Steps</p>
             <p className="text-xs text-zinc-400">The stages an order passes through before it's ready.</p>
 
-            <div className="space-y-1.5">
-              {steps.map((stage, idx) => (
-                <div key={stage.id ?? `new-${idx}`} className="flex items-center gap-2">
-                  {/* Move buttons */}
-                  <div className="flex flex-col shrink-0">
-                    <button
-                      onClick={() => move(idx, -1)}
-                      disabled={idx === 0}
-                      className="text-zinc-300 hover:text-zinc-500 disabled:opacity-20 leading-none"
-                    >
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => move(idx, 1)}
-                      disabled={idx === steps.length - 1}
-                      className="text-zinc-300 hover:text-zinc-500 disabled:opacity-20 leading-none"
-                    >
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+            {steps.length === 0 && (
+              <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-4 py-6 text-center">
+                <p className="text-sm font-medium text-zinc-500">No steps yet</p>
+                <p className="mt-1 text-xs text-zinc-400">Add at least one step to define your workflow.</p>
+              </div>
+            )}
 
-                  {/* Name */}
-                  <Input
-                    value={stage.name}
-                    onChange={(e) => updateStep(idx, { name: e.target.value })}
-                    placeholder={`Step ${idx + 1} name`}
-                    className={cn("h-8 text-sm flex-1", !stage.name.trim() && "border-amber-300 focus-visible:ring-amber-300")}
-                  />
-
-                  {/* Color */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    {COLORS.filter((c) => c !== "red").map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        title={COLOR_LABELS[color]}
-                        onClick={() => updateStep(idx, { color })}
-                        className={cn(
-                          "h-4 w-4 rounded-full border-2 transition-all",
-                          STAGE_COLOR_MAP[color].btn.split(" ")[0],
-                          stage.color === color
-                            ? "border-zinc-800 scale-125"
-                            : "border-transparent opacity-50 hover:opacity-80"
-                        )}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Delete */}
-                  <button
-                    onClick={() => handleDeleteStep(stage)}
-                    disabled={deletingId === stage.id}
-                    className="shrink-0 text-zinc-300 hover:text-red-400 transition-colors disabled:opacity-40"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-1.5">
+                  {steps.map((stage) => (
+                    <SortableStepRow
+                      key={stage.id}
+                      stage={stage}
+                      onUpdate={(patch) => updateStep(stage.id, patch)}
+                      onDelete={() => handleDeleteStep(stage)}
+                      deleting={deletingId === stage.id}
+                    />
+                  ))}
                 </div>
-              ))}
+              </SortableContext>
+            </DndContext>
 
-              <button
-                onClick={addStep}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-zinc-200 py-2 text-xs font-medium text-zinc-400 hover:border-zinc-300 hover:text-zinc-600 transition-colors"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add a step
-              </button>
-            </div>
+            <button
+              onClick={addStep}
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-zinc-200 py-2 text-xs font-medium text-zinc-400 hover:border-zinc-300 hover:text-zinc-600 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add a step
+            </button>
           </div>
 
           {/* FLOW PREVIEW */}
@@ -271,10 +310,7 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages }: WorkflowSt
               <div className="flex flex-wrap items-center gap-1.5">
                 {steps.filter((s) => s.name.trim()).map((s, i) => (
                   <span key={i} className="flex items-center gap-1.5">
-                    <span className={cn(
-                      "rounded-md px-2 py-0.5 text-xs font-semibold",
-                      STAGE_COLOR_MAP[s.color]?.tab ?? "bg-zinc-100 text-zinc-700"
-                    )}>
+                    <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">
                       {s.name}
                     </span>
                     <ArrowRight className="h-3 w-3 text-zinc-300" />
@@ -331,6 +367,23 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages }: WorkflowSt
         )}
         {!emptyNames && steps.length < 1 && (
           <p className="text-xs font-medium text-amber-600 pt-2">Add at least one step.</p>
+        )}
+
+        {pendingDelete && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 space-y-2 mt-2">
+            <p className="text-xs font-semibold text-red-800">
+              Remove "{pendingDelete.name}"?
+            </p>
+            <p className="text-xs text-red-700">
+              There {stageCounts[pendingDelete.slug] === 1 ? "is" : "are"} <strong>{stageCounts[pendingDelete.slug]}</strong> job order{stageCounts[pendingDelete.slug] === 1 ? "" : "s"} currently in this stage. They will remain but won't appear on the board. Orders with no matching stage are automatically removed after 1 week — to restore them, re-add a step with the same name.
+            </p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setPendingDelete(null)}>Keep it</Button>
+              <Button size="sm" variant="destructive" onClick={() => doDeleteStep(pendingDelete)} disabled={!!deletingId}>
+                {deletingId ? "Removing..." : "Remove anyway"}
+              </Button>
+            </div>
+          </div>
         )}
 
         <DialogFooter className="pt-4">

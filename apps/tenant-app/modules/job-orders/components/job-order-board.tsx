@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -8,10 +8,14 @@ import { cn } from "@/lib/utils";
 import { Phone, ChevronRight, Search, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { JobOrder, WorkflowStage } from "../types";
-import { getNextStage, getStageColors } from "../types";
+import { getNextStage } from "../types";
 import { createInvoiceForJobOrder, updateJobOrderStatus } from "../actions";
 import { JobOrderDetailDialog } from "./job-order-detail-dialog";
 import { EditJobOrderDialog } from "./edit-job-order-dialog";
+import { ClaimPaymentDialog } from "./claim-payment-dialog";
+import { KanbanBoard } from "./kanban-board";
+
+const MIN_COL_WIDTH = 240;
 
 interface ServiceOption {
   id: string;
@@ -27,6 +31,11 @@ interface CustomerOption {
   phone: string | null;
 }
 
+interface EmployeeOption {
+  id: string;
+  name: string;
+}
+
 interface JobOrderBoardProps {
   jobOrders: JobOrder[];
   stages: WorkflowStage[];
@@ -37,6 +46,7 @@ interface JobOrderBoardProps {
   currencyLocale: string;
   services: ServiceOption[];
   customers: CustomerOption[];
+  employees: EmployeeOption[];
   billingEnabled: boolean;
 }
 
@@ -78,6 +88,7 @@ export function JobOrderBoard({
   currencyLocale,
   services,
   customers,
+  employees,
   billingEnabled,
 }: JobOrderBoardProps) {
   const router = useRouter();
@@ -86,7 +97,22 @@ export function JobOrderBoard({
   const [advancing, setAdvancing] = useState<string | null>(null);
   const [selected, setSelected] = useState<JobOrder | null>(null);
   const [editing, setEditing] = useState<JobOrder | null>(null);
+  const [claiming, setClaiming] = useState<JobOrder | null>(null);
   const [search, setSearch] = useState("");
+  const [useKanban, setUseKanban] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const activeStageCount = stages.filter((s) => s.type === "active").length;
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setUseKanban(entry.contentRect.width >= activeStageCount * MIN_COL_WIDTH);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [activeStageCount]);
 
   const q = search.toLowerCase();
   function matchesSearch(jo: JobOrder) {
@@ -107,21 +133,23 @@ export function JobOrderBoard({
   const isCancelledTab = activeStage?.type === "cancelled";
   const isListTab = isCompletedTab || isCancelledTab;
 
-  async function handleAdvance(e: React.MouseEvent, jo: JobOrder) {
+  function handleAdvance(e: React.MouseEvent, jo: JobOrder) {
     e.stopPropagation();
     const next = getNextStage(stages, jo.status);
     if (!next) return;
 
-    setAdvancing(jo.id);
-    try {
-      await updateJobOrderStatus(tenantSlug, tenantId, jo.id, next.slug, next.type);
-      toast.success(`${jo.jobNo} → ${next.name}`);
-      router.refresh();
-    } catch {
-      toast.error("Failed to update");
-    } finally {
-      setAdvancing(null);
+    // Intercept final step — open payment dialog instead of advancing directly
+    if (next.type === "completed") {
+      setSelected(null);
+      setClaiming(jo);
+      return;
     }
+
+    setAdvancing(jo.id);
+    updateJobOrderStatus(tenantSlug, tenantId, jo.id, next.slug, next.type)
+      .then(() => { toast.success(`${jo.jobNo} → ${next.name}`); router.refresh(); })
+      .catch(() => toast.error("Failed to update"))
+      .finally(() => setAdvancing(null));
   }
 
   async function handleCreateInvoice(jobOrderId: string) {
@@ -142,51 +170,43 @@ export function JobOrderBoard({
   }
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div ref={containerRef} className="flex h-full flex-col gap-3">
 
-      {/* Tab bar + search */}
+      {/* Search + tabs (tabs hidden in kanban mode) */}
       <div className="flex items-center gap-3 shrink-0 flex-wrap">
-        <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0">
-          {stages.map((stage) => {
-            const count = jobOrders.filter((j) => j.status === stage.slug).length;
-            const isActive = activeTab === stage.slug;
-            const isReadyStage = stage.type === "active" &&
-              getNextStage(stages, stage.slug)?.type === "completed";
+        {!useKanban && (
+          <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0">
+            {stages.map((stage) => {
+              const count = jobOrders.filter((j) => j.status === stage.slug).length;
+              const isActive = activeTab === stage.slug;
 
-            return (
-              <button
-                key={stage.slug}
-                onClick={() => setActiveTab(stage.slug)}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
-                  isActive
-                    ? isReadyStage
-                      ? "bg-emerald-600 text-white shadow-sm"
-                      : "bg-zinc-900 text-white shadow-sm"
-                    : isReadyStage && count > 0
-                    ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                    : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
-                )}
-              >
-                {stage.name}
-                {count > 0 && (
-                  <span className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none",
+              return (
+                <button
+                  key={stage.slug}
+                  onClick={() => setActiveTab(stage.slug)}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
                     isActive
-                      ? "bg-white/20 text-white"
-                      : isReadyStage && count > 0
-                      ? "bg-emerald-200 text-emerald-800"
-                      : "bg-zinc-200 text-zinc-600"
-                  )}>
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                      ? "bg-zinc-900 text-white shadow-sm"
+                      : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
+                  )}
+                >
+                  {stage.name}
+                  {count > 0 && (
+                    <span className={cn(
+                      "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none",
+                      isActive ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-600"
+                      )}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
-        <div className="relative shrink-0 w-56">
+        <div className={cn("relative shrink-0", useKanban ? "w-full sm:w-72" : "w-56")}>
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <Input
             placeholder="Name, job no, phone..."
@@ -197,8 +217,25 @@ export function JobOrderBoard({
         </div>
       </div>
 
-      {/* Card area */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      {/* Kanban board — shown when screen fits all columns */}
+      {useKanban && (
+        <div className="flex-1 min-h-0">
+          <KanbanBoard
+            jobOrders={jobOrders.filter(matchesSearch)}
+            stages={stages}
+            tenantSlug={tenantSlug}
+            tenantId={tenantId}
+            currencySymbol={currencySymbol}
+            currencyLocale={currencyLocale}
+            onSelect={setSelected}
+            onEdit={setEditing}
+            onClaim={setClaiming}
+          />
+        </div>
+      )}
+
+      {/* Tab board — shown when kanban doesn't fit */}
+      {!useKanban && <div className="flex-1 min-h-0 overflow-y-auto">
         {visibleCards.length === 0 ? (
           <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-200 text-center">
             {q ? (
@@ -284,7 +321,6 @@ export function JobOrderBoard({
               const nextStage = getNextStage(stages, jo.status);
               const isReadyForCompletion = nextStage?.type === "completed";
               const priority = PRIORITY_STYLES[jo.priority] ?? PRIORITY_STYLES.normal;
-              const stageColors = getStageColors(activeStage?.color ?? "zinc");
 
               return (
                 <div
@@ -294,9 +330,7 @@ export function JobOrderBoard({
                     "cursor-pointer rounded-xl border bg-white p-4 shadow-sm transition-all hover:shadow-md flex flex-col gap-3",
                     jo.priority === "urgent"
                       ? "border-red-200 hover:border-red-300"
-                      : isReadyForCompletion
-                      ? "border-emerald-200 hover:border-emerald-300"
-                      : stageColors.card
+                      : "border-zinc-200 hover:border-zinc-300"
                   )}
                 >
                   {/* Top: job no + priority */}
@@ -382,7 +416,7 @@ export function JobOrderBoard({
                           ? "bg-red-600 text-white hover:bg-red-700"
                           : isReadyForCompletion
                           ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                          : getStageColors(nextStage.color).btn
+                          : "bg-zinc-900 text-white hover:bg-zinc-700"
                       )}
                     >
                       {advancing === jo.id ? "Updating..." : `Move to ${nextStage.name}`}
@@ -394,7 +428,7 @@ export function JobOrderBoard({
             })}
           </div>
         )}
-      </div>
+      </div>}
 
       {selected && (
         <JobOrderDetailDialog
@@ -402,12 +436,12 @@ export function JobOrderBoard({
           stages={stages}
           tenantSlug={tenantSlug}
           tenantId={tenantId}
-          tenantName={tenantName}
           currencySymbol={currencySymbol}
           currencyLocale={currencyLocale}
           open={!!selected}
           onOpenChange={(o) => { if (!o) setSelected(null); }}
           onEdit={(jo) => { setSelected(null); setEditing(jo); }}
+          onClaim={(jo) => { setSelected(null); setClaiming(jo); }}
           billingEnabled={billingEnabled}
         />
       )}
@@ -419,10 +453,24 @@ export function JobOrderBoard({
           tenantId={tenantId}
           services={services}
           customers={customers}
+          employees={employees}
           currencySymbol={currencySymbol}
           currencyLocale={currencyLocale}
           open={!!editing}
           onOpenChange={(o) => { if (!o) setEditing(null); }}
+        />
+      )}
+
+      {claiming && (
+        <ClaimPaymentDialog
+          jobOrder={claiming}
+          tenantSlug={tenantSlug}
+          tenantId={tenantId}
+          tenantName={tenantName}
+          currencySymbol={currencySymbol}
+          currencyLocale={currencyLocale}
+          open={!!claiming}
+          onOpenChange={(o) => { if (!o) setClaiming(null); }}
         />
       )}
     </div>

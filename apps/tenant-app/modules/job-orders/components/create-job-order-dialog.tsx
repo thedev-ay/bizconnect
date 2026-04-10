@@ -44,6 +44,7 @@ interface CustomerOption {
 }
 
 interface LineItem {
+  id: string;
   name: string;
   quantity: number;
   weight?: number;
@@ -53,15 +54,22 @@ interface LineItem {
   isCustom?: boolean;
 }
 
+interface EmployeeOption {
+  id: string;
+  name: string;
+}
+
 interface CreateJobOrderDialogProps {
   tenantSlug: string;
   tenantId: string;
   services: ServiceOption[];
   customers: CustomerOption[];
+  employees: EmployeeOption[];
   currencySymbol: string;
   currencyLocale: string;
   firstStageSlug: string;
   initialCustomerId?: string;
+  disabled?: boolean;
 }
 
 export function CreateJobOrderDialog({
@@ -69,14 +77,17 @@ export function CreateJobOrderDialog({
   tenantId,
   services,
   customers,
+  employees,
   currencySymbol,
   currencyLocale,
   firstStageSlug,
   initialCustomerId,
+  disabled,
 }: CreateJobOrderDialogProps) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<LineItem[]>([]);
   const [serviceSearch, setServiceSearch] = useState("");
+  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
   const router = useRouter();
 
   const { register, handleSubmit, reset, control, watch, setValue, formState: { errors, isSubmitting } } =
@@ -93,6 +104,7 @@ export function CreateJobOrderDialog({
       reset();
       setItems([]);
       setServiceSearch("");
+      setSelectedStaffIds([]);
       setValue("customerId", "");
       if (initialCustomerId) {
         const initialCustomer = customers.find((customer) => customer.id === initialCustomerId);
@@ -120,7 +132,7 @@ export function CreateJobOrderDialog({
     setItems((prev) => {
       const existing = prev.findIndex((i) => i.name === svc.name);
       if (existing >= 0) {
-        if (svc.pricingType === "per_kilo") return prev; // weight-based — don't auto-add
+        if (svc.pricingType === "per_kilo") return prev;
         const updated = [...prev];
         updated[existing] = {
           ...updated[existing],
@@ -130,9 +142,9 @@ export function CreateJobOrderDialog({
         return updated;
       }
       if (svc.pricingType === "per_kilo") {
-        return [...prev, { name: svc.name, quantity: 1, weight: 0, unitPrice: svc.price, total: 0, pricingType: "per_kilo", isCustom: false }];
+        return [...prev, { id: crypto.randomUUID(), name: svc.name, quantity: 1, weight: 0, unitPrice: svc.price, total: 0, pricingType: "per_kilo" as const, isCustom: false }];
       }
-      return [...prev, { name: svc.name, quantity: 1, unitPrice: svc.price, total: svc.price, pricingType: svc.pricingType, isCustom: false }];
+      return [...prev, { id: crypto.randomUUID(), name: svc.name, quantity: 1, unitPrice: svc.price, total: svc.price, pricingType: svc.pricingType, isCustom: false }];
     });
   }
 
@@ -140,11 +152,12 @@ export function CreateJobOrderDialog({
     setItems((prev) => [
       ...prev,
       {
+        id: crypto.randomUUID(),
         name: "",
         quantity: 1,
         unitPrice: 0,
         total: 0,
-        pricingType: "per_piece",
+        pricingType: "per_piece" as const,
         isCustom: true,
       },
     ]);
@@ -206,6 +219,7 @@ export function CreateJobOrderDialog({
     try {
       await createJobOrder(tenantSlug, tenantId, {
         ...data,
+        assignedStaffIds: selectedStaffIds,
         items: items.map((i) => ({
           name: i.name,
           quantity: i.quantity,
@@ -224,7 +238,7 @@ export function CreateJobOrderDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogTrigger render={<Button />}>
+      <DialogTrigger render={<Button disabled={disabled} title={disabled ? "Set up your workflow before creating job orders" : undefined} />}>
         <Plus className="mr-2 h-4 w-4" />
         New Job Order
       </DialogTrigger>
@@ -236,26 +250,28 @@ export function CreateJobOrderDialog({
 
           {/* Customer */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Existing Customer</Label>
-              <Select value={selectedCustomerId} onValueChange={handleCustomerChange}>
-                <SelectTrigger>
-                  {selectedCustomer
-                    ? `${selectedCustomer.name}${selectedCustomer.phone ? ` · ${selectedCustomer.phone}` : ""}`
-                    : <SelectValue placeholder="Select a customer from CRM" />}
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}{customer.phone ? ` · ${customer.phone}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-zinc-500">
-                Start from a CRM customer to keep job orders and billing tied to the same record.
-              </p>
-            </div>
+            {customers.length > 0 && (
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Existing Customer</Label>
+                <Select value={selectedCustomerId} onValueChange={handleCustomerChange}>
+                  <SelectTrigger>
+                    {selectedCustomer
+                      ? `${selectedCustomer.name}${selectedCustomer.phone ? ` · ${selectedCustomer.phone}` : ""}`
+                      : <SelectValue placeholder="Select a customer from CRM" />}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name}{customer.phone ? ` · ${customer.phone}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-zinc-500">
+                  Start from a CRM customer to keep job orders and billing tied to the same record.
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Customer Name *</Label>
               <Input placeholder="Alex Morgan" {...register("customerName")} readOnly={Boolean(selectedCustomerId)} />
@@ -319,7 +335,7 @@ export function CreateJobOrderDialog({
             {items.length > 0 && (
               <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 overflow-hidden">
                 {items.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-3 px-3 py-2">
+                  <div key={item.id} className="flex items-center gap-3 px-3 py-2">
                     <div className="min-w-0 flex-1">
                       {item.isCustom ? (
                         <Input
@@ -350,26 +366,23 @@ export function CreateJobOrderDialog({
                             <span className="text-[10px] font-medium text-amber-600">weight required</span>
                           )}
                         </div>
+                      ) : item.isCustom ? (
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            value={item.unitPrice || ""}
+                            onChange={(e) => updateUnitPrice(idx, parseFloat(e.target.value) || 0)}
+                            className="h-6 w-24 text-xs"
+                          />
+                          <span className="text-xs text-zinc-400">unit price</span>
+                        </div>
                       ) : (
-                        item.isCustom ? (
-                          <div className="mt-1 flex items-center gap-1.5">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              placeholder="0.00"
-                              value={item.unitPrice || ""}
-                              onChange={(e) => updateUnitPrice(idx, parseFloat(e.target.value) || 0)}
-                              className="h-6 w-24 text-xs"
-                            />
-                            <span className="text-xs text-zinc-400">unit price</span>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-zinc-400">{currencySymbol}{item.unitPrice.toFixed(2)} each</p>
-                        )
+                        <p className="text-xs text-zinc-400">{currencySymbol}{item.unitPrice.toFixed(2)} each</p>
                       )}
                     </div>
-
                     {item.pricingType !== "per_kilo" && (
                       <div className="flex items-center gap-1">
                         <button type="button" onClick={() => updateQty(idx, -1)}
@@ -379,7 +392,6 @@ export function CreateJobOrderDialog({
                           className="flex h-5 w-5 items-center justify-center rounded border border-zinc-200 text-zinc-500 hover:bg-zinc-50 text-xs">+</button>
                       </div>
                     )}
-
                     <span className="w-16 text-right text-sm font-semibold tabular-nums text-zinc-800">
                       {currencySymbol}{item.total.toFixed(2)}
                     </span>
@@ -398,8 +410,8 @@ export function CreateJobOrderDialog({
 
           <Separator />
 
-          {/* Priority & due date */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          {/* Priority, due date, staff */}
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Priority</Label>
               <Controller
@@ -432,11 +444,29 @@ export function CreateJobOrderDialog({
               <Label>Due Date</Label>
               <Input type="date" {...register("dueDate")} />
             </div>
-            <div className="space-y-2">
-              <Label>Assigned To</Label>
-              <Input placeholder="Staff name" {...register("assignedTo")} />
-            </div>
           </div>
+          {employees.length > 0 && (
+            <div className="space-y-2">
+              <Label>Assign Staff <span className="text-zinc-400 font-normal">(optional)</span></Label>
+              <div className="max-h-28 overflow-y-auto rounded-md border border-zinc-200 divide-y divide-zinc-100">
+                {employees.map((emp) => (
+                  <label key={emp.id} className="flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-zinc-50">
+                    <input
+                      type="checkbox"
+                      className="rounded"
+                      checked={selectedStaffIds.includes(emp.id)}
+                      onChange={(e) =>
+                        setSelectedStaffIds((prev) =>
+                          e.target.checked ? [...prev, emp.id] : prev.filter((id) => id !== emp.id)
+                        )
+                      }
+                    />
+                    <span className="text-sm text-zinc-700">{emp.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => handleClose(false)}>Cancel</Button>

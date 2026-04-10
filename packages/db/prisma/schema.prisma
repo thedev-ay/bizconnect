@@ -244,6 +244,7 @@ model Sale {
   id            String   @id @default(cuid())
   tenantId      String   @map("tenant_id")
   referenceNo   String   @map("reference_no")
+  source        String   @default("pos") // "pos" | "job-order" | "appointment"
   subtotal      Decimal  @db.Decimal(10, 2)
   discount      Decimal  @default(0) @db.Decimal(10, 2)
   total         Decimal  @db.Decimal(10, 2)
@@ -491,16 +492,16 @@ model JobOrder {
   notes        String?
   status       String    @default("received")
   priority     String    @default("normal")
-  assignedTo   String?   @map("assigned_to")
   dueDate      DateTime? @map("due_date")
   completedAt  DateTime? @map("completed_at")
   claimedAt    DateTime? @map("claimed_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  invoice  Invoice?
-  items    JobOrderItem[]
+  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  invoice     Invoice?
+  items       JobOrderItem[]
+  assignments JobOrderAssignment[]
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -526,12 +527,25 @@ model JobOrderItem {
 // JOB ORDER WORKFLOW
 // ─────────────────────────────────────────────────────────────────────────────
 
+model JobOrderAssignment {
+  id           String @id @default(cuid())
+  jobOrderId   String @map("job_order_id")
+  employeeId   String @map("employee_id")
+  employeeName String @map("employee_name")
+
+  jobOrder JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([jobOrderId, employeeId])
+  @@index([jobOrderId])
+  @@map("job_order_assignments")
+}
+
 model WorkflowStage {
   id        String @id @default(cuid())
   tenantId  String @map("tenant_id")
   name      String
   slug      String
-  color     String @default("zinc") // zinc | blue | orange | violet | emerald | red | amber | sky
   sortOrder Int    @map("sort_order")
   type      String @default("active") // active | completed | cancelled
 
@@ -540,25 +554,6 @@ model WorkflowStage {
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@map("workflow_stages")
-}
-
-model JobOrderTimeLog {
-  id        String   @id @default(cuid())
-  tenantId  String   @map("tenant_id")
-  jobOrderId String  @map("job_order_id")
-  taskName  String?  @map("task_name")
-  startedAt DateTime @map("started_at")
-  endedAt   DateTime? @map("ended_at")
-  duration  Int?     // in seconds
-  notes     String?
-  recordedBy String  @map("recorded_by")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([tenantId])
-  @@index([jobOrderId])
-  @@index([createdAt])
-  @@map("job_order_time_logs")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -644,13 +639,14 @@ model Employee {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  shifts         Shift[]
-  services       StaffService[]
-  workingHours   WorkingHours[]
-  appointments   Appointment[]
-  attendance     Attendance[]
-  leaveRequests  LeaveRequest[]
-  payrollRecords PayrollRecord[]
+  shifts              Shift[]
+  services            StaffService[]
+  workingHours        WorkingHours[]
+  appointments        Appointment[]
+  attendance          Attendance[]
+  leaveRequests       LeaveRequest[]
+  payrollRecords      PayrollRecord[]
+  jobOrderAssignments JobOrderAssignment[]
 
   @@index([tenantId])
   @@map("employees")

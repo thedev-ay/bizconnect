@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
+import { getActiveModules } from "@/lib/module-registry";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BusinessProfileForm, CurrencyForm, BusinessHoursForm } from "@/modules/settings";
@@ -17,17 +19,31 @@ interface SettingsPageProps {
 export default async function SettingsPage({ params, searchParams }: SettingsPageProps) {
   const { tenant: tenantSlug } = await params;
   const { tab = "general" } = await searchParams;
-  const tenant = await getTenant(tenantSlug);
+
+  const [tenant, activeModules] = await Promise.all([
+    getTenant(tenantSlug),
+    getActiveModules(tenantSlug),
+  ]);
+
+  const moduleSet = new Set(activeModules.map((m) => m.slug));
+  const hasAppointments = moduleSet.has("appointments");
+
+  // Redirect direct URL access to services tab if appointments module is disabled
+  if (tab === "services" && !hasAppointments) {
+    redirect(`/${tenantSlug}/settings?tab=general`);
+  }
 
   const [businessHours, services] = await Promise.all([
     prisma.businessHours.findMany({
       where: { tenantId: tenant.id },
       orderBy: { dayOfWeek: "asc" },
     }),
-    prisma.service.findMany({
-      where: { tenantId: tenant.id },
-      orderBy: { name: "asc" },
-    }),
+    hasAppointments
+      ? prisma.service.findMany({
+          where: { tenantId: tenant.id },
+          orderBy: { name: "asc" },
+        })
+      : Promise.resolve([]),
   ]);
 
   const typedServices: Service[] = services.map((s) => ({
@@ -38,7 +54,7 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
   const tabs = [
     { key: "general", label: "General" },
     { key: "hours", label: "Business Hours" },
-    { key: "services", label: "Services" },
+    ...(hasAppointments ? [{ key: "services", label: "Services" }] : []),
   ];
 
   return (

@@ -365,7 +365,7 @@ export function POSTerminal({
       setDiscountValue(0);
       setAmountPaid("");
       toast.success("Sale completed");
-      router.push(`/${tenantSlug}/pos/sales?saleId=${sale.id}`);
+      router.push(`/${tenantSlug}/sales?saleId=${sale.id}`);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to process sale");
     } finally {

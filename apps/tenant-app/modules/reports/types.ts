@@ -1,5 +1,7 @@
+export type Granularity = "daily" | "weekly" | "monthly";
+
 export interface RevenueDataPoint {
-  month: string;
+  label: string;
   sales: number;
   invoices: number;
 }
@@ -21,6 +23,9 @@ export interface ReportsSummary {
   totalSales: number;
   totalInvoiced: number;
   paidInvoices: number;
+  totalRefunded: number;
+  refundCount: number;
+  pendingReturnCount: number;
   revenueByMonth: RevenueDataPoint[];
   topItems: TopItem[];
   paymentMethods: PaymentMethodBreakdown[];

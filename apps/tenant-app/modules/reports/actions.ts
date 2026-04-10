@@ -1,55 +1,116 @@
 "use server";
 
 import { prisma } from "@bizconnect/db";
-import type { ReportsSummary, RevenueDataPoint, TopItem, PaymentMethodBreakdown } from "./types";
+import {
+  eachDayOfInterval,
+  eachWeekOfInterval,
+  eachMonthOfInterval,
+  format,
+  getISOWeek,
+  getISOWeekYear,
+  startOfWeek,
+} from "date-fns";
+import type { ReportsSummary, RevenueDataPoint, TopItem, PaymentMethodBreakdown, Granularity } from "./types";
 
-export async function getReportsSummary(tenantId: string): Promise<ReportsSummary> {
-  const now = new Date();
-  const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+function getBucketKey(date: Date, granularity: Granularity): string {
+  if (granularity === "daily") return format(date, "yyyy-MM-dd");
+  if (granularity === "weekly") {
+    const week = String(getISOWeek(date)).padStart(2, "0");
+    return `${getISOWeekYear(date)}-W${week}`;
+  }
+  return format(date, "yyyy-MM");
+}
 
-  const [sales, invoices, saleItems] = await Promise.all([
-    prisma.sale.findMany({
-      where: { tenantId, createdAt: { gte: twelveMonthsAgo } },
-      select: {
-        total: true,
-        paymentMethod: true,
-        createdAt: true,
-        status: true,
-        items: { select: { name: true, quantity: true, total: true } },
-      },
-    }),
-    prisma.invoice.findMany({
-      where: { tenantId, createdAt: { gte: twelveMonthsAgo } },
-      select: { total: true, status: true, createdAt: true },
-    }),
-    prisma.saleItem.findMany({
-      where: { sale: { tenantId, createdAt: { gte: twelveMonthsAgo } } },
-      select: { name: true, quantity: true, total: true },
-    }),
+function getBucketLabel(date: Date, granularity: Granularity): string {
+  if (granularity === "daily")   return format(date, "MMM d");
+  if (granularity === "weekly")  return `W${String(getISOWeek(date)).padStart(2, "0")} '${format(date, "yy")}`;
+  return format(date, "MMM yyyy");
+}
+
+function buildBucketMap(from: Date, to: Date, granularity: Granularity): Map<string, RevenueDataPoint> {
+  const map = new Map<string, RevenueDataPoint>();
+
+  const dates =
+    granularity === "daily"
+      ? eachDayOfInterval({ start: from, end: to })
+      : granularity === "weekly"
+        ? eachWeekOfInterval({ start: from, end: to }, { weekStartsOn: 1 })
+        : eachMonthOfInterval({ start: from, end: to });
+
+  for (const date of dates) {
+    const key = getBucketKey(date, granularity);
+    if (!map.has(key)) {
+      map.set(key, { label: getBucketLabel(date, granularity), sales: 0, invoices: 0 });
+    }
+  }
+  return map;
+}
+
+export async function getReportsSummary(
+  tenantId: string,
+  modules: Set<string>,
+  options: { from: Date; to: Date; granularity: Granularity }
+): Promise<ReportsSummary> {
+  const { from, to, granularity } = options;
+  const toEnd = new Date(to);
+  toEnd.setHours(23, 59, 59, 999);
+
+  const hasPos = modules.has("pos");
+  const hasBilling = modules.has("billing");
+
+  const [sales, invoices, saleItems, saleReturns] = await Promise.all([
+    hasPos
+      ? prisma.sale.findMany({
+          where: { tenantId, createdAt: { gte: from, lte: toEnd } },
+          select: {
+            total: true,
+            paymentMethod: true,
+            createdAt: true,
+            status: true,
+            items: { select: { name: true, quantity: true, total: true } },
+          },
+        })
+      : Promise.resolve([]),
+    hasBilling
+      ? prisma.invoice.findMany({
+          where: { tenantId, createdAt: { gte: from, lte: toEnd } },
+          select: { total: true, status: true, createdAt: true },
+        })
+      : Promise.resolve([]),
+    hasPos
+      ? prisma.saleItem.findMany({
+          where: { sale: { tenantId, createdAt: { gte: from, lte: toEnd } } },
+          select: { name: true, quantity: true, total: true },
+        })
+      : Promise.resolve([]),
+    hasPos
+      ? prisma.saleReturn.findMany({
+          where: { tenantId, createdAt: { gte: from, lte: toEnd } },
+          select: { status: true, refundAmount: true },
+        })
+      : Promise.resolve([]),
   ]);
 
-  // Monthly revenue
-  const monthMap = new Map<string, RevenueDataPoint>();
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = d.toLocaleDateString("nl-NL", { month: "short", year: "numeric" });
-    monthMap.set(key, { month: label, sales: 0, invoices: 0 });
-  }
+  // Bucket revenue by granularity
+  const bucketMap = buildBucketMap(from, to, granularity);
 
   for (const sale of sales) {
     if (sale.status !== "completed") continue;
-    const d = new Date(sale.createdAt);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const entry = monthMap.get(key);
+    const key = getBucketKey(
+      granularity === "weekly" ? startOfWeek(new Date(sale.createdAt), { weekStartsOn: 1 }) : new Date(sale.createdAt),
+      granularity
+    );
+    const entry = bucketMap.get(key);
     if (entry) entry.sales += Number(sale.total);
   }
 
   for (const inv of invoices) {
     if (inv.status !== "paid") continue;
-    const d = new Date(inv.createdAt);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const entry = monthMap.get(key);
+    const key = getBucketKey(
+      granularity === "weekly" ? startOfWeek(new Date(inv.createdAt), { weekStartsOn: 1 }) : new Date(inv.createdAt),
+      granularity
+    );
+    const entry = bucketMap.get(key);
     if (entry) entry.invoices += Number(inv.total);
   }
 
@@ -84,13 +145,20 @@ export async function getReportsSummary(tenantId: string): Promise<ReportsSummar
     .reduce((sum, s) => sum + Number(s.total), 0);
   const totalInvoiced = invoices.reduce((sum, i) => sum + Number(i.total), 0);
   const paidInvoices = invoices.filter((i) => i.status === "paid").length;
+  const refundedReturns = saleReturns.filter((r) => r.status === "refunded");
+  const totalRefunded = refundedReturns.reduce((sum, r) => sum + Number(r.refundAmount ?? 0), 0);
+  const refundCount = refundedReturns.length;
+  const pendingReturnCount = saleReturns.filter((r) => r.status === "pending").length;
 
   return {
     totalRevenue: totalSales + invoices.filter((i) => i.status === "paid").reduce((sum, i) => sum + Number(i.total), 0),
     totalSales,
     totalInvoiced,
     paidInvoices,
-    revenueByMonth: [...monthMap.values()],
+    totalRefunded,
+    refundCount,
+    pendingReturnCount,
+    revenueByMonth: [...bucketMap.values()],
     topItems,
     paymentMethods,
   };

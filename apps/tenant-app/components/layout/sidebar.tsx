@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { LogOut, MoreHorizontal } from "lucide-react";
+import { ChevronDown, LogOut, MoreHorizontal } from "lucide-react";
 import type { ActiveModule } from "@/lib/module-registry";
 import { isPrivilegedRole, canViewModule } from "@/lib/permissions";
 import * as Icons from "lucide-react";
@@ -30,13 +31,27 @@ const MODULE_GROUPS: { label: string; slugs: string[] }[] = [
   },
   {
     label: "Business",
-    slugs: ["pos", "inventory", "services", "promotions", "appointments", "job-orders", "loyalty", "billing", "crm", "hr"],
+    slugs: ["pos", "inventory", "job-orders", "services", "sales", "promotions", "loyalty", "appointments", "billing", "crm", "hr"],
   },
 ];
 
 export function Sidebar({ tenant, modules }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    reports: pathname === `/${tenant.slug}/reports`,
+    settings: pathname === `/${tenant.slug}/settings`,
+  });
+
+  useEffect(() => {
+    setOpenGroups((current) => ({
+      ...current,
+      reports: pathname === `/${tenant.slug}/reports` ? true : current.reports,
+      settings: pathname === `/${tenant.slug}/settings` ? true : current.settings,
+    }));
+  }, [pathname, tenant.slug]);
 
   const initials = session?.user?.name
     ?.split(" ")
@@ -71,6 +86,83 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
     );
   }
 
+  function NavItemWithChildren({
+    slug,
+    name,
+    icon,
+    children,
+  }: {
+    slug: string;
+    name: string;
+    icon?: string | null;
+    children: Array<{ label: string; href: string; isActive?: boolean }>;
+  }) {
+    const href = `/${tenant.slug}/${slug}`;
+    const isActive = pathname === href || pathname.startsWith(href + "/");
+    const Icon = getIcon(icon ?? null);
+    const isOpen = openGroups[slug] ?? false;
+
+    return (
+      <div className="space-y-1">
+        <button
+          type="button"
+          onClick={() => {
+            if (isOpen && isActive) {
+              setOpenGroups((current) => ({
+                ...current,
+                [slug]: false,
+              }));
+              return;
+            }
+
+            setOpenGroups((current) => ({
+              ...current,
+              [slug]: true,
+            }));
+
+            const firstChild = children[0];
+            if (firstChild) {
+              router.push(firstChild.href);
+            }
+          }}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+            isActive
+              ? "bg-white/10 text-white font-medium"
+              : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
+          )}
+        >
+          {Icon && <Icon className="h-4 w-4 shrink-0" />}
+          <span className="flex-1 text-left">{name}</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 transition-transform",
+              isOpen && "rotate-180"
+            )}
+          />
+        </button>
+        {isOpen && (
+          <div className="ml-6 space-y-0.5 border-l border-white/5 pl-3">
+            {children.map((child) => (
+              <Link
+                key={child.href}
+                href={child.href}
+                className={cn(
+                  "block rounded-md px-2 py-1.5 text-xs transition-colors",
+                  child.isActive
+                    ? "bg-white/10 text-white"
+                    : "text-zinc-500 hover:bg-white/5 hover:text-zinc-200"
+                )}
+              >
+                {child.label}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const dashboard = {
     id: "dashboard",
     slug: "dashboard",
@@ -87,9 +179,19 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
     sortOrder: 999,
     isCore: true,
   };
+  const salesModule = {
+    id: "sales",
+    slug: "sales",
+    name: "Sales History",
+    icon: "ReceiptText",
+    sortOrder: 5,
+    isCore: false,
+  };
+
   const moduleBySlug = new Map([
     ["dashboard", dashboard],
     ["settings", settings],
+    ["sales", salesModule],
     ...modules.map((m) => [m.slug, m] as [string, typeof dashboard]),
   ]);
 
@@ -97,9 +199,13 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
   const permissions = (session?.user as any)?.permissions as Record<string, boolean> ?? {};
   const privileged = isPrivilegedRole(role);
 
+  const moduleSlugSet = new Set(modules.map((m) => m.slug));
+  const salesEnabled = moduleSlugSet.has("pos") || moduleSlugSet.has("job-orders");
+
   function canSeeModule(slug: string): boolean {
-    // Always show core items for everyone
     if (slug === "dashboard" || slug === "settings") return true;
+    // Sales is auto-derived — visible if any payment-generating module is active
+    if (slug === "sales") return salesEnabled;
     if (privileged) return true;
     return canViewModule(permissions, slug);
   }
@@ -113,6 +219,22 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
 
   const groupedSlugs = new Set(MODULE_GROUPS.flatMap((g) => g.slugs));
   const ungrouped = modules.filter((m) => !groupedSlugs.has(m.slug) && canSeeModule(m.slug));
+  const reportsSection = searchParams.get("section");
+  const settingsTab = searchParams.get("tab") ?? "general";
+  const hasPos = modules.some((m) => m.slug === "pos");
+  const hasBilling = modules.some((m) => m.slug === "billing");
+
+  const reportsChildren = [
+    { label: "Overview", href: `/${tenant.slug}/reports?section=overview`, isActive: pathname === `/${tenant.slug}/reports` && (reportsSection === "overview" || reportsSection === null) },
+    hasPos && { label: "Sales", href: `/${tenant.slug}/reports?section=sales`, isActive: pathname === `/${tenant.slug}/reports` && reportsSection === "sales" },
+    (hasPos || hasBilling) && { label: "Payments", href: `/${tenant.slug}/reports?section=payments`, isActive: pathname === `/${tenant.slug}/reports` && reportsSection === "payments" },
+  ].filter(Boolean) as { label: string; href: string; isActive: boolean }[];
+  const hasAppointments = modules.some((m) => m.slug === "appointments");
+  const settingsChildren = [
+    { label: "General", href: `/${tenant.slug}/settings?tab=general`, isActive: pathname === `/${tenant.slug}/settings` && settingsTab === "general" },
+    { label: "Business Hours", href: `/${tenant.slug}/settings?tab=hours`, isActive: pathname === `/${tenant.slug}/settings` && settingsTab === "hours" },
+    hasAppointments && { label: "Services", href: `/${tenant.slug}/settings?tab=services`, isActive: pathname === `/${tenant.slug}/settings` && settingsTab === "services" },
+  ].filter(Boolean) as { label: string; href: string; isActive: boolean }[];
 
   return (
     <aside className="flex h-full w-60 flex-col bg-zinc-950">
@@ -133,7 +255,25 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
             </p>
             <div className="space-y-0.5">
               {group.items.map((item) => (
-                <NavItem key={item.slug} slug={item.slug} name={item.name} icon={item.icon} />
+                item.slug === "reports" ? (
+                  <NavItemWithChildren
+                    key={item.slug}
+                    slug={item.slug}
+                    name={item.name}
+                    icon={item.icon}
+                    children={reportsChildren}
+                  />
+                ) : item.slug === "settings" ? (
+                  <NavItemWithChildren
+                    key={item.slug}
+                    slug={item.slug}
+                    name={item.name}
+                    icon={item.icon}
+                    children={settingsChildren}
+                  />
+                ) : (
+                  <NavItem key={item.slug} slug={item.slug} name={item.name} icon={item.icon} />
+                )
               ))}
             </div>
           </div>

@@ -99,5 +99,7 @@ export const ROUTE_SEGMENT_TO_MODULE: Record<string, ModuleSlug> = {
   promotions: "promotions",
   services: "services",
   loyalty: "loyalty",
+  // "sales" is intentionally excluded — it's a derived route, not a DB module.
+  // Visibility is controlled in the sidebar. No proxy guard needed.
   // "users" and "dashboard" are always accessible — not listed here
 };

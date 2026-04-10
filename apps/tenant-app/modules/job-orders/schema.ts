@@ -14,7 +14,7 @@ export const createJobOrderSchema = z.object({
   contactNo: z.string().optional(),
   notes: z.string().optional(),
   priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
-  assignedTo: z.string().optional(),
+  assignedStaffIds: z.array(z.string()).default([]),
   dueDate: z.string().optional(),
   items: z.array(jobOrderItemSchema).default([]),
 });

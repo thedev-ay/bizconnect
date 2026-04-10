@@ -53,6 +53,7 @@ interface SaleReturnRecord {
 interface SaleRecord {
   id: string;
   referenceNo: string;
+  source: string;
   subtotal: string;
   discount: string;
   total: string;
@@ -95,6 +96,12 @@ const PAYMENT_LABEL: Record<string, string> = {
   maya: "Maya",
 };
 
+const SOURCE_BADGE: Record<string, { label: string; className: string }> = {
+  pos:         { label: "POS",       className: "bg-blue-50 text-blue-700" },
+  "job-order": { label: "Job Order", className: "bg-violet-50 text-violet-700" },
+  appointment: { label: "Booking",   className: "bg-amber-50 text-amber-700" },
+};
+
 export function SalesList({
   sales,
   tenantSlug,
@@ -110,12 +117,16 @@ export function SalesList({
   const [search, setSearch] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+
+  const sources = Array.from(new Set(sales.map((s) => s.source)));
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(highlightedSaleId ?? null);
 
   const filtered = sales.filter((s) => {
     if (search && !s.referenceNo.toLowerCase().includes(search.toLowerCase())) return false;
     if (paymentFilter !== "all" && s.paymentMethod !== paymentFilter) return false;
     if (statusFilter !== "all" && s.status !== statusFilter) return false;
+    if (sourceFilter !== "all" && s.source !== sourceFilter) return false;
     return true;
   });
 
@@ -187,12 +198,28 @@ export function SalesList({
             <SelectItem value="voided">Voided</SelectItem>
           </SelectContent>
         </Select>
+        {sources.length > 1 && (
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="h-8 w-36 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {sources.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {SOURCE_BADGE[s]?.label ?? s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Table>
         <TableHeader>
           <TableRow className="border-zinc-100 hover:bg-transparent">
             <TableHead className="pl-5 text-xs font-semibold uppercase tracking-wide text-zinc-500">Reference</TableHead>
+            <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Source</TableHead>
             <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Date</TableHead>
             <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Items</TableHead>
             <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Payment</TableHead>
@@ -203,7 +230,7 @@ export function SalesList({
         <TableBody>
           {filtered.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="py-12 text-center text-sm text-zinc-400">
+              <TableCell colSpan={7} className="py-12 text-center text-sm text-zinc-400">
                 No transactions found
               </TableCell>
             </TableRow>
@@ -222,6 +249,14 @@ export function SalesList({
                 <TableCell className="pl-5">
                   <span className="font-mono text-sm font-medium text-zinc-800">
                     {sale.referenceNo}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span className={cn(
+                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                    SOURCE_BADGE[sale.source]?.className ?? "bg-zinc-100 text-zinc-500"
+                  )}>
+                    {SOURCE_BADGE[sale.source]?.label ?? sale.source}
                   </span>
                 </TableCell>
                 <TableCell className="text-sm text-zinc-500">

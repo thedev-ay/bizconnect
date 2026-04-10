@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@bizconnect/db";
+import { Prisma, prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
 import { createJobOrderSchema, type CreateJobOrderInput } from "./schema";
+import { toast } from "sonner";
 
 function isMissingLinkedCustomerColumn(error: unknown) {
   const message = error instanceof Error ? error.message : "";
@@ -36,8 +37,26 @@ export async function createJobOrder(
     throw new Error("Customer not found");
   }
 
+  const assignedEmployees = parsed.assignedStaffIds.length > 0
+    ? await prisma.employee.findMany({
+        where: { id: { in: parsed.assignedStaffIds }, tenantId },
+        select: { id: true, name: true },
+      })
+    : [];
+
+  const itemsCreate = parsed.items.length > 0
+    ? { create: parsed.items.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        weight: item.weight ?? null,
+        unitPrice: item.unitPrice,
+        total: item.total,
+      })) }
+    : undefined;
+
+  let createdId: string;
   try {
-    await prisma.jobOrder.create({
+    const created = await prisma.jobOrder.create({
       data: {
         tenantId,
         customerId: customer?.id ?? null,
@@ -46,23 +65,16 @@ export async function createJobOrder(
         contactNo: customer?.phone ?? parsed.contactNo ?? null,
         notes: parsed.notes || null,
         priority: parsed.priority,
-        assignedTo: parsed.assignedTo || null,
         dueDate: parsed.dueDate ? new Date(parsed.dueDate) : null,
         status: firstStageSlug,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        items: parsed.items.length > 0 ? { create: parsed.items.map((item) => ({
-          name: item.name,
-          quantity: item.quantity,
-          weight: item.weight ?? null,
-          unitPrice: item.unitPrice,
-          total: item.total,
-        })) } : undefined,
+        items: itemsCreate,
       } as any,
     });
+    createdId = created.id;
   } catch (error) {
     if (!isMissingLinkedCustomerColumn(error)) throw error;
 
-    await prisma.jobOrder.create({
+    const created = await prisma.jobOrder.create({
       data: {
         tenantId,
         jobNo: generateJobNo(),
@@ -70,18 +82,21 @@ export async function createJobOrder(
         contactNo: customer?.phone ?? parsed.contactNo ?? null,
         notes: parsed.notes || null,
         priority: parsed.priority,
-        assignedTo: parsed.assignedTo || null,
         dueDate: parsed.dueDate ? new Date(parsed.dueDate) : null,
         status: firstStageSlug,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        items: parsed.items.length > 0 ? { create: parsed.items.map((item) => ({
-          name: item.name,
-          quantity: item.quantity,
-          weight: item.weight ?? null,
-          unitPrice: item.unitPrice,
-          total: item.total,
-        })) } : undefined,
+        items: itemsCreate,
       } as any,
+    });
+    createdId = created.id;
+  }
+
+  if (assignedEmployees.length > 0) {
+    await db.jobOrderAssignment.createMany({
+      data: assignedEmployees.map((e) => ({
+        jobOrderId: createdId,
+        employeeId: e.id,
+        employeeName: e.name,
+      })),
     });
   }
 
@@ -129,6 +144,13 @@ export async function updateJobOrder(
     throw new Error("Customer not found");
   }
 
+  const assignedEmployees = parsed.assignedStaffIds.length > 0
+    ? await prisma.employee.findMany({
+        where: { id: { in: parsed.assignedStaffIds }, tenantId },
+        select: { id: true, name: true },
+      })
+    : [];
+
   try {
     await prisma.$transaction(async (tx) => {
       await tx.jobOrder.update({
@@ -139,7 +161,6 @@ export async function updateJobOrder(
           contactNo: customer?.phone ?? parsed.contactNo ?? null,
           notes: parsed.notes || null,
           priority: parsed.priority,
-          assignedTo: parsed.assignedTo || null,
           dueDate: parsed.dueDate ? new Date(parsed.dueDate) : null,
         },
       });
@@ -168,7 +189,6 @@ export async function updateJobOrder(
           contactNo: customer?.phone ?? parsed.contactNo ?? null,
           notes: parsed.notes || null,
           priority: parsed.priority,
-          assignedTo: parsed.assignedTo || null,
           dueDate: parsed.dueDate ? new Date(parsed.dueDate) : null,
         },
       });
@@ -185,6 +205,18 @@ export async function updateJobOrder(
           })),
         });
       }
+    });
+  }
+
+  // Update assignments (replace all)
+  await db.jobOrderAssignment.deleteMany({ where: { jobOrderId } });
+  if (assignedEmployees.length > 0) {
+    await db.jobOrderAssignment.createMany({
+      data: assignedEmployees.map((e) => ({
+        jobOrderId,
+        employeeId: e.id,
+        employeeName: e.name,
+      })),
     });
   }
 
@@ -298,12 +330,12 @@ export async function claimJobOrder(
       data: { status: "claimed", claimedAt: now, completedAt: now },
     });
 
-    // Create sale record
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (tx as any).sale.create({
+    // Create sale record — source: "job-order" keeps it distinct from POS sales
+    await tx.sale.create({
       data: {
         tenantId,
         referenceNo: generateReferenceNo(),
+        source: "job-order",
         subtotal: payment.total,
         discount: 0,
         total: payment.total,
@@ -323,15 +355,14 @@ export async function claimJobOrder(
             originalPrice: item.unitPrice,
             promoDiscount: 0,
             total: item.total,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          })) as any,
+          })),
         },
       },
     });
   });
 
   revalidatePath(`/${tenantSlug}/job-orders`);
-  revalidatePath(`/${tenantSlug}/pos/sales`);
+  revalidatePath(`/${tenantSlug}/sales`);
 }
 
 // ─── Workflow stage management ────────────────────────────────────────────────
@@ -342,22 +373,30 @@ const db = prisma as any;
 export async function saveWorkflowStages(
   tenantSlug: string,
   tenantId: string,
-  stages: Array<{ id?: string; name: string; slug: string; color: string; sortOrder: number; type: "active" | "completed" | "cancelled" }>
+  stages: Array<{ id: string; name: string; slug: string; sortOrder: number; type: "active" | "completed" | "cancelled" }>
 ) {
   await authorize(tenantSlug, "job-orders.edit");
 
-  // Upsert each stage
-  for (const stage of stages) {
-    if (stage.id) {
-      await db.workflowStage.update({
-        where: { id: stage.id },
-        data: { name: stage.name, color: stage.color, sortOrder: stage.sortOrder, type: stage.type },
-      });
-    } else {
-      await db.workflowStage.create({
-        data: { tenantId, name: stage.name, slug: stage.slug, color: stage.color, sortOrder: stage.sortOrder, type: stage.type },
-      });
+  try {
+
+    await prisma.$transaction(async (tx) => {
+      for (const stage of stages) {
+        await tx.workflowStage.upsert({
+          where: { tenantId, id: stage.id },
+          update: { name: stage.name, slug: stage.slug, sortOrder: stage.sortOrder, type: stage.type },
+          create: { id: stage.id, tenantId, name: stage.name, slug: stage.slug, sortOrder: stage.sortOrder, type: stage.type },
+        });
+      }
+    });
+  } catch (err) {
+    let errorMessage = "Failed to save workflow stages. Please contact support."
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === 'P2002'
+    ) {
+      errorMessage = "Duplicate stages found. Ensure stage names are unique"
     }
+    toast.error(errorMessage)
   }
 
   revalidatePath(`/${tenantSlug}/job-orders`);
@@ -369,84 +408,3 @@ export async function deleteWorkflowStage(tenantSlug: string, tenantId: string, 
   revalidatePath(`/${tenantSlug}/job-orders`);
 }
 
-// ─── Time tracking ────────────────────────────────────────────────────────────
-
-export async function startTimeLog(
-  tenantSlug: string,
-  tenantId: string,
-  jobOrderId: string,
-  taskName: string
-) {
-  const session = await authorize(tenantSlug, "job-orders.edit");
-  if (!session.user.id) throw new Error("Unauthorized");
-
-  const log = await prisma.jobOrderTimeLog.create({
-    data: {
-      tenantId,
-      jobOrderId,
-      taskName,
-      startedAt: new Date(),
-      recordedBy: session.user.id,
-    },
-  });
-
-  revalidatePath(`/${tenantSlug}/job-orders`);
-  return log;
-}
-
-export async function endTimeLog(tenantSlug: string, tenantId: string, logId: string) {
-  await authorize(tenantSlug, "job-orders.edit");
-
-  const log = await prisma.jobOrderTimeLog.findUnique({ where: { id: logId } });
-  if (!log) throw new Error("Time log not found");
-  if (log.endedAt) throw new Error("Time log already ended");
-
-  const endedAt = new Date();
-  const duration = Math.round((endedAt.getTime() - log.startedAt.getTime()) / 1000);
-
-  const updated = await prisma.jobOrderTimeLog.update({
-    where: { id: logId },
-    data: { endedAt, duration },
-  });
-
-  revalidatePath(`/${tenantSlug}/job-orders`);
-  return updated;
-}
-
-export async function getJobOrderTimeLogs(tenantSlug: string, tenantId: string, jobOrderId: string) {
-  await authorize(tenantSlug, "job-orders.view");
-
-  const logs = await prisma.jobOrderTimeLog.findMany({
-    where: { tenantId, jobOrderId },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return logs;
-}
-
-export async function updateTimeLogNotes(
-  tenantSlug: string,
-  tenantId: string,
-  logId: string,
-  notes: string
-) {
-  await authorize(tenantSlug, "job-orders.edit");
-
-  const updated = await prisma.jobOrderTimeLog.update({
-    where: { id: logId, tenantId },
-    data: { notes },
-  });
-
-  revalidatePath(`/${tenantSlug}/job-orders`);
-  return updated;
-}
-
-export async function deleteTimeLog(tenantSlug: string, tenantId: string, logId: string) {
-  await authorize(tenantSlug, "job-orders.edit");
-
-  await prisma.jobOrderTimeLog.delete({
-    where: { id: logId, tenantId },
-  });
-
-  revalidatePath(`/${tenantSlug}/job-orders`);
-}

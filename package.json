@@ -16,12 +16,16 @@
     "db:seed": "turbo db:seed"
   },
   "devDependencies": {
-    "turbo": "^2.3.3",
     "prettier": "^3.3.3",
+    "turbo": "^2.3.3",
     "typescript": "^5.5.0"
   },
   "packageManager": "npm@10.8.0",
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@dnd-kit/sortable": "^10.0.0",
+    "framer-motion": "^12.38.0"
   }
 }

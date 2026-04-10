@@ -26,6 +26,9 @@ import { deleteItem, getAdjustmentHistory } from "../actions";
 import { EditItemDialog } from "./edit-item-dialog";
 import { AdjustStockDialog } from "./adjust-stock-dialog";
 import { AdjustmentHistory } from "./adjustment-history";
+import { Paginator } from "./paginator";
+
+const PAGE_SIZE = 10;
 
 interface InventoryListProps {
   items: InventoryItem[];
@@ -37,6 +40,10 @@ interface InventoryListProps {
 
 export function InventoryList({ items, tenantSlug, tenantId, currencySymbol, currencyLocale }: InventoryListProps) {
   const router = useRouter();
+  const [page, setPage] = useState(0);
+  const totalPages = Math.ceil(items.length / PAGE_SIZE);
+  const slice = items.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [adjustingItem, setAdjustingItem] = useState<InventoryItem | null>(null);
@@ -94,7 +101,7 @@ export function InventoryList({ items, tenantSlug, tenantId, currencySymbol, cur
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((item) => {
+          {slice.map((item) => {
             const isLow = item.quantity <= item.reorderAt;
             const isDeleting = deletingId === item.id;
             return (
@@ -171,6 +178,14 @@ export function InventoryList({ items, tenantSlug, tenantId, currencySymbol, cur
           })}
         </TableBody>
       </Table>
+
+      <div className="px-5 pb-4">
+        <Paginator
+          page={page}
+          totalPages={totalPages}
+          onPage={setPage}
+        />
+      </div>
 
       {editingItem && (
         <EditItemDialog

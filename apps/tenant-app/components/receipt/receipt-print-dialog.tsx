@@ -55,51 +55,37 @@ export function ReceiptPrintDialog({
   assignedTo,
   notes,
 }: ReceiptPrintDialogProps) {
-  const previewRef = useRef<HTMLDivElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
-    if (!previewRef.current || !iframeRef.current) return;
-
-    const iframe = iframeRef.current;
-    const receiptHTML = previewRef.current.innerHTML;
-
-    // Create a complete HTML document with Tailwind CSS
-    const printDocument = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${type === "sale" ? "Sales Receipt" : "Job Order Claim Receipt"} - ${referenceNo}</title>
-          <script src="https://cdn.tailwindcss.com"></script>
-          <style>
-            * { margin: 0; padding: 0; }
-            body { font-family: system-ui, -apple-system, sans-serif; }
-            @media print {
-              body { margin: 0; padding: 10mm; }
-              @page { size: A4; margin: 0; }
-            }
-          </style>
-        </head>
-        <body>
-          ${receiptHTML}
-        </body>
-      </html>
+    // Inject a print style that hides everything except the receipt
+    const style = document.createElement("style");
+    style.id = "__receipt-print-style";
+    style.innerHTML = `
+      @media print {
+        body > * { display: none !important; }
+        #__receipt-print-root { display: block !important; }
+        @page { size: A4; margin: 10mm; }
+      }
     `;
+    document.head.appendChild(style);
 
-    // Write to iframe and print
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (doc) {
-      doc.open();
-      doc.write(printDocument);
-      doc.close();
+    // Mount a print-only clone outside the dialog tree
+    const root = document.createElement("div");
+    root.id = "__receipt-print-root";
+    root.style.display = "none";
+    if (receiptRef.current) root.innerHTML = receiptRef.current.innerHTML;
+    document.body.appendChild(root);
 
-      // Wait for content to render before printing
-      setTimeout(() => {
-        iframe.contentWindow?.print();
-      }, 500);
-    }
+    window.print();
+
+    // Clean up after print dialog closes
+    const cleanup = () => {
+      style.remove();
+      root.remove();
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
   };
 
   return (
@@ -111,11 +97,7 @@ export function ReceiptPrintDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Receipt Preview */}
-        <div
-          ref={previewRef}
-          className="overflow-hidden rounded border bg-white"
-        >
+        <div ref={receiptRef} className="overflow-hidden rounded border bg-white">
           <Receipt
             type={type}
             referenceNo={referenceNo}
@@ -136,19 +118,8 @@ export function ReceiptPrintDialog({
           />
         </div>
 
-        {/* Hidden iframe for printing */}
-        <iframe
-          ref={iframeRef}
-          style={{ display: "none" }}
-          title="Receipt Print"
-        />
-
         <DialogFooter className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="gap-2"
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="gap-2">
             <X className="h-4 w-4" />
             Close
           </Button>

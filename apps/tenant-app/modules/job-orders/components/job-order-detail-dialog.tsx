@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
@@ -15,26 +15,24 @@ import { Separator } from "@/components/ui/separator";
 import { Pencil, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { JobOrder, WorkflowStage } from "../types";
-import { getNextStage, getPrevStage, getStageColors } from "../types";
+import { getNextStage, getPrevStage } from "../types";
 import {
   createInvoiceForJobOrder,
   updateJobOrderStatus,
   deleteJobOrder,
-  getJobOrderTimeLogs,
 } from "../actions";
-import { TimeTracking } from "./time-tracking";
 
 interface JobOrderDetailDialogProps {
   jobOrder: JobOrder;
   stages: WorkflowStage[];
   tenantSlug: string;
   tenantId: string;
-  tenantName: string;
   currencySymbol: string;
   currencyLocale: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: (jobOrder: JobOrder) => void;
+  onClaim: (jobOrder: JobOrder) => void;
   billingEnabled: boolean;
 }
 
@@ -45,29 +43,17 @@ export function JobOrderDetailDialog({
   stages,
   tenantSlug,
   tenantId,
-  tenantName,
   currencySymbol,
   currencyLocale,
   open,
   onOpenChange,
   onEdit,
+  onClaim,
   billingEnabled,
 }: JobOrderDetailDialogProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [confirmMode, setConfirmMode] = useState<ConfirmMode>(null);
-  const [timeLogs, setTimeLogs] = useState<any[]>([]);
-  const [loadingTimeLogs, setLoadingTimeLogs] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setLoadingTimeLogs(true);
-      getJobOrderTimeLogs(tenantSlug, tenantId, jobOrder.id)
-        .then(setTimeLogs)
-        .catch(() => toast.error("Failed to load time logs"))
-        .finally(() => setLoadingTimeLogs(false));
-    }
-  }, [open, jobOrder.id, tenantSlug, tenantId]);
 
   const currentStage = stages.find((s) => s.slug === jobOrder.status);
   const nextStage = getNextStage(stages, jobOrder.status);
@@ -75,26 +61,25 @@ export function JobOrderDetailDialog({
   const grandTotal = jobOrder.items.reduce((sum, i) => sum + Number(i.total), 0);
   const canEdit = currentStage?.type === "active";
   const cancelledStage = stages.find((s) => s.type === "cancelled");
-  const stageColors = getStageColors(currentStage?.color ?? "zinc");
 
   function handleOpenChange(o: boolean) {
     if (!o) setConfirmMode(null);
     onOpenChange(o);
   }
 
-  async function handleAdvance() {
+  function handleAdvance() {
     if (!nextStage) return;
-    setLoading(true);
-    try {
-      await updateJobOrderStatus(tenantSlug, tenantId, jobOrder.id, nextStage.slug, nextStage.type);
-      toast.success(`Moved to ${nextStage.name}`);
+    // Intercept final step — delegate to payment dialog
+    if (nextStage.type === "completed") {
       onOpenChange(false);
-      router.refresh();
-    } catch {
-      toast.error("Failed to update status");
-    } finally {
-      setLoading(false);
+      onClaim(jobOrder);
+      return;
     }
+    setLoading(true);
+    updateJobOrderStatus(tenantSlug, tenantId, jobOrder.id, nextStage.slug, nextStage.type)
+      .then(() => { toast.success(`Moved to ${nextStage.name}`); onOpenChange(false); router.refresh(); })
+      .catch(() => toast.error("Failed to update status"))
+      .finally(() => setLoading(false));
   }
 
   async function handleMoveBack() {
@@ -192,10 +177,7 @@ export function JobOrderDetailDialog({
             <div className="space-y-4">
               {/* Status + priority */}
               <div className="flex items-center gap-2">
-                <span className={cn(
-                  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-                  stageColors.pill
-                )}>
+                <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-700">
                   {currentStage?.name ?? jobOrder.status}
                 </span>
                 {currentStage?.type === "completed" && (
@@ -238,7 +220,9 @@ export function JobOrderDetailDialog({
                       Due: {format(new Date(jobOrder.dueDate), "MMM d")}
                     </span>
                   )}
-                  {jobOrder.assignedTo && <span>Staff: {jobOrder.assignedTo}</span>}
+                  {jobOrder.assignedStaff.length > 0 && (
+                    <span>Staff: {jobOrder.assignedStaff.map((s) => s.name).join(", ")}</span>
+                  )}
                 </div>
               </div>
 
@@ -275,25 +259,6 @@ export function JobOrderDetailDialog({
                 <p className="text-sm text-zinc-400 italic">No services added.</p>
               )}
 
-              {/* Time Tracking */}
-              <div className="space-y-2 pt-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Time Tracking</p>
-                {loadingTimeLogs ? (
-                  <p className="text-xs text-zinc-400">Loading time logs...</p>
-                ) : (
-                  <TimeTracking
-                    jobOrderId={jobOrder.id}
-                    tenantSlug={tenantSlug}
-                    tenantId={tenantId}
-                    timeLogs={timeLogs}
-                    onUpdated={() => {
-                      getJobOrderTimeLogs(tenantSlug, tenantId, jobOrder.id)
-                        .then(setTimeLogs)
-                        .catch(() => toast.error("Failed to reload time logs"));
-                    }}
-                  />
-                )}
-              </div>
             </div>
           )}
 

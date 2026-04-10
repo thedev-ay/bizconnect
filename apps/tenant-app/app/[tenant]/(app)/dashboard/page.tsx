@@ -4,20 +4,11 @@ import { getActiveModules } from "@/lib/module-registry";
 import { prisma } from "@bizconnect/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Calendar,
-  Users,
-  ShoppingCart,
-  Package,
-  AlertTriangle,
-  Clock,
-  ArrowRight,
-  RotateCcw,
-  ClipboardList,
-  ReceiptText,
-} from "lucide-react";
+import { Package, AlertTriangle, Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { RevenueChart, TransactionChart } from "@/components/dashboard/revenue-chart";
+import { DashboardStatCards, type DashboardStatCardData } from "@/components/dashboard/stat-cards";
+import { FadeIn } from "@/components/dashboard/fade-in";
 
 interface DashboardPageProps {
   params: Promise<{ tenant: string }>;
@@ -68,6 +59,13 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30);
 
+  // Fetch workflow stages to avoid hardcoded slug assumptions
+  const workflowStages = modules.has("job-orders")
+    ? await prisma.workflowStage.findMany({ where: { tenantId }, select: { slug: true, type: true } })
+    : [];
+  const activeStages = workflowStages.filter((s) => s.type === "active").map((s) => s.slug);
+  const cancelledSlug = workflowStages.find((s) => s.type === "cancelled")?.slug;
+
   const serviceShopBillingStatsPromise = getServiceShopBillingStats(tenantId, modules);
 
   const [
@@ -82,11 +80,13 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
     pendingReturns,
     monthlyReturns,
     approvedReturns,
+    recentReturns,
     activeJobOrders,
     overdueJobOrders,
     completedToday,
     monthlyInvoiced,
     monthlyCollected,
+    lowStockWatchlist,
   ] = await Promise.all([
     modules.has("appointments")
       ? prisma.appointment.count({ where: { tenantId, startAt: { gte: todayStart, lte: todayEnd } } })
@@ -120,8 +120,8 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
         `.then((r) => Number(r[0]?.count ?? 0))
       : Promise.resolve(null),
 
-    modules.has("job-orders")
-      ? prisma.jobOrder.count({ where: { tenantId, status: { in: ["pending", "in-progress"] } } })
+    modules.has("job-orders") && activeStages.length > 0
+      ? prisma.jobOrder.count({ where: { tenantId, status: { in: activeStages } } })
       : Promise.resolve(null),
 
     modules.has("hr")
@@ -156,9 +156,25 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
         })
       : Promise.resolve(null),
 
+    modules.has("pos")
+      ? prisma.saleReturn.findMany({
+          where: { tenantId },
+          select: {
+            id: true,
+            referenceNo: true,
+            status: true,
+            refundAmount: true,
+            createdAt: true,
+            sale: { select: { referenceNo: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        })
+      : Promise.resolve(null),
+
     modules.has("job-orders")
       ? prisma.jobOrder.count({
-          where: { tenantId, completedAt: null, status: { not: "cancelled" } },
+          where: { tenantId, completedAt: null, ...(cancelledSlug ? { status: { not: cancelledSlug } } : {}) },
         })
       : Promise.resolve(null),
 
@@ -167,8 +183,8 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
           where: {
             tenantId,
             completedAt: null,
-            status: { not: "cancelled" },
             dueDate: { lt: now },
+            ...(cancelledSlug ? { status: { not: cancelledSlug } } : {}),
           },
         })
       : Promise.resolve(null),
@@ -196,6 +212,16 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
           _sum: { total: true },
           _count: true,
         })
+      : Promise.resolve(null),
+
+    modules.has("inventory")
+      ? prisma.$queryRaw<{ id: string; name: string; quantity: number; reorder_at: number }[]>`
+          SELECT id, name, quantity, reorder_at
+          FROM inventory_items
+          WHERE tenant_id = ${tenantId} AND quantity <= reorder_at
+          ORDER BY quantity ASC, name ASC
+          LIMIT 5
+        `
       : Promise.resolve(null),
   ]);
 
@@ -234,6 +260,7 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
     monthlyRefundAmount: monthlyReturns ? Number(monthlyReturns._sum.refundAmount ?? 0) : 0,
     approvedReturnCount: approvedReturns?._count ?? 0,
     approvedRefundAmount: approvedReturns ? Number(approvedReturns._sum.refundAmount ?? 0) : 0,
+    recentReturns,
     activeJobOrders,
     overdueJobOrders,
     completedToday,
@@ -246,6 +273,12 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
     monthlyInvoicedCount: monthlyInvoiced?._count ?? 0,
     monthlyCollectedTotal: monthlyCollected ? Number(monthlyCollected._sum.total ?? 0) : 0,
     recentCompletedJobs,
+    lowStockWatchlist: lowStockWatchlist?.map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: Number(item.quantity),
+      reorderAt: Number(item.reorder_at),
+    })) ?? [],
     chartData,
   };
 }
@@ -264,61 +297,100 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const data = await getDashboardStats(tenant.id, moduleSet);
   const firstName = session?.user?.name?.split(" ")[0] ?? "there";
 
-  // Build stat cards only for active modules
-  const statCards = [
+  // Job Orders & Billing stats
+  const opsCards = [
     moduleSet.has("job-orders") && {
       label: "Active Jobs",
-      value: data.activeJobOrders ?? 0,
-      icon: ClipboardList,
+      rawValue: data.activeJobOrders ?? 0,
+      iconKey: "ClipboardList" as const,
       href: `/${tenantSlug}/job-orders`,
       color: "blue" as const,
     },
     moduleSet.has("job-orders") && {
       label: "Completed Today",
-      value: data.completedToday ?? 0,
-      icon: Package,
+      rawValue: data.completedToday ?? 0,
+      iconKey: "Package" as const,
       href: `/${tenantSlug}/job-orders`,
       color: "zinc" as const,
     },
     moduleSet.has("billing") && {
       label: "Ready to Invoice",
-      value: `${tenant.currencySymbol}${(data.readyToInvoiceValue ?? 0).toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 0 })}`,
+      rawValue: data.readyToInvoiceValue ?? 0,
+      isCurrency: true,
+      currencySymbol: tenant.currencySymbol,
+      currencyLocale: tenant.currencyLocale,
       sub: `${data.readyToInvoiceCount ?? 0} completed jobs`,
-      icon: ReceiptText,
+      iconKey: "ReceiptText" as const,
       href: `/${tenantSlug}/billing`,
       color: "violet" as const,
     },
     moduleSet.has("billing") && {
       label: "Collected This Month",
-      value: `${tenant.currencySymbol}${(data.monthlyCollectedTotal ?? 0).toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 0 })}`,
+      rawValue: data.monthlyCollectedTotal ?? 0,
+      isCurrency: true,
+      currencySymbol: tenant.currencySymbol,
+      currencyLocale: tenant.currencyLocale,
       sub: `${data.monthlyInvoicedCount ?? 0} invoices raised`,
-      icon: ShoppingCart,
+      iconKey: "ShoppingCart" as const,
       href: `/${tenantSlug}/billing`,
       color: "green" as const,
     },
+  ].filter(Boolean) as DashboardStatCardData[];
+
+  // POS / Sales stats
+  const salesCards = [
+    moduleSet.has("pos") && {
+      label: "Sales This Month",
+      rawValue: data.monthlyRevenue ?? 0,
+      isCurrency: true,
+      currencySymbol: tenant.currencySymbol,
+      currencyLocale: tenant.currencyLocale,
+      sub: `${data.monthlySalesCount ?? 0} completed sales`,
+      iconKey: "ShoppingCart" as const,
+      href: `/${tenantSlug}/sales`,
+      color: "blue" as const,
+    },
+    moduleSet.has("pos") && {
+      label: "Refunded This Month",
+      rawValue: data.monthlyRefundAmount ?? 0,
+      isCurrency: true,
+      currencySymbol: tenant.currencySymbol,
+      currencyLocale: tenant.currencyLocale,
+      sub: `${data.monthlyReturnCount ?? 0} return requests`,
+      iconKey: "RotateCcw" as const,
+      href: `/${tenantSlug}/sales`,
+      color: (data.monthlyRefundAmount ?? 0) > 0 ? ("amber" as const) : ("zinc" as const),
+    },
+  ].filter(Boolean) as DashboardStatCardData[];
+
+  // Operations stats (appointments, CRM, inventory)
+  const operationsCards = [
     moduleSet.has("appointments") && {
       label: "Today's Appointments",
-      value: data.todayAppointments ?? 0,
-      icon: Calendar,
+      rawValue: data.todayAppointments ?? 0,
+      iconKey: "Calendar" as const,
       href: `/${tenantSlug}/appointments`,
       color: "blue" as const,
     },
     moduleSet.has("crm") && {
       label: "Total Customers",
-      value: data.totalCustomers ?? 0,
-      icon: Users,
+      rawValue: data.totalCustomers ?? 0,
+      iconKey: "Users" as const,
       href: `/${tenantSlug}/crm`,
       color: "violet" as const,
     },
     moduleSet.has("inventory") && {
       label: "Low Stock Items",
-      value: data.lowStockItems ?? 0,
-      icon: Package,
+      rawValue: data.lowStockItems ?? 0,
+      iconKey: "Package" as const,
       href: `/${tenantSlug}/inventory`,
       color: (data.lowStockItems ?? 0) > 0 ? ("amber" as const) : ("zinc" as const),
       alert: (data.lowStockItems ?? 0) > 0,
     },
-  ].filter(Boolean) as StatCardProps[];
+  ].filter(Boolean) as DashboardStatCardData[];
+
+  const activeSections = [opsCards, salesCards, operationsCards].filter((g) => g.length > 0).length;
+  const showSectionLabels = activeSections > 1;
 
   // Build attention rows only for active modules
   const attentionRows = [
@@ -345,12 +417,18 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     moduleSet.has("pos") && {
       label: "Pending returns",
       value: data.pendingReturns ?? 0,
-      href: `/${tenantSlug}/pos/returns`,
+      href: `/${tenantSlug}/sales`,
     },
   ].filter(Boolean) as { label: string; value: number; href: string }[];
 
+  // Which main activity panel to show in the bottom grid
+  const hasActivityPanel =
+    moduleSet.has("appointments") ||
+    moduleSet.has("job-orders") ||
+    (!moduleSet.has("appointments") && !moduleSet.has("job-orders") && moduleSet.has("inventory"));
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {error === "module_disabled" && (
         <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -383,184 +461,225 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
         </div>
       )}
 
-      {/* Stat cards — only rendered if tenant has relevant modules */}
-      {statCards.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {statCards.map((card) => (
-            <StatCard key={card.label} {...card} />
-          ))}
-        </div>
-      )}
-
-      {/* Charts — only rendered if POS module is active */}
-      {moduleSet.has("pos") && data.chartData && data.chartData.length > 0 && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <RevenueChart data={data.chartData} currencySymbol={tenant.currencySymbol} />
-          <TransactionChart data={data.chartData} />
-        </div>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Upcoming appointments — only if module is active */}
-        {moduleSet.has("appointments") && (
-          <div className="lg:col-span-2">
-            <Card className="shadow-none border-zinc-200">
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <CardTitle className="text-sm font-semibold text-zinc-700">
-                  Upcoming Appointments
-                </CardTitle>
-                <Link
-                  href={`/${tenantSlug}/appointments`}
-                  className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
-                >
-                  View all <ArrowRight className="h-3 w-3" />
-                </Link>
-              </CardHeader>
-              <CardContent className="p-0">
-                {!data.upcomingAppointments?.length ? (
-                  <div className="px-6 py-8 text-center text-sm text-zinc-400">
-                    No upcoming appointments
-                  </div>
-                ) : (
-                  <div className="divide-y divide-zinc-100">
-                    {data.upcomingAppointments.map((apt) => (
-                      <div key={apt.id} className="flex items-center gap-3 px-6 py-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                          <Clock className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-zinc-800">{apt.customerName}</p>
-                          <p className="truncate text-xs text-zinc-400">
-                            {apt.service?.name ?? "—"} · {apt.employee?.name ?? "Unassigned"}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-xs font-medium text-zinc-700">
-                            {apt.startAt.toLocaleDateString("nl-NL", { month: "short", day: "numeric" })}
-                          </p>
-                          <p className="text-xs text-zinc-400">
-                            {apt.startAt.toLocaleTimeString("nl-NL", { hour: "numeric", minute: "2-digit" })}
-                          </p>
-                        </div>
-                        <StatusDot status={apt.status} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {moduleSet.has("job-orders") && !moduleSet.has("appointments") && (
-          <div className="lg:col-span-2">
-            <Card className="shadow-none border-zinc-200">
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <CardTitle className="text-sm font-semibold text-zinc-700">
-                  Recently Completed Jobs
-                </CardTitle>
-                <Link
-                  href={`/${tenantSlug}/job-orders`}
-                  className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
-                >
-                  View board <ArrowRight className="h-3 w-3" />
-                </Link>
-              </CardHeader>
-              <CardContent className="p-0">
-                {!data.recentCompletedJobs?.length ? (
-                  <div className="px-6 py-8 text-center text-sm text-zinc-400">
-                    No completed jobs yet
-                  </div>
-                ) : (
-                  <div className="divide-y divide-zinc-100">
-                    {data.recentCompletedJobs.map((job) => (
-                      <div key={job.id} className="flex items-center justify-between gap-3 px-6 py-3">
-                        <div>
-                          <p className="font-mono text-xs text-zinc-400">{job.jobNo}</p>
-                          <p className="text-sm font-medium text-zinc-800">{job.customerName}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-zinc-500">
-                            {job.completedAt?.toLocaleDateString("nl-NL", { month: "short", day: "numeric" })}
-                          </p>
-                          <p className="text-[11px] text-zinc-400">
-                            {job.invoice ? "Invoiced" : "Needs invoice"}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Needs Attention — only shown if at least one row exists */}
-        {attentionRows.length > 0 && (
-          <div className={moduleSet.has("appointments") ? "" : "lg:col-span-3"}>
-            <Card className="shadow-none border-zinc-200">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-zinc-700">Needs Attention</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {attentionRows.map((row) => (
-                  <AttentionRow key={row.label} {...row} warn={row.value > 0} />
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-const colorMap = {
-  blue:   { bg: "bg-blue-50",    text: "text-blue-600" },
-  green:  { bg: "bg-emerald-50", text: "text-emerald-600" },
-  violet: { bg: "bg-violet-50",  text: "text-violet-600" },
-  amber:  { bg: "bg-amber-50",   text: "text-amber-600" },
-  zinc:   { bg: "bg-zinc-100",   text: "text-zinc-500" },
-};
-
-interface StatCardProps {
-  label: string;
-  value: string | number;
-  sub?: string;
-  icon: React.ElementType;
-  href: string;
-  color?: keyof typeof colorMap;
-  alert?: boolean;
-}
-
-function StatCard({ label, value, sub, icon: Icon, href, color = "zinc", alert = false }: StatCardProps) {
-  const c = colorMap[color];
-  return (
-    <Link href={href}>
-      <Card className="shadow-none border-zinc-200 hover:border-zinc-300 transition-colors cursor-pointer">
-        <CardContent className="p-5">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-medium text-zinc-500">{label}</p>
-              <p className="mt-1.5 text-2xl font-bold text-zinc-900">{value}</p>
-              {sub && <p className="mt-0.5 text-xs text-zinc-400">{sub}</p>}
-            </div>
-            <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${c.bg}`}>
-              <Icon className={`h-4.5 w-4.5 ${c.text}`} />
-            </div>
-          </div>
-          {alert && (
-            <div className="mt-3 flex items-center gap-1 text-xs text-amber-600">
-              <AlertTriangle className="h-3 w-3" />
-              Needs restocking
-            </div>
+      {/* Job Orders & Billing */}
+      {opsCards.length > 0 && (
+        <section className="space-y-3">
+          {showSectionLabels && (
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Job Orders & Billing</p>
           )}
-        </CardContent>
-      </Card>
-    </Link>
+          <DashboardStatCards cards={opsCards} />
+        </section>
+      )}
+
+      {/* Sales — stat cards with charts directly below */}
+      {salesCards.length > 0 && (
+        <section className="space-y-3">
+          {showSectionLabels && (
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Sales</p>
+          )}
+          <DashboardStatCards cards={salesCards} cols={2} />
+          {data.chartData && data.chartData.length > 0 && (
+            <FadeIn delay={0.1}>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <RevenueChart data={data.chartData} currencySymbol={tenant.currencySymbol} />
+                <TransactionChart data={data.chartData} />
+              </div>
+            </FadeIn>
+          )}
+        </section>
+      )}
+
+      {/* Operations — appointments, CRM, inventory */}
+      {operationsCards.length > 0 && (
+        <section className="space-y-3">
+          {showSectionLabels && (
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Operations</p>
+          )}
+          <DashboardStatCards cards={operationsCards} />
+        </section>
+      )}
+
+      {/* Activity grid — main panel (2/3) + stacked sidebar (1/3) */}
+      {(hasActivityPanel || moduleSet.has("pos") || attentionRows.length > 0) && (
+        <FadeIn delay={0.15}>
+          <div className="grid gap-4 lg:grid-cols-3">
+
+            {/* Main activity panel — first available from: appointments › recent jobs › low stock */}
+            {moduleSet.has("appointments") && (
+              <div className="lg:col-span-2">
+                <Card className="shadow-none border-zinc-200">
+                  <CardHeader className="flex flex-row items-center justify-between pb-3">
+                    <CardTitle className="text-sm font-semibold text-zinc-700">Upcoming Appointments</CardTitle>
+                    <Link
+                      href={`/${tenantSlug}/appointments`}
+                      className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                    >
+                      View all <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {!data.upcomingAppointments?.length ? (
+                      <div className="px-6 py-8 text-center text-sm text-zinc-400">No upcoming appointments</div>
+                    ) : (
+                      <div className="divide-y divide-zinc-100">
+                        {data.upcomingAppointments.map((apt) => (
+                          <div key={apt.id} className="flex items-center gap-3 px-6 py-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                              <Clock className="h-3.5 w-3.5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-zinc-800">{apt.customerName}</p>
+                              <p className="truncate text-xs text-zinc-400">
+                                {apt.service?.name ?? "—"} · {apt.employee?.name ?? "Unassigned"}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-xs font-medium text-zinc-700">
+                                {apt.startAt.toLocaleDateString("nl-NL", { month: "short", day: "numeric" })}
+                              </p>
+                              <p className="text-xs text-zinc-400">
+                                {apt.startAt.toLocaleTimeString("nl-NL", { hour: "numeric", minute: "2-digit" })}
+                              </p>
+                            </div>
+                            <StatusDot status={apt.status} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {moduleSet.has("job-orders") && !moduleSet.has("appointments") && (
+              <div className="lg:col-span-2">
+                <Card className="shadow-none border-zinc-200">
+                  <CardHeader className="flex flex-row items-center justify-between pb-3">
+                    <CardTitle className="text-sm font-semibold text-zinc-700">Recently Completed Jobs</CardTitle>
+                    <Link
+                      href={`/${tenantSlug}/job-orders`}
+                      className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                    >
+                      View board <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {!data.recentCompletedJobs?.length ? (
+                      <div className="px-6 py-8 text-center text-sm text-zinc-400">No completed jobs yet</div>
+                    ) : (
+                      <div className="divide-y divide-zinc-100">
+                        {data.recentCompletedJobs.map((job) => (
+                          <div key={job.id} className="flex items-center justify-between gap-3 px-6 py-3">
+                            <div>
+                              <p className="font-mono text-xs text-zinc-400">{job.jobNo}</p>
+                              <p className="text-sm font-medium text-zinc-800">{job.customerName}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-zinc-500">
+                                {job.completedAt?.toLocaleDateString("nl-NL", { month: "short", day: "numeric" })}
+                              </p>
+                              <p className="text-[11px] text-zinc-400">{job.invoice ? "Invoiced" : "Needs invoice"}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {!moduleSet.has("job-orders") && !moduleSet.has("appointments") && moduleSet.has("inventory") && (
+              <div className="lg:col-span-2">
+                <Card className="shadow-none border-zinc-200">
+                  <CardHeader className="flex flex-row items-center justify-between pb-3">
+                    <CardTitle className="text-sm font-semibold text-zinc-700">Low Stock Watchlist</CardTitle>
+                    <Link
+                      href={`/${tenantSlug}/inventory`}
+                      className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                    >
+                      View inventory <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {!data.lowStockWatchlist?.length ? (
+                      <div className="px-6 py-8 text-center text-sm text-zinc-400">No urgent restocks right now</div>
+                    ) : (
+                      <div className="divide-y divide-zinc-100">
+                        {data.lowStockWatchlist.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between gap-3 px-6 py-3">
+                            <div>
+                              <p className="text-sm font-medium text-zinc-800">{item.name}</p>
+                              <p className="text-xs text-zinc-400">Reorder at {item.reorderAt}</p>
+                            </div>
+                            <p className="text-sm font-semibold text-amber-600">{item.quantity} left</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Right sidebar — recent returns + needs attention stacked */}
+            {(moduleSet.has("pos") || attentionRows.length > 0) && (
+              <div className={`space-y-4 ${!hasActivityPanel ? "lg:col-span-3" : ""}`}>
+                {moduleSet.has("pos") && (
+                  <Card className="shadow-none border-zinc-200">
+                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                      <CardTitle className="text-sm font-semibold text-zinc-700">Recent Returns</CardTitle>
+                      <Link
+                        href={`/${tenantSlug}/sales`}
+                        className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                      >
+                        Sales history <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      {!data.recentReturns?.length ? (
+                        <div className="px-6 py-8 text-center text-sm text-zinc-400">No return activity yet</div>
+                      ) : (
+                        <div className="divide-y divide-zinc-100">
+                          {data.recentReturns.map((saleReturn) => (
+                            <div key={saleReturn.id} className="flex items-center justify-between gap-3 px-6 py-3">
+                              <div>
+                                <p className="font-mono text-xs text-zinc-400">{saleReturn.referenceNo}</p>
+                                <p className="text-sm font-medium text-zinc-800">{saleReturn.sale.referenceNo}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs capitalize text-zinc-500">{saleReturn.status}</p>
+                                <p className="text-sm font-semibold text-zinc-800">
+                                  {tenant.currencySymbol}{Number(saleReturn.refundAmount ?? 0).toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {attentionRows.length > 0 && (
+                  <Card className="shadow-none border-zinc-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-semibold text-zinc-700">Needs Attention</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {attentionRows.map((row) => (
+                        <AttentionRow key={row.label} {...row} warn={row.value > 0} />
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+          </div>
+        </FadeIn>
+      )}
+    </div>
   );
 }
 
