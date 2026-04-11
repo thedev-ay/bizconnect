@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -84,7 +84,7 @@ export function EditJobOrderDialog({
   open,
   onOpenChange,
 }: EditJobOrderDialogProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [serviceSearch, setServiceSearch] = useState("");
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>(() =>
     jobOrder.assignedStaff.map((s) => s.employeeId)
@@ -244,7 +244,7 @@ export function EditJobOrderDialog({
       });
       toast.success("Job order updated");
       onOpenChange(false);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to update");
     }

@@ -1,7 +1,6 @@
 import { prisma } from "@bizconnect/db";
-import { auth } from "@/lib/auth";
 import { getTenant } from "@/lib/tenant";
-import { getActiveModules } from "@/lib/module-registry";
+import { authorize } from "@/lib/authorize";
 import { Card, CardContent } from "@/components/ui/card";
 import { UserTable, CreateUserDialog } from "@/modules/users";
 
@@ -27,15 +26,14 @@ async function getUsers(tenantId: string) {
 
 export default async function UsersPage({ params }: UsersPageProps) {
   const { tenant: tenantSlug } = await params;
-  const [tenant, session, activeModules] = await Promise.all([
+  const [tenant, session] = await Promise.all([
     getTenant(tenantSlug),
-    auth(),
-    getActiveModules(tenantSlug),
+    authorize(tenantSlug),
   ]);
   const users = await getUsers(tenant.id);
 
-  const activeModuleSlugs = activeModules.map((m) => m.slug);
-  const canManage = session?.user?.role === "owner" || session?.user?.role === "admin";
+  const activeModuleSlugs = session.user.modules;
+  const canManage = session.user.role === "owner" || session.user.role === "admin";
 
   return (
     <div className="space-y-6">

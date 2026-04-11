@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
-import { getActiveModules } from "@/lib/module-registry";
+import { authorize } from "@/lib/authorize";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BusinessProfileForm, CurrencyForm, BusinessHoursForm } from "@/modules/settings";
@@ -20,13 +20,12 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
   const { tenant: tenantSlug } = await params;
   const { tab = "general" } = await searchParams;
 
-  const [tenant, activeModules] = await Promise.all([
+  const [tenant, session] = await Promise.all([
     getTenant(tenantSlug),
-    getActiveModules(tenantSlug),
+    authorize(tenantSlug),
   ]);
 
-  const moduleSet = new Set(activeModules.map((m) => m.slug));
-  const hasAppointments = moduleSet.has("appointments");
+  const hasAppointments = session.user.modules.includes("appointments");
 
   // Redirect direct URL access to services tab if appointments module is disabled
   if (tab === "services" && !hasAppointments) {

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ChevronDown, LogOut, MoreHorizontal } from "lucide-react";
 import type { ActiveModule } from "@/lib/module-registry";
 import { isPrivilegedRole, canViewModule } from "@/lib/permissions";
+import { PendingSalesBadge } from "./pending-sales-badge";
 import * as Icons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -82,6 +83,9 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
       >
         {Icon && <Icon className="h-4 w-4 shrink-0" />}
         {name}
+        {slug === "sales" && session?.user?.tenantId && (
+          <PendingSalesBadge tenantId={session.user.tenantId} />
+        )}
       </Link>
     );
   }

@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
 import { serialize } from "@/lib/serialize";
@@ -51,7 +50,6 @@ export async function createSale(tenantSlug: string, tenantId: string, input: Cr
       }
     }
 
-    // Create the sale record
     const newSale = await tx.sale.create({
       data: {
         tenantId,
@@ -80,7 +78,6 @@ export async function createSale(tenantSlug: string, tenantId: string, input: Cr
       include: { items: true },
     });
 
-    // Deduct stock for product items only
     for (const item of parsed.items) {
       if (item.itemType === "product" && item.itemId) {
         const updated = await tx.inventoryItem.updateMany({
@@ -94,7 +91,6 @@ export async function createSale(tenantSlug: string, tenantId: string, input: Cr
         if (updated.count === 0) {
           throw new Error(`Not enough stock left for ${item.name}. Please refresh and try again.`);
         }
-        // Log adjustment
         await tx.inventoryAdjustment.create({
           data: {
             tenantId,
@@ -111,8 +107,6 @@ export async function createSale(tenantSlug: string, tenantId: string, input: Cr
     return newSale;
   });
 
-  revalidatePath(`/${tenantSlug}/pos`);
-  revalidatePath(`/${tenantSlug}/sales`);
   return {
     ...sale,
     subtotal: sale.subtotal.toString(),
@@ -160,13 +154,11 @@ export async function voidSale(tenantSlug: string, tenantId: string, saleId: str
       where: { id: saleId },
       data: { status: "voided" },
     });
-    // Restore stock
     for (const item of sale.items) {
       await tx.inventoryItem.updateMany({
-        where: { id: item.itemId, tenantId },
+        where: { id: item.itemId ?? undefined, tenantId },
         data: { quantity: { increment: item.quantity } },
       });
-      // Log adjustment
       if (item.itemId) {
         await tx.inventoryAdjustment.create({
           data: {
@@ -180,8 +172,6 @@ export async function voidSale(tenantSlug: string, tenantId: string, saleId: str
       }
     }
   });
-
-  revalidatePath(`/${tenantSlug}/sales`);
 }
 
 // ─── Returns/Refunds ─────────────────────────────────────────────────────────
@@ -225,7 +215,6 @@ export async function createReturn(
     }
   }
 
-  // Calculate refund amount based on returned items
   let refundAmount = 0;
   for (const returnItem of items) {
     const saleItem = sale.items.find((i) => i.id === returnItem.saleItemId);
@@ -264,7 +253,6 @@ export async function createReturn(
     include: { items: true },
   });
 
-  revalidatePath(`/${tenantSlug}/sales`);
   return serialize(saleReturn);
 }
 
@@ -284,7 +272,6 @@ export async function approveReturn(
   if (saleReturn.status !== "pending") throw new Error("Return is not pending");
 
   await prisma.$transaction(async (tx) => {
-    // Update return status
     await tx.saleReturn.update({
       where: { id: returnId },
       data: {
@@ -294,7 +281,6 @@ export async function approveReturn(
       },
     });
 
-    // Restore stock for returned items
     for (const returnItem of saleReturn.items) {
       const saleItem = saleReturn.sale.items.find((i) => i.id === returnItem.saleItemId);
       if (saleItem && saleItem.itemId) {
@@ -303,7 +289,6 @@ export async function approveReturn(
           data: { quantity: { increment: returnItem.quantity } },
         });
 
-        // Log adjustment
         await tx.inventoryAdjustment.create({
           data: {
             tenantId,
@@ -318,7 +303,6 @@ export async function approveReturn(
     }
   });
 
-  revalidatePath(`/${tenantSlug}/sales`);
   return serialize(
     await prisma.saleReturn.findUnique({
       where: { id: returnId },
@@ -341,7 +325,6 @@ export async function rejectReturn(tenantSlug: string, tenantId: string, returnI
     data: { status: "rejected" },
   });
 
-  revalidatePath(`/${tenantSlug}/sales`);
   return serialize(updatedSaleReturn);
 }
 
@@ -368,6 +351,5 @@ export async function processRefund(
     },
   });
 
-  revalidatePath(`/${tenantSlug}/sales`);
   return serialize(updatedSaleReturn);
 }

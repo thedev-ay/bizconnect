@@ -1,6 +1,5 @@
-import { auth } from "@/lib/auth";
 import { getTenant } from "@/lib/tenant";
-import { getActiveModules } from "@/lib/module-registry";
+import { authorize } from "@/lib/authorize";
 import { prisma } from "@bizconnect/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -287,13 +286,13 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const { tenant: tenantSlug } = await params;
   const { error } = await searchParams;
 
-  const [session, tenant, activeModules] = await Promise.all([
-    auth(),
+  const [session, tenant] = await Promise.all([
+    authorize(tenantSlug),
     getTenant(tenantSlug),
-    getActiveModules(tenantSlug),
   ]);
 
-  const moduleSet = new Set(activeModules.map((m) => m.slug));
+  const moduleSet = new Set<string>(session.user.modules);
+  const activeModules = session.user.moduleObjects;
   const data = await getDashboardStats(tenant.id, moduleSet);
   const firstName = session?.user?.name?.split(" ")[0] ?? "there";
 
@@ -449,7 +448,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       </div>
 
       {/* No modules fallback */}
-      {activeModules.every((m) => m.isCore) && (
+      {activeModules.every((m: { isCore: boolean }) => m.isCore) && (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-white py-16 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100">
             <Package className="h-6 w-6 text-zinc-400" />

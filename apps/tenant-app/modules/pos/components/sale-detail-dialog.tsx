@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import { format } from "date-fns";
 import {
   Dialog,
@@ -97,7 +98,8 @@ export function SaleDetailDialog({
   open,
   onOpenChange,
 }: SaleDetailProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
   const [voiding, setVoiding] = useState(false);
   const [updatingReturnId, setUpdatingReturnId] = useState<string | null>(null);
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
@@ -105,13 +107,15 @@ export function SaleDetailDialog({
   const [returnOpen, setReturnOpen] = useState(false);
 
   async function handleVoid() {
+    if (!isOnline) { toast.error("You're offline. Connect to void sales."); return; }
     setVoiding(true);
     try {
       await voidSale(tenantSlug, tenantId, sale.id);
       toast.success(`${sale.referenceNo} voided`);
       setVoidConfirmOpen(false);
       onOpenChange(false);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["sales", tenantSlug] });
+      queryClient.invalidateQueries({ queryKey: ["inventory", tenantSlug] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to void sale");
     } finally {
@@ -140,11 +144,13 @@ export function SaleDetailDialog({
   );
 
   async function handleApproveReturn(returnId: string) {
+    if (!isOnline) { toast.error("You're offline. Connect to approve returns."); return; }
     setUpdatingReturnId(returnId);
     try {
       await approveReturn(tenantSlug, tenantId, returnId);
       toast.success("Return approved");
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["sales", tenantSlug] });
+      queryClient.invalidateQueries({ queryKey: ["inventory", tenantSlug] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to approve return");
     } finally {
@@ -153,11 +159,12 @@ export function SaleDetailDialog({
   }
 
   async function handleRejectReturn(returnId: string) {
+    if (!isOnline) { toast.error("You're offline. Connect to reject returns."); return; }
     setUpdatingReturnId(returnId);
     try {
       await rejectReturn(tenantSlug, tenantId, returnId);
       toast.success("Return rejected");
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["sales", tenantSlug] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to reject return");
     } finally {
@@ -166,11 +173,12 @@ export function SaleDetailDialog({
   }
 
   async function handleProcessRefund(returnId: string) {
+    if (!isOnline) { toast.error("You're offline. Connect to process refunds."); return; }
     setUpdatingReturnId(returnId);
     try {
       await processRefund(tenantSlug, tenantId, returnId, sale.paymentMethod === "cash" ? "cash" : "original_payment");
       toast.success("Refund marked as processed");
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["sales", tenantSlug] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to process refund");
     } finally {

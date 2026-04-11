@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -57,7 +57,7 @@ export function CreateAppointmentDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = externalOnOpenChange ?? setInternalOpen;
-  const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
@@ -132,7 +132,7 @@ export function CreateAppointmentDialog({
       await createAppointment(tenantSlug, tenantId, data);
       toast.success("Appointment booked");
       handleOpen(false);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["appointments", tenantSlug] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to book appointment");
     }

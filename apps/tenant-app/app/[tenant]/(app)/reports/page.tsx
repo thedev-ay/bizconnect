@@ -1,5 +1,5 @@
 import { getTenant } from "@/lib/tenant";
-import { getActiveModules } from "@/lib/module-registry";
+import { authorize } from "@/lib/authorize";
 import { getReportsSummary } from "@/modules/reports";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RevenueChart, PaymentMethodChart } from "@/modules/reports";
@@ -37,12 +37,12 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const fromDate = new Date(fromStr + "T00:00:00");
   const toDate = new Date(toStr + "T00:00:00");
 
-  const [tenant, activeModules] = await Promise.all([
+  const [tenant, session] = await Promise.all([
     getTenant(tenantSlug),
-    getActiveModules(tenantSlug),
+    authorize(tenantSlug),
   ]);
 
-  const moduleSet = new Set(activeModules.map((m) => m.slug));
+  const moduleSet = new Set<string>(session.user.modules);
   const hasPos = moduleSet.has("pos");
   const hasBilling = moduleSet.has("billing");
 

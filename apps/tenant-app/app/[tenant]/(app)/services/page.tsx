@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
-import { tenantHasModule } from "@/lib/module-registry";
+import { authorize } from "@/lib/authorize";
 import { Card } from "@/components/ui/card";
 import { ServicesList } from "@/modules/services";
 import type { Service, PricingType } from "@/modules/services";
@@ -13,8 +13,8 @@ interface ServicesPageProps {
 export default async function ServicesPage({ params }: ServicesPageProps) {
   const { tenant: tenantSlug } = await params;
 
-  const hasModule = await tenantHasModule(tenantSlug, "job-orders");
-  if (!hasModule) redirect(`/${tenantSlug}/dashboard?error=module_disabled`);
+  const session = await authorize(tenantSlug);
+  if (!session.user.modules.includes("job-orders")) redirect(`/${tenantSlug}/dashboard?error=module_disabled`);
 
   const tenant = await getTenant(tenantSlug);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import { Plus, Minus, Trash2, ShoppingCart, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CartItem } from "../types";
 import { createSale } from "../actions";
+import { queueOfflineSale } from "@/lib/offline-sale";
 import { bestPromo } from "@/modules/promotions/apply";
 import type { PromoType } from "@/modules/promotions";
 
@@ -77,7 +78,7 @@ export function POSTerminal({
   currencySymbol,
   currencyLocale,
 }: POSTerminalProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountType, setDiscountType] = useState<"flat" | "percent">("flat");
   const [discountValue, setDiscountValue] = useState(0);
@@ -96,7 +97,7 @@ export function POSTerminal({
     : Math.min(discountValue, subtotal);
   const total = Math.max(0, subtotal - discountAmount);
   const change = Math.max(0, Number(amountPaid) - total);
-  const availableTabs = (servicesEnabled ? ["products", "services"] : ["products"]) as const;
+  const availableTabs: ("products" | "services")[] = servicesEnabled ? ["products", "services"] : ["products"];
   const emptyCartMessage = servicesEnabled
     ? "Tap a product or service to add it"
     : "Tap a product to add it";
@@ -341,31 +342,54 @@ export function POSTerminal({
       return;
     }
     setSubmitting(true);
-    try {
-      const sale = await createSale(tenantSlug, tenantId, {
-        items: cart.map((i) => ({
-          itemId: i.itemType === "product" ? i.itemId : undefined,
-          itemType: i.itemType,
-          name: i.name,
-          quantity: i.quantity,
-          weight: i.weight ?? undefined,
-          unitPrice: i.unitPrice,
-          originalPrice: i.originalPrice,
-          promoDiscount: i.promoDiscount,
-          total: i.total,
-        })),
-        subtotal,
-        discount: discountAmount,
-        total,
-        amountPaid: Number(amountPaid),
-        paymentMethod: paymentMethod as "cash" | "card" | "gcash" | "maya",
-      });
 
+    const saleInput = {
+      items: cart.map((i) => ({
+        itemId: i.itemType === "product" ? i.itemId : undefined,
+        itemType: i.itemType,
+        name: i.name,
+        quantity: i.quantity,
+        weight: i.weight ?? undefined,
+        unitPrice: i.unitPrice,
+        originalPrice: i.originalPrice,
+        promoDiscount: i.promoDiscount,
+        total: i.total,
+      })),
+      subtotal,
+      discount: discountAmount,
+      total,
+      amountPaid: Number(amountPaid),
+      paymentMethod: paymentMethod as "cash" | "card" | "gcash" | "maya",
+    };
+
+    // ── Offline path ──────────────────────────────────────────────────────
+    if (!navigator.onLine) {
+      try {
+        const refNo = await queueOfflineSale(tenantSlug, tenantId, saleInput);
+        setCart([]);
+        setDiscountValue(0);
+        setAmountPaid("");
+        toast.success(`Sale queued offline (${refNo}). Will sync when back online.`);
+        queryClient.invalidateQueries({ queryKey: ["pos-products", tenantSlug] });
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "Failed to save offline sale");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // ── Online path ───────────────────────────────────────────────────────
+    try {
+      const sale = await createSale(tenantSlug, tenantId, saleInput);
       setCart([]);
       setDiscountValue(0);
       setAmountPaid("");
       toast.success("Sale completed");
-      router.push(`/${tenantSlug}/sales?saleId=${sale.id}`);
+      queryClient.invalidateQueries({ queryKey: ["pos-products", tenantSlug] });
+      queryClient.invalidateQueries({ queryKey: ["inventory", tenantSlug] });
+      queryClient.invalidateQueries({ queryKey: ["sales", tenantSlug] });
+      window.location.href = `/${tenantSlug}/sales?saleId=${sale.id}`;
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to process sale");
     } finally {

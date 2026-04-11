@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { tenantHasModule, ROUTE_SEGMENT_TO_MODULE } from "@/lib/module-registry";
+import { ROUTE_SEGMENT_TO_MODULE } from "@/lib/module-registry";
 
 export const proxy = auth(async (request) => {
   const { pathname } = request.nextUrl;
   const session = request.auth;
 
-  // Pass through static assets and NextAuth routes
+  // Pass through static assets, NextAuth routes, and API routes
+  // API routes handle their own auth via authorize()
   if (
-    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {
@@ -37,11 +38,11 @@ export const proxy = auth(async (request) => {
     );
   }
 
-  // Module access guard — only check known module routes, use cached lookup
+  // Module access guard — check session modules (set at login, no DB call needed)
   const moduleSlug = moduleSegment ? ROUTE_SEGMENT_TO_MODULE[moduleSegment] : undefined;
   if (moduleSlug) {
-    const hasAccess = await tenantHasModule(tenantSlug, moduleSlug);
-    if (!hasAccess) {
+    const enabledModules = (session.user?.modules ?? []) as string[];
+    if (!enabledModules.includes(moduleSlug)) {
       const url = new URL(`/${tenantSlug}/dashboard`, request.url);
       url.searchParams.set("error", "module_disabled");
       return NextResponse.redirect(url);

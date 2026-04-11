@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,8 @@ interface EditItemDialogProps {
 }
 
 export function EditItemDialog({ item, tenantSlug, tenantId, currencySymbol, open, onOpenChange }: EditItemDialogProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<UpdateItemInput>({
     resolver: zodResolver(updateItemSchema as any),
@@ -45,11 +47,15 @@ export function EditItemDialog({ item, tenantSlug, tenantId, currencySymbol, ope
   });
 
   async function onSubmit(data: UpdateItemInput) {
+    if (!isOnline) {
+      toast.error("You're offline. Connect to the internet to save changes.");
+      return;
+    }
     try {
       await updateItem(tenantSlug, tenantId, item.id, data);
       toast.success(`"${item.name}" updated`);
       onOpenChange(false);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["inventory", tenantSlug] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to update item");
     }
@@ -92,8 +98,13 @@ export function EditItemDialog({ item, tenantSlug, tenantId, currencySymbol, ope
             </div>
           </div>
           <DialogFooter>
+            {!isOnline && (
+              <p className="flex items-center gap-1.5 text-xs text-amber-600 mr-auto">
+                <WifiOff className="h-3.5 w-3.5" /> You're offline
+              </p>
+            )}
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || !isOnline}>
               {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>

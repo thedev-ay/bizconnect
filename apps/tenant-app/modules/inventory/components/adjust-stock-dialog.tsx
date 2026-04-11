@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +27,8 @@ interface AdjustStockDialogProps {
 }
 
 export function AdjustStockDialog({ item, tenantSlug, tenantId, open, onOpenChange }: AdjustStockDialogProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
   const [type, setType] = useState<"add" | "remove">("add");
   const [qty, setQty] = useState("");
   const [saving, setSaving] = useState(false);
@@ -34,6 +37,10 @@ export function AdjustStockDialog({ item, tenantSlug, tenantId, open, onOpenChan
   const newQty = item.quantity + delta;
 
   async function handleSave() {
+    if (!isOnline) {
+      toast.error("You're offline. Connect to the internet to adjust stock.");
+      return;
+    }
     const amount = Number(qty);
     if (!amount || amount <= 0) {
       toast.error("Enter a valid quantity");
@@ -49,7 +56,7 @@ export function AdjustStockDialog({ item, tenantSlug, tenantId, open, onOpenChan
       toast.success(`Stock ${type === "add" ? "added to" : "removed from"} "${item.name}"`);
       onOpenChange(false);
       setQty("");
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["inventory", tenantSlug] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to adjust stock");
     } finally {
@@ -122,8 +129,13 @@ export function AdjustStockDialog({ item, tenantSlug, tenantId, open, onOpenChan
           )}
         </div>
         <DialogFooter>
+          {!isOnline && (
+            <p className="flex items-center gap-1.5 text-xs text-amber-600 mr-auto">
+              <WifiOff className="h-3.5 w-3.5" /> You're offline
+            </p>
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving || !qty || Number(qty) <= 0}>
+          <Button onClick={handleSave} disabled={saving || !qty || Number(qty) <= 0 || !isOnline}>
             {saving ? "Saving..." : "Confirm"}
           </Button>
         </DialogFooter>

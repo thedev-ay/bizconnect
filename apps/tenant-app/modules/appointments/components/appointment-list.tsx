@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +38,7 @@ const STATUS_BADGE: Record<string, "default" | "secondary" | "outline" | "destru
 };
 
 export function AppointmentList({ appointments, tenantSlug, tenantId }: AppointmentListProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState<string | null>(null);
 
   async function handleStatus(id: string, status: string, msg: string) {
@@ -46,7 +46,7 @@ export function AppointmentList({ appointments, tenantSlug, tenantId }: Appointm
     try {
       await updateAppointmentStatus(tenantSlug, tenantId, id, status);
       toast.success(msg);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["appointments", tenantSlug] });
     } catch {
       toast.error("Action failed");
     } finally {

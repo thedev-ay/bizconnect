@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Settings, Plus, Trash2, GripVertical, CheckCircle2, XCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -92,7 +92,7 @@ function SortableStepRow({
 }
 
 export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts }: WorkflowStageEditorProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -183,7 +183,7 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
       await deleteWorkflowStage(tenantSlug, tenantId, stage.id);
       setLocal((prev) => prev.filter((s) => s.id !== stage.id));
       toast.success(`"${stage.name}" removed`);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to delete");
     } finally {
@@ -240,10 +240,10 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
       await saveWorkflowStages(tenantSlug, tenantId, toSave);
       toast.success("Workflow saved");
       setOpen(false);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save");
-      router.refresh(); // re-sync editor with actual DB state
+      queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] }); // re-sync editor with actual DB state
     } finally {
       setSaving(false);
     }

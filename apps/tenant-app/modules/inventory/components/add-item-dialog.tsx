@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, WifiOff } from "lucide-react";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,7 +30,8 @@ interface AddItemDialogProps {
 
 export function AddItemDialog({ tenantSlug, tenantId, currencySymbol }: AddItemDialogProps) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
 
   const {
     register,
@@ -42,12 +44,16 @@ export function AddItemDialog({ tenantSlug, tenantId, currencySymbol }: AddItemD
   });
 
   async function onSubmit(data: CreateItemInput) {
+    if (!isOnline) {
+      toast.error("You're offline. Connect to the internet to add items.");
+      return;
+    }
     try {
       await createItem(tenantSlug, tenantId, data);
       toast.success(`"${data.name}" added to inventory`);
       setOpen(false);
       reset();
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["inventory", tenantSlug] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to add item");
     }
@@ -102,10 +108,15 @@ export function AddItemDialog({ tenantSlug, tenantId, currencySymbol }: AddItemD
             </div>
           </div>
           <DialogFooter>
+            {!isOnline && (
+              <p className="flex items-center gap-1.5 text-xs text-amber-600 mr-auto">
+                <WifiOff className="h-3.5 w-3.5" /> You're offline
+              </p>
+            )}
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || !isOnline}>
               {isSubmitting ? "Adding..." : "Add Item"}
             </Button>
           </DialogFooter>

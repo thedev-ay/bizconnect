@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -88,7 +88,7 @@ export function CreateJobOrderDialog({
   const [items, setItems] = useState<LineItem[]>([]);
   const [serviceSearch, setServiceSearch] = useState("");
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
-  const router = useRouter();
+  const queryClient = useQueryClient();
 
   const { register, handleSubmit, reset, control, watch, setValue, formState: { errors, isSubmitting } } =
     useForm<CreateJobOrderInput>({
@@ -230,7 +230,7 @@ export function CreateJobOrderDialog({
       }, firstStageSlug);
       toast.success("Job order created");
       handleClose(false);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to create job order");
     }

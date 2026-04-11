@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -92,6 +93,7 @@ export function JobOrderBoard({
   billingEnabled,
 }: JobOrderBoardProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const firstStage = stages[0];
   const [activeTab, setActiveTab] = useState<string>(firstStage?.slug ?? "");
   const [advancing, setAdvancing] = useState<string | null>(null);
@@ -147,7 +149,7 @@ export function JobOrderBoard({
 
     setAdvancing(jo.id);
     updateJobOrderStatus(tenantSlug, tenantId, jo.id, next.slug, next.type)
-      .then(() => { toast.success(`${jo.jobNo} → ${next.name}`); router.refresh(); })
+      .then(() => { toast.success(`${jo.jobNo} → ${next.name}`); queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] }); })
       .catch(() => toast.error("Failed to update"))
       .finally(() => setAdvancing(null));
   }
@@ -161,7 +163,7 @@ export function JobOrderBoard({
         router.push(`/${tenantSlug}/billing?invoiceId=${result.invoiceId}`);
         return;
       }
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to create invoice");
     } finally {

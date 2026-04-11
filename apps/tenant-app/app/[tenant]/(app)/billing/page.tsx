@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
-import { tenantHasModule } from "@/lib/module-registry";
+import { authorize } from "@/lib/authorize";
 import { Card, CardContent } from "@/components/ui/card";
 import { InvoiceList, CreateInvoiceDialog } from "@/modules/billing";
 import type { Invoice } from "@/modules/billing";
@@ -57,8 +57,8 @@ async function getInvoices(tenantId: string) {
 export default async function BillingPage({ params, searchParams }: BillingPageProps) {
   const { tenant: tenantSlug } = await params;
   const { invoiceId } = await searchParams;
-  const tenant = await getTenant(tenantSlug);
-  const crmEnabled = await tenantHasModule(tenantSlug, "crm");
+  const [tenant, session] = await Promise.all([getTenant(tenantSlug), authorize(tenantSlug)]);
+  const crmEnabled = session.user.modules.includes("crm");
   const { invoices, customers, readyToInvoice, total, paidTotal, overdueCount, readyToInvoiceValue } = await getInvoices(tenant.id);
 
   const typedInvoices: Invoice[] = invoices.map((inv) => ({

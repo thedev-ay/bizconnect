@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -93,7 +93,7 @@ export function AppointmentCalendar({
   slotMinTime,
   slotMaxTime,
 }: AppointmentCalendarProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const calendarRef = useRef<FullCalendar>(null);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(false);
@@ -126,7 +126,7 @@ export function AppointmentCalendar({
       await updateAppointmentStatus(tenantSlug, tenantId, id, status);
       toast.success(msg);
       setSelected(null);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["appointments", tenantSlug] });
     } catch {
       toast.error("Action failed");
     } finally {

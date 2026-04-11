@@ -118,6 +118,8 @@ export function SalesList({
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const sources = Array.from(new Set(sales.map((s) => s.source)));
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(highlightedSaleId ?? null);
@@ -198,7 +200,7 @@ export function SalesList({
             <SelectItem value="voided">Voided</SelectItem>
           </SelectContent>
         </Select>
-        {sources.length > 1 && (
+        {mounted && sources.length > 1 && (
           <Select value={sourceFilter} onValueChange={setSourceFilter}>
             <SelectTrigger className="h-8 w-36 text-sm">
               <SelectValue />

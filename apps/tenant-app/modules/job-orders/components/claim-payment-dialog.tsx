@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -45,7 +45,7 @@ export function ClaimPaymentDialog({
   open,
   onOpenChange,
 }: ClaimPaymentDialogProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const grandTotal = jobOrder.items.reduce((s, i) => s + Number(i.total), 0);
 
   const [method, setMethod] = useState<string>("cash");
@@ -95,7 +95,7 @@ export function ClaimPaymentDialog({
       
       // Close payment dialog
       handleOpenChange(false);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to claim");
     } finally {

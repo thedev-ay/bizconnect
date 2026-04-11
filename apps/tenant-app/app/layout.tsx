@@ -9,6 +9,12 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 export const metadata: Metadata = {
   title: "BizConnect",
   description: "Modular business management platform",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "BizConnect",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

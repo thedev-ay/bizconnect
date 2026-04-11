@@ -1,5 +1,13 @@
 import { DefaultSession, DefaultJWT } from "next-auth";
 
+interface SessionModule {
+  slug: string;
+  name: string;
+  icon: string | null;
+  sortOrder: number;
+  isCore: boolean;
+}
+
 declare module "next-auth" {
   interface Session {
     user: {
@@ -8,6 +16,8 @@ declare module "next-auth" {
       tenantName: string;
       role: string;
       permissions: Record<string, boolean>;
+      modules: string[];
+      moduleObjects: SessionModule[];
     } & DefaultSession["user"];
   }
 }
@@ -19,5 +29,7 @@ declare module "next-auth/jwt" {
     tenantName: string;
     role: string;
     permissions: Record<string, boolean>;
+    modules: string[];
+    moduleObjects: SessionModule[];
   }
 }

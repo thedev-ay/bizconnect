@@ -57,7 +57,7 @@ export function RevenueChart({ data, currencySymbol }: RevenueChartProps) {
             />
             <Tooltip
               contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "6px" }}
-              formatter={(value: number) => [`${currencySymbol}${value.toLocaleString()}`, "Revenue"]}
+              formatter={(value) => [`${currencySymbol}${Number(value).toLocaleString()}`, "Revenue"]}
               labelFormatter={(label) => `${label}`}
             />
             <Line
@@ -126,7 +126,7 @@ export function TransactionChart({ data }: TransactionChartProps) {
             />
             <Tooltip
               contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "6px" }}
-              formatter={(value: number) => [value, "Transactions"]}
+              formatter={(value) => [value, "Transactions"]}
               labelFormatter={(label) => `${label}`}
             />
             <Bar

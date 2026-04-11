@@ -36,7 +36,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             tenant: { slug: tenantSlug, isActive: true },
           },
           include: {
-            tenant: { select: { id: true, slug: true, name: true } },
+            tenant: {
+              select: {
+                id: true,
+                slug: true,
+                name: true,
+                tenantModules: {
+                  where: { isEnabled: true },
+                  select: {
+                  module: {
+                    select: {
+                      slug: true,
+                      name: true,
+                      icon: true,
+                      sortOrder: true,
+                      isCore: true,
+                    },
+                  },
+                },
+                },
+              },
+            },
           },
         });
 
@@ -54,6 +74,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           tenantName: user.tenant.name,
           role: user.role,
           permissions: (user.permissions as Record<string, boolean>) ?? {},
+          modules: user.tenant.tenantModules.map((tm) => tm.module.slug),
+          moduleObjects: user.tenant.tenantModules.map((tm) => tm.module),
         };
       },
     }),
@@ -67,12 +89,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           tenantName: string;
           role: string;
           permissions: Record<string, boolean>;
+          modules: string[];
+          moduleObjects: { slug: string; name: string; icon: string | null; sortOrder: number; isCore: boolean }[];
         };
         token.tenantSlug = u.tenantSlug;
         token.tenantId = u.tenantId;
         token.tenantName = u.tenantName;
         token.role = u.role;
         token.permissions = u.permissions;
+        token.modules = u.modules;
+        token.moduleObjects = u.moduleObjects;
       }
       return token;
     },
@@ -83,6 +109,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.tenantName = token.tenantName as string;
         session.user.role = token.role as string;
         session.user.permissions = (token.permissions as Record<string, boolean>) ?? {};
+        session.user.modules = (token.modules as string[]) ?? [];
+        session.user.moduleObjects = (token.moduleObjects as { slug: string; name: string; icon: string | null; sortOrder: number; isCore: boolean }[]) ?? [];
       }
       return session;
     },

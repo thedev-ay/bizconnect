@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import {
   Table,
   TableBody,
@@ -39,7 +40,8 @@ interface InventoryListProps {
 }
 
 export function InventoryList({ items, tenantSlug, tenantId, currencySymbol, currencyLocale }: InventoryListProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
   const [page, setPage] = useState(0);
   const totalPages = Math.ceil(items.length / PAGE_SIZE);
   const slice = items.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
@@ -52,12 +54,13 @@ export function InventoryList({ items, tenantSlug, tenantId, currencySymbol, cur
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   async function handleDelete(item: InventoryItem) {
+    if (!isOnline) { toast.error("You're offline. Connect to delete items."); return; }
     if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
     setDeletingId(item.id);
     try {
       await deleteItem(tenantSlug, tenantId, item.id);
       toast.success(`"${item.name}" deleted`);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["inventory", tenantSlug] });
     } catch {
       toast.error("Failed to delete item");
     } finally {

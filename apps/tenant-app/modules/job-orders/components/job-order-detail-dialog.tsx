@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
@@ -52,6 +53,7 @@ export function JobOrderDetailDialog({
   billingEnabled,
 }: JobOrderDetailDialogProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [confirmMode, setConfirmMode] = useState<ConfirmMode>(null);
 
@@ -77,7 +79,7 @@ export function JobOrderDetailDialog({
     }
     setLoading(true);
     updateJobOrderStatus(tenantSlug, tenantId, jobOrder.id, nextStage.slug, nextStage.type)
-      .then(() => { toast.success(`Moved to ${nextStage.name}`); onOpenChange(false); router.refresh(); })
+      .then(() => { toast.success(`Moved to ${nextStage.name}`); onOpenChange(false); queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] }); })
       .catch(() => toast.error("Failed to update status"))
       .finally(() => setLoading(false));
   }
@@ -89,7 +91,7 @@ export function JobOrderDetailDialog({
       await updateJobOrderStatus(tenantSlug, tenantId, jobOrder.id, prevStage.slug, prevStage.type);
       toast.success(`Moved back to ${prevStage.name}`);
       onOpenChange(false);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] });
     } catch {
       toast.error("Failed to move back");
     } finally {
@@ -108,7 +110,7 @@ export function JobOrderDetailDialog({
         toast.success("Job order deleted");
       }
       onOpenChange(false);
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] });
     } catch {
       toast.error("Action failed");
     } finally {
@@ -127,7 +129,7 @@ export function JobOrderDetailDialog({
         router.push(`/${tenantSlug}/billing?invoiceId=${result.invoiceId}`);
         return;
       }
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to create invoice");
     } finally {

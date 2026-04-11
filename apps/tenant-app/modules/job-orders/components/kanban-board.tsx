@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
@@ -292,7 +292,7 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ jobOrders, stages, tenantSlug, tenantId, currencySymbol, currencyLocale, onSelect, onEdit, onClaim }: KanbanBoardProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [optimisticOrders, setOptimisticOrders] = useState(jobOrders);
   const [advancing, setAdvancing] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -336,7 +336,7 @@ export function KanbanBoard({ jobOrders, stages, tenantSlug, tenantId, currencyS
     setAdvancing(jo.id);
     setOptimisticOrders((prev) => prev.map((j) => j.id === jo.id ? { ...j, status: targetStage.slug } : j));
     updateJobOrderStatus(tenantSlug, tenantId, jo.id, targetStage.slug, targetStage.type)
-      .then(() => { toast.success(`${jo.jobNo} → ${targetStage.name}`); router.refresh(); })
+      .then(() => { toast.success(`${jo.jobNo} → ${targetStage.name}`); queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] }); })
       .catch(() => {
         toast.error("Failed to update");
         setOptimisticOrders((prev) => prev.map((j) => j.id === jo.id ? { ...j, status: prevStatus } : j));

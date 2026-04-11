@@ -1,9 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
-import { createItemSchema, updateItemSchema, adjustStockSchema } from "./schema";
+import { createItemSchema, updateItemSchema } from "./schema";
 import type { CreateItemInput, UpdateItemInput } from "./schema";
 
 export async function createItem(tenantSlug: string, tenantId: string, input: CreateItemInput) {
@@ -16,8 +15,6 @@ export async function createItem(tenantSlug: string, tenantId: string, input: Cr
       ...parsed,
     },
   });
-
-  revalidatePath(`/${tenantSlug}/inventory`);
 }
 
 export async function updateItem(
@@ -33,8 +30,6 @@ export async function updateItem(
     where: { id: itemId, tenantId },
     data: parsed,
   });
-
-  revalidatePath(`/${tenantSlug}/inventory`);
 }
 
 export async function adjustStock(
@@ -48,13 +43,11 @@ export async function adjustStock(
   await authorize(tenantSlug, "inventory.edit");
 
   await prisma.$transaction(async (tx) => {
-    // Update inventory
     await tx.inventoryItem.update({
       where: { id: itemId, tenantId },
       data: { quantity: { increment: delta } },
     });
 
-    // Log adjustment
     await tx.inventoryAdjustment.create({
       data: {
         tenantId,
@@ -65,14 +58,11 @@ export async function adjustStock(
       },
     });
   });
-
-  revalidatePath(`/${tenantSlug}/inventory`);
 }
 
 export async function deleteItem(tenantSlug: string, tenantId: string, itemId: string) {
   await authorize(tenantSlug, "inventory.delete");
   await prisma.inventoryItem.delete({ where: { id: itemId, tenantId } });
-  revalidatePath(`/${tenantSlug}/inventory`);
 }
 
 export async function getAdjustmentHistory(tenantSlug: string, tenantId: string, itemId: string) {

@@ -10,7 +10,7 @@ interface Adjustment {
   id: string;
   quantityChange: number;
   reason: string | null;
-  createdAt: Date;
+  createdAt: Date | string;
   item: { name: string };
 }
 
