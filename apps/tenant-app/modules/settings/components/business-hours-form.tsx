@@ -55,10 +55,10 @@ export function BusinessHoursForm({ tenantSlug, tenantId, initialHours }: Busine
 
   return (
     <div className="space-y-4">
-      <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200">
+      <div className="divide-y divide-slate-200/80 rounded-[28px] border border-slate-200/80 bg-white">
         {hours.map((h) => (
-          <div key={h.dayOfWeek} className="flex items-center gap-4 px-4 py-3">
-            <span className="w-28 text-sm font-medium text-zinc-700">{DAYS[h.dayOfWeek]}</span>
+          <div key={h.dayOfWeek} className="flex items-center gap-4 px-5 py-3.5">
+            <span className="w-28 text-sm font-medium text-slate-950">{DAYS[h.dayOfWeek]}</span>
 
             {/* Open toggle */}
             <button
@@ -66,7 +66,7 @@ export function BusinessHoursForm({ tenantSlug, tenantId, initialHours }: Busine
               onClick={() => updateDay(h.dayOfWeek, { isOpen: !h.isOpen })}
               className={cn(
                 "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                h.isOpen ? "bg-zinc-900" : "bg-zinc-200"
+                h.isOpen ? "bg-primary" : "bg-slate-200"
               )}
             >
               <span
@@ -76,7 +76,7 @@ export function BusinessHoursForm({ tenantSlug, tenantId, initialHours }: Busine
                 )}
               />
             </button>
-            <span className="w-12 text-xs text-zinc-500">{h.isOpen ? "Open" : "Closed"}</span>
+            <span className="w-12 text-xs text-slate-500">{h.isOpen ? "Open" : "Closed"}</span>
 
             {h.isOpen ? (
               <div className="flex items-center gap-2">
@@ -86,7 +86,7 @@ export function BusinessHoursForm({ tenantSlug, tenantId, initialHours }: Busine
                   onChange={(e) => updateDay(h.dayOfWeek, { openTime: e.target.value })}
                   className="h-8 w-28 text-sm"
                 />
-                <span className="text-xs text-zinc-400">to</span>
+                <span className="text-xs text-slate-400">to</span>
                 <Input
                   type="time"
                   value={h.closeTime}
@@ -95,14 +95,14 @@ export function BusinessHoursForm({ tenantSlug, tenantId, initialHours }: Busine
                 />
               </div>
             ) : (
-              <span className="text-xs text-zinc-400">Closed all day</span>
+              <span className="text-xs text-slate-500">Closed all day</span>
             )}
           </div>
         ))}
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
+        <Button className="rounded-full" onClick={handleSave} disabled={saving}>
           {saving ? "Saving…" : "Save Hours"}
         </Button>
       </div>

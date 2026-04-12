@@ -14,17 +14,18 @@ async function authorize(tenantSlug: string) {
 export async function createService(tenantSlug: string, tenantId: string, input: CreateServiceInput) {
   await authorize(tenantSlug);
   const parsed = createServiceSchema.parse(input);
-  const service = await prisma.service.create({
+  await prisma.service.create({
     data: { tenantId, ...parsed },
   });
   revalidatePath(`/${tenantSlug}/staff`);
-  return service;
+  revalidatePath(`/${tenantSlug}/settings`, "page");
 }
 
 export async function deleteService(tenantSlug: string, tenantId: string, serviceId: string) {
   await authorize(tenantSlug);
   await prisma.service.delete({ where: { id: serviceId, tenantId } });
   revalidatePath(`/${tenantSlug}/staff`);
+  revalidatePath(`/${tenantSlug}/settings`, "page");
 }
 
 export async function updateStaffProfile(

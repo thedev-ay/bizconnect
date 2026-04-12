@@ -20,10 +20,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Customer } from "../types";
 import { deleteCustomer } from "../actions";
+import { EditCustomerDialog } from "./edit-customer-dialog";
 
 interface CustomerListProps {
   customers: Customer[];
@@ -33,9 +34,9 @@ interface CustomerListProps {
 }
 
 const TAG_STYLES: Record<string, string> = {
-  vip: "bg-amber-50 text-amber-700 border-amber-200",
-  new: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  regular: "bg-blue-50 text-blue-700 border-blue-200",
+  vip: "border-amber-200 bg-amber-50 text-amber-700",
+  new: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  regular: "border-sky-200 bg-sky-50 text-sky-700",
 };
 
 function getInitials(name: string) {
@@ -50,6 +51,7 @@ function getInitials(name: string) {
 export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }: CustomerListProps) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Customer | null>(null);
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this customer? This cannot be undone.")) return;
@@ -66,22 +68,23 @@ export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }
   }
 
   return (
+    <>
     <Table>
-      <TableHeader>
-        <TableRow className="border-zinc-100 hover:bg-transparent">
-          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Name</TableHead>
-          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Contact</TableHead>
-          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Address</TableHead>
-          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Jobs</TableHead>
-          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Tags</TableHead>
-          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Since</TableHead>
-          <TableHead />
-        </TableRow>
-      </TableHeader>
+        <TableHeader>
+          <TableRow className="border-border/60 hover:bg-transparent">
+            <TableHead className="pl-14 text-xs uppercase tracking-[0.22em] text-muted-foreground">Name</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Contact</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Address</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Jobs</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Tags</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Since</TableHead>
+          <TableHead className="w-12 pr-4" />
+          </TableRow>
+        </TableHeader>
       <TableBody>
         {customers.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={7} className="py-12 text-center text-sm text-zinc-400">
+            <TableCell colSpan={7} className="py-14 text-center text-sm text-muted-foreground">
               No customers yet.
             </TableCell>
           </TableRow>
@@ -89,40 +92,40 @@ export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }
           customers.map((customer) => (
             <TableRow
               key={customer.id}
-              className={cn("border-zinc-100 hover:bg-zinc-50/50", loading === customer.id && "opacity-50")}
+              className={cn("border-border/60 hover:bg-muted/30", loading === customer.id && "opacity-50")}
             >
               <TableCell>
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/15 bg-primary/10 text-xs font-semibold text-primary">
                     {getInitials(customer.name)}
                   </div>
-                  <span className="text-sm font-medium text-zinc-900">{customer.name}</span>
+                  <span className="text-sm font-medium text-foreground">{customer.name}</span>
                 </div>
               </TableCell>
               <TableCell>
                 {customer.email && (
-                  <div className="text-sm text-zinc-700">{customer.email}</div>
+                  <div className="text-sm text-foreground">{customer.email}</div>
                 )}
                 {customer.phone && (
-                  <div className="text-xs text-zinc-400">{customer.phone}</div>
+                  <div className="text-xs text-muted-foreground">{customer.phone}</div>
                 )}
                 {!customer.email && !customer.phone && (
-                  <span className="text-zinc-300">—</span>
+                  <span className="text-muted-foreground/50">—</span>
                 )}
               </TableCell>
-              <TableCell className="text-sm text-zinc-500">
-                {customer.address ?? <span className="text-zinc-300">—</span>}
+              <TableCell className="text-sm text-muted-foreground">
+                {customer.address ?? <span className="text-muted-foreground/50">—</span>}
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-zinc-700">
+                  <span className="text-sm font-medium text-foreground">
                     {jobOrderCounts[customer.id] ?? 0}
                   </span>
                   <Link
                     href={`/${tenantSlug}/job-orders?customerId=${customer.id}`}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                    className="text-xs font-medium text-primary hover:text-primary/80"
                   >
-                    New Job
+                    New
                   </Link>
                 </div>
               </TableCell>
@@ -134,24 +137,27 @@ export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }
                           key={tag}
                           className={cn(
                             "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
-                            TAG_STYLES[tag] ?? "bg-zinc-50 text-zinc-600 border-zinc-200"
+                            TAG_STYLES[tag] ?? "border-border bg-muted/40 text-muted-foreground"
                           )}
                         >
                           {tag}
                         </span>
                       ))
-                    : <span className="text-zinc-300">—</span>}
+                    : <span className="text-muted-foreground/50">—</span>}
                 </div>
               </TableCell>
-              <TableCell className="text-sm text-zinc-500">
+              <TableCell className="text-sm text-muted-foreground">
                 {format(new Date(customer.createdAt), "MMM d, yyyy")}
               </TableCell>
-              <TableCell>
+              <TableCell className="pr-4">
                 <DropdownMenu>
-                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-700" />}>
+                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" />}>
                     <MoreHorizontal className="h-4 w-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setEditing(customer)}>
+                      <Pencil className="mr-2 h-4 w-4" /> Edit
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       onClick={() => handleDelete(customer.id)}
@@ -166,5 +172,16 @@ export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }
         )}
       </TableBody>
     </Table>
+
+      {editing && (
+        <EditCustomerDialog
+          customer={editing}
+          tenantSlug={tenantSlug}
+          tenantId={tenantId}
+          open={!!editing}
+          onOpenChange={(o) => { if (!o) setEditing(null); }}
+        />
+      )}
+    </>
   );
 }

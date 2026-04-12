@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,7 @@ export function ClaimPaymentDialog({
   onOpenChange,
 }: ClaimPaymentDialogProps) {
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
   const grandTotal = jobOrder.items.reduce((s, i) => s + Number(i.total), 0);
 
   const [method, setMethod] = useState<string>("cash");
@@ -68,6 +70,7 @@ export function ClaimPaymentDialog({
   }
 
   async function handleConfirm() {
+    if (!isOnline) { toast.error("You're offline. Connect to process payments."); return; }
     setLoading(true);
     try {
       await claimJobOrder(tenantSlug, tenantId, jobOrder.id, {
@@ -206,7 +209,7 @@ export function ClaimPaymentDialog({
           <Button
             className="flex-1 bg-emerald-600 hover:bg-emerald-700"
             onClick={handleConfirm}
-            disabled={loading || !canConfirm}
+            disabled={loading || !canConfirm || !isOnline}
           >
             {loading ? "Processing..." : "Confirm Payment"}
           </Button>

@@ -45,8 +45,7 @@ export function DateRangeFilter({ from, to, granularity }: Props) {
   const today = toDateStr(new Date());
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* Presets */}
+    <div className="flex flex-wrap items-center gap-3 rounded-[24px] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
       <div className="flex items-center gap-1">
         {PRESETS.map((p) => {
           const pFrom = toDateStr(daysAgo(p.days));
@@ -55,10 +54,10 @@ export function DateRangeFilter({ from, to, granularity }: Props) {
             <button
               key={p.label}
               onClick={() => push({ from: pFrom, to: today, granularity: p.granularity })}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${
+              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
                 active
-                  ? "bg-zinc-900 text-white border-zinc-900"
-                  : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:text-zinc-900"
+                  ? "border-teal-600 bg-teal-600 text-white"
+                  : "border-slate-200 bg-white text-slate-500 hover:border-teal-200 hover:text-slate-900"
               }`}
             >
               {p.label}
@@ -67,18 +66,17 @@ export function DateRangeFilter({ from, to, granularity }: Props) {
         })}
       </div>
 
-      <span className="text-zinc-200 select-none">|</span>
+      <span className="select-none text-slate-300">|</span>
 
-      {/* Granularity */}
       <div className="flex items-center gap-1">
         {GRANULARITIES.map((g) => (
           <button
             key={g.value}
             onClick={() => push({ granularity: g.value })}
-            className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
               granularity === g.value
-                ? "bg-violet-600 text-white border-violet-600"
-                : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:text-zinc-900"
+                ? "border-teal-600 bg-teal-600 text-white"
+                : "border-slate-200 bg-white text-slate-500 hover:border-teal-200 hover:text-slate-900"
             }`}
           >
             {g.label}
@@ -86,16 +84,15 @@ export function DateRangeFilter({ from, to, granularity }: Props) {
         ))}
       </div>
 
-      <span className="text-zinc-200 select-none">|</span>
+      <span className="select-none text-slate-300">|</span>
 
-      {/* Custom range */}
-      <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+      <div className="flex items-center gap-1.5 text-xs text-slate-500">
         <input
           type="date"
           value={from}
           max={to}
           onChange={(e) => push({ from: e.target.value })}
-          className="border border-zinc-200 rounded-md px-2 py-1 text-zinc-700 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500"
+          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-primary"
         />
         <span>–</span>
         <input
@@ -104,7 +101,7 @@ export function DateRangeFilter({ from, to, granularity }: Props) {
           min={from}
           max={today}
           onChange={(e) => push({ to: e.target.value })}
-          className="border border-zinc-200 rounded-md px-2 py-1 text-zinc-700 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500"
+          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
     </div>

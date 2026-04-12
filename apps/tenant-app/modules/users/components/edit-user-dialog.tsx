@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -64,50 +65,62 @@ export function EditUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="flex max-h-[90vh] min-w-[min(92vw,56rem)] w-[min(95vw,64rem)] max-w-none flex-col overflow-hidden border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
         <DialogHeader>
-          <DialogTitle>Edit User</DialogTitle>
+          <p className="eyebrow-label text-primary">Users</p>
+          <DialogTitle>Edit</DialogTitle>
+          <DialogDescription>Workspace member</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Full Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Role</Label>
-            <Select
-              value={role}
-              onValueChange={(v) => { if (v) setRole(v); }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="owner">Owner</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="member">Member</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
+          <section className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white p-4">
+            <div>
+              <p className="eyebrow-label text-primary">Profile</p>
+              <h3 className="text-sm font-semibold text-slate-950">Member Details</h3>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="space-y-2 md:max-w-xs">
+                <Label>Role</Label>
+                <Select
+                  value={role}
+                  onValueChange={(v) => { if (v) setRole(v); }}
+                >
+                  <SelectTrigger className="bg-white">
+                    <SelectValue>
+                      {{ owner: "Owner", admin: "Admin", member: "Member" }[role] ?? role}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="owner">Owner</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="member">Member</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </section>
 
           {role === "member" && (
-            <div className="space-y-2">
-              <Label>Module Permissions</Label>
-              <p className="text-xs text-zinc-400">
-                Toggle modules on to grant access. Expand each module to set action-level permissions.
-              </p>
+            <section className="space-y-3 rounded-[24px] border border-slate-200/80 bg-white p-4">
+              <div>
+                <p className="eyebrow-label text-primary">Access</p>
+                <h3 className="text-sm font-semibold text-slate-950">Module Permissions</h3>
+              </div>
               <PermissionEditor
                 value={permissions}
                 onChange={setPermissions}
                 activeModuleSlugs={activeModuleSlugs}
               />
-            </div>
+            </section>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save Changes"}
+        <DialogFooter className="-mx-5 -mb-5 mt-4 shrink-0 border-t border-slate-200/80 px-5 py-4">
+          <Button variant="outline" className="rounded-full" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button className="rounded-full" onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>

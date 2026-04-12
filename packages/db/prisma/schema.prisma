@@ -398,6 +398,7 @@ model Appointment {
   endAt         DateTime  @map("end_at")
   status        String    @default("pending")
   employeeId    String?   @map("employee_id")
+  staffName     String?   @map("staff_name")
   serviceId     String?   @map("service_id")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")

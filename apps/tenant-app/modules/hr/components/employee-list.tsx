@@ -69,22 +69,22 @@ export function EmployeeList({ employees, staffMembers, services, tenantSlug, te
 
   return (
     <Table>
-      <TableHeader>
-        <TableRow className="border-zinc-100 hover:bg-transparent">
-          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Emp. No.</TableHead>
-          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Name</TableHead>
-          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Position</TableHead>
-          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Department</TableHead>
-          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Hire Date</TableHead>
-          <TableHead className="text-right text-xs font-medium uppercase tracking-wide text-zinc-500">Salary</TableHead>
-          <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Status</TableHead>
-          <TableHead />
-        </TableRow>
-      </TableHeader>
+        <TableHeader>
+          <TableRow className="border-border/60 hover:bg-transparent">
+          <TableHead className="pl-5 text-xs uppercase tracking-[0.22em] text-muted-foreground">ID</TableHead>
+          <TableHead className="pl-14 text-xs uppercase tracking-[0.22em] text-muted-foreground">Name</TableHead>
+          <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Position</TableHead>
+          <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Department</TableHead>
+          <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Hire</TableHead>
+          <TableHead className="text-right text-xs uppercase tracking-[0.22em] text-muted-foreground">Salary</TableHead>
+          <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Status</TableHead>
+          <TableHead className="w-20 pr-4" />
+          </TableRow>
+        </TableHeader>
       <TableBody>
         {employees.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={8} className="py-12 text-center text-sm text-zinc-400">
+            <TableCell colSpan={8} className="py-12 text-center text-sm text-muted-foreground">
               No employees yet.
             </TableCell>
           </TableRow>
@@ -94,43 +94,43 @@ export function EmployeeList({ employees, staffMembers, services, tenantSlug, te
             return (
               <TableRow
                 key={emp.id}
-                className={cn("border-zinc-100 hover:bg-zinc-50/50", loading === emp.id && "opacity-50")}
+                className={cn("border-border/60 hover:bg-muted/20", loading === emp.id && "opacity-50")}
               >
-                <TableCell className="font-mono text-sm text-zinc-500">{emp.employeeNo ?? <span className="text-zinc-300">—</span>}</TableCell>
+                <TableCell className="pl-5 font-mono text-sm text-muted-foreground">{emp.employeeNo ?? <span className="text-muted-foreground/50">—</span>}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-600">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/15 bg-primary/10 text-xs font-semibold text-primary">
                       {getInitials(emp.name)}
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-zinc-900">{emp.name}</div>
+                      <div className="text-sm font-medium text-foreground">{emp.name}</div>
                       {emp.email && (
-                        <div className="text-xs text-zinc-400">{emp.email}</div>
+                        <div className="text-xs text-muted-foreground">{emp.email}</div>
                       )}
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="text-sm text-zinc-500">{emp.position ?? <span className="text-zinc-300">—</span>}</TableCell>
-                <TableCell className="text-sm text-zinc-500">{emp.department ?? <span className="text-zinc-300">—</span>}</TableCell>
-                <TableCell className="text-sm text-zinc-500">
-                  {emp.hireDate ? format(new Date(emp.hireDate), "MMM d, yyyy") : <span className="text-zinc-300">—</span>}
+                <TableCell className="text-sm text-muted-foreground">{emp.position ?? <span className="text-muted-foreground/50">—</span>}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{emp.department ?? <span className="text-muted-foreground/50">—</span>}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {emp.hireDate ? format(new Date(emp.hireDate), "MMM d, yyyy") : <span className="text-muted-foreground/50">—</span>}
                 </TableCell>
-                <TableCell className="text-right text-sm text-zinc-700">
+                <TableCell className="text-right text-sm text-foreground">
                   {emp.salary
                     ? `${currencySymbol}${Number(emp.salary).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}`
-                    : <span className="text-zinc-300">—</span>}
+                    : <span className="text-muted-foreground/50">—</span>}
                 </TableCell>
                 <TableCell>
                   <span className={cn(
                     "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
                     emp.isActive
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : "bg-zinc-100 text-zinc-500 border-zinc-200"
+                      : "bg-muted text-muted-foreground border-border"
                   )}>
                     {emp.isActive ? "Active" : "Inactive"}
                   </span>
                 </TableCell>
-                <TableCell>
+                <TableCell className="pr-4">
                   <div className="flex items-center justify-end gap-1">
                     {staffMember && (
                       <StaffProfileDialog
@@ -141,7 +141,7 @@ export function EmployeeList({ employees, staffMembers, services, tenantSlug, te
                       />
                     )}
                     <DropdownMenu>
-                      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-700" />}>
+                      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" />}>
                         <MoreHorizontal className="h-4 w-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">

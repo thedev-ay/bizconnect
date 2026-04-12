@@ -1,11 +1,11 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
 import { EmployeeList, AddEmployeeDialog, AttendanceTab, LeaveTab, PayrollTab } from "@/modules/hr";
 import type { Employee, AttendanceRecord, LeaveRequest, PayrollRecord } from "@/modules/hr";
 import { StaffCalendar } from "@/modules/staff";
 import type { StaffMember, Shift, StaffEmployee, Service } from "@/modules/staff";
-import { UserCheck, UserX, Banknote, CalendarCheck } from "lucide-react";
+import { CalendarCheck } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -63,12 +63,6 @@ export default async function HRPage({ params, searchParams }: HRPageProps) {
   }));
 
   const activeEmployees = typedEmployees.filter((e) => e.isActive);
-  const activeCount = activeEmployees.length;
-  const inactiveCount = typedEmployees.filter((e) => !e.isActive).length;
-  const totalPayroll = employees
-    .filter((e) => e.isActive && e.salary)
-    .reduce((sum, e) => sum + Number(e.salary), 0);
-
   const typedAttendance: AttendanceRecord[] = attendance.map((a) => ({
     id: a.id,
     employeeId: a.employeeId,
@@ -160,75 +154,29 @@ export default async function HRPage({ params, searchParams }: HRPageProps) {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">HR & Staff</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">{employees.length} employees</p>
-        </div>
-        {tab === "employees" && (
-          <AddEmployeeDialog tenantSlug={tenantSlug} tenantId={tenant.id} currencySymbol={tenant.currencySymbol} />
-        )}
-      </div>
+    <PageShell className="h-auto min-h-full">
+      <PageHeader
+        eyebrow="HR"
+        title="Staff"
+        description={`${employees.length} total`}
+        action={
+          tab === "employees" ? (
+            <AddEmployeeDialog tenantSlug={tenantSlug} tenantId={tenant.id} currencySymbol={tenant.currencySymbol} />
+          ) : undefined
+        }
+      />
 
-      {/* Stat cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="shadow-none border-zinc-200">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-zinc-500">Active</p>
-                <p className="mt-1.5 text-2xl font-bold text-emerald-600">{activeCount}</p>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50">
-                <UserCheck className="h-4 w-4 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-none border-zinc-200">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-zinc-500">Inactive</p>
-                <p className="mt-1.5 text-2xl font-bold text-zinc-900">{inactiveCount}</p>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100">
-                <UserX className="h-4 w-4 text-zinc-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-none border-zinc-200">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-zinc-500">Monthly Payroll</p>
-                <p className="mt-1.5 text-2xl font-bold text-zinc-900">
-                  {tenant.currencySymbol}{totalPayroll.toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50">
-                <Banknote className="h-4 w-4 text-violet-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tab nav */}
-      <div className="flex gap-1 border-b border-zinc-200">
+      <ContentPanel className="space-y-4 p-0">
+      <div className="flex gap-1 border-b border-border/60 px-4 pt-3">
         {tabs.map((t) => (
           <Link
             key={t.key}
             href={`/${tenantSlug}/hr?tab=${t.key}`}
             className={cn(
-              "px-4 py-2 text-sm font-medium transition-colors",
+              "rounded-t-2xl px-4 py-2 text-sm font-medium transition-colors",
               tab === t.key
-                ? "border-b-2 border-zinc-900 text-zinc-900"
-                : "text-zinc-500 hover:text-zinc-700"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             {t.label}
@@ -238,8 +186,7 @@ export default async function HRPage({ params, searchParams }: HRPageProps) {
 
       {/* Employees tab */}
       {tab === "employees" && (
-        <Card className="shadow-none border-zinc-200">
-          <CardContent className="p-0">
+        <div className="px-0 pb-0">
             <EmployeeList
               employees={typedEmployees}
               staffMembers={staffMembers}
@@ -249,36 +196,33 @@ export default async function HRPage({ params, searchParams }: HRPageProps) {
               currencySymbol={tenant.currencySymbol}
               currencyLocale={tenant.currencyLocale}
             />
-          </CardContent>
-        </Card>
+        </div>
       )}
 
       {/* Schedule tab */}
       {tab === "schedule" && (
         <>
           {staffEmployees.length === 0 ? (
-            <Card className="shadow-none border-zinc-200">
-              <CardContent className="py-12 text-center text-sm text-zinc-400">
+            <div className="rounded-[24px] border border-border/70 px-4 py-12 text-center text-sm text-muted-foreground">
                 No active staff yet.
-              </CardContent>
-            </Card>
+            </div>
           ) : (
-            <Card className="shadow-none border-zinc-200">
-              <CardHeader className="border-b border-zinc-100 px-6 py-4">
-                <div className="flex items-center gap-2">
+            <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background/90">
+              <div className="border-b border-border/60 px-6 py-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <CalendarCheck className="h-4 w-4 text-zinc-400" />
-                  <CardTitle className="text-sm font-semibold text-zinc-900">Shift Schedule</CardTitle>
+                  Shift Schedule
                 </div>
-              </CardHeader>
-              <CardContent className="pt-4">
+              </div>
+              <div className="pt-4">
                 <StaffCalendar
                   shifts={typedShifts}
                   employees={staffEmployees}
                   tenantSlug={tenantSlug}
                   tenantId={tenant.id}
                 />
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
         </>
       )}
@@ -286,36 +230,31 @@ export default async function HRPage({ params, searchParams }: HRPageProps) {
 
       {/* Attendance tab */}
       {tab === "attendance" && (
-        <Card className="shadow-none border-zinc-200">
-          <CardContent className="pt-4">
+        <div className="px-4 pb-4">
             <AttendanceTab
               employees={activeEmployees}
               records={typedAttendance}
               tenantSlug={tenantSlug}
               tenantId={tenant.id}
             />
-          </CardContent>
-        </Card>
+        </div>
       )}
 
       {/* Leave tab */}
       {tab === "leave" && (
-        <Card className="shadow-none border-zinc-200">
-          <CardContent className="pt-4">
+        <div className="px-4 pb-4">
             <LeaveTab
               employees={activeEmployees}
               requests={typedLeave}
               tenantSlug={tenantSlug}
               tenantId={tenant.id}
             />
-          </CardContent>
-        </Card>
+        </div>
       )}
 
       {/* Payroll tab */}
       {tab === "payroll" && (
-        <Card className="shadow-none border-zinc-200">
-          <CardContent className="pt-4">
+        <div className="px-4 pb-4">
             <PayrollTab
               employees={activeEmployees}
               records={typedPayroll}
@@ -324,9 +263,9 @@ export default async function HRPage({ params, searchParams }: HRPageProps) {
               currencySymbol={tenant.currencySymbol}
               currencyLocale={tenant.currencyLocale}
             />
-          </CardContent>
-        </Card>
+        </div>
       )}
-    </div>
+      </ContentPanel>
+    </PageShell>
   );
 }

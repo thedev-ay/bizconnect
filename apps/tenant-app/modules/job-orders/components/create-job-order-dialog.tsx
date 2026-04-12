@@ -5,11 +5,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Trash2, Scale } from "lucide-react";
+import { Plus, Trash2, Scale, WifiOff } from "lucide-react";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import { Button } from "@/components/ui/button";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -89,6 +92,7 @@ export function CreateJobOrderDialog({
   const [serviceSearch, setServiceSearch] = useState("");
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
 
   const { register, handleSubmit, reset, control, watch, setValue, formState: { errors, isSubmitting } } =
     useForm<CreateJobOrderInput>({
@@ -98,6 +102,16 @@ export function CreateJobOrderDialog({
 
   const selectedCustomerId = watch("customerId") ?? "";
   const selectedCustomer = customers.find((customer) => customer.id === selectedCustomerId);
+  const normalizedServiceSearch = serviceSearch.trim().toLowerCase();
+  const exactServiceMatch = normalizedServiceSearch
+    ? services.find((service) => service.name.trim().toLowerCase() === normalizedServiceSearch) ?? null
+    : null;
+  const serviceComboboxOptions: ComboboxOption[] = services.map((service) => ({
+    value: service.id,
+    label: service.name,
+    description: `${service.pricingType === "per_kilo" ? "Per kilo" : service.pricingType === "flat" ? "Flat" : "Per piece"} · ${currencySymbol}${service.price.toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}${service.category ? ` · ${service.category}` : ""}`,
+    searchText: service.category ?? "",
+  }));
 
   function handleClose(o: boolean) {
     if (!o) {
@@ -128,32 +142,39 @@ export function CreateJobOrderDialog({
     handleCustomerChange(initialCustomerId);
   }, [open, initialCustomerId]);
 
-  function addService(svc: ServiceOption) {
+  function addService(svc: ServiceOption | ComboboxOption) {
+    const service = "pricingType" in svc
+      ? svc
+      : services.find((entry) => entry.id === svc.value);
+
+    if (!service) return;
+
     setItems((prev) => {
-      const existing = prev.findIndex((i) => i.name === svc.name);
+      const existing = prev.findIndex((i) => i.name === service.name);
       if (existing >= 0) {
-        if (svc.pricingType === "per_kilo") return prev;
+        if (service.pricingType === "per_kilo") return prev;
         const updated = [...prev];
         updated[existing] = {
           ...updated[existing],
           quantity: updated[existing].quantity + 1,
-          total: (updated[existing].quantity + 1) * svc.price,
+          total: (updated[existing].quantity + 1) * service.price,
         };
         return updated;
       }
-      if (svc.pricingType === "per_kilo") {
-        return [...prev, { id: crypto.randomUUID(), name: svc.name, quantity: 1, weight: 0, unitPrice: svc.price, total: 0, pricingType: "per_kilo" as const, isCustom: false }];
+      if (service.pricingType === "per_kilo") {
+        return [...prev, { id: crypto.randomUUID(), name: service.name, quantity: 1, weight: 0, unitPrice: service.price, total: 0, pricingType: "per_kilo" as const, isCustom: false }];
       }
-      return [...prev, { id: crypto.randomUUID(), name: svc.name, quantity: 1, unitPrice: svc.price, total: svc.price, pricingType: svc.pricingType, isCustom: false }];
+      return [...prev, { id: crypto.randomUUID(), name: service.name, quantity: 1, unitPrice: service.price, total: service.price, pricingType: service.pricingType, isCustom: false }];
     });
+    setServiceSearch("");
   }
 
-  function addCustomCharge() {
+  function addCustomCharge(name = "") {
     setItems((prev) => [
       ...prev,
       {
         id: crypto.randomUUID(),
-        name: "",
+        name,
         quantity: 1,
         unitPrice: 0,
         total: 0,
@@ -161,6 +182,7 @@ export function CreateJobOrderDialog({
         isCustom: true,
       },
     ]);
+    setServiceSearch("");
   }
 
   function updateWeight(index: number, kg: number) {
@@ -199,15 +221,14 @@ export function CreateJobOrderDialog({
 
   const grandTotal = items.reduce((s, i) => s + i.total, 0);
 
-  const filteredServices = services.filter((s) => {
-    const q = serviceSearch.toLowerCase();
-    return !q || s.name.toLowerCase().includes(q) || s.category?.toLowerCase().includes(q);
-  });
-
   const incompleteWeights = items.filter((i) => i.pricingType === "per_kilo" && (!i.weight || i.weight <= 0));
   const invalidCustomCharges = items.filter((i) => i.isCustom && (!i.name.trim() || i.unitPrice <= 0));
 
   async function onSubmit(data: CreateJobOrderInput) {
+    if (!isOnline) {
+      toast.error("You're offline. Connect to create job orders.");
+      return;
+    }
     if (incompleteWeights.length > 0) {
       toast.error(`Enter weight for: ${incompleteWeights.map((i) => i.name).join(", ")}`);
       return;
@@ -238,21 +259,27 @@ export function CreateJobOrderDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogTrigger render={<Button disabled={disabled} title={disabled ? "Set up your workflow before creating job orders" : undefined} />}>
+      <DialogTrigger render={<Button className="rounded-full px-4" disabled={disabled} title={disabled ? "Set up your workflow before creating job orders" : undefined} />}>
         <Plus className="mr-2 h-4 w-4" />
-        New Job Order
+        New
       </DialogTrigger>
-      <DialogContent className="max-w-2xl min-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="min-w-xl max-h-[90vh] max-w-2xl overflow-y-auto border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
         <DialogHeader>
-          <DialogTitle>New Job Order</DialogTitle>
+          <p className="eyebrow-label">Job Order</p>
+          <DialogTitle>New</DialogTitle>
+          <DialogDescription>Customer and charges</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
 
-          {/* Customer */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <section className="space-y-4 rounded-[24px] border border-border/60 bg-background/62 p-4">
+            <div>
+              <p className="eyebrow-label">Customer</p>
+              <h3 className="mt-1 text-sm font-semibold text-foreground">Info</h3>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
             {customers.length > 0 && (
               <div className="space-y-2 sm:col-span-2">
-                <Label>Existing Customer</Label>
+                <Label>Customer</Label>
                 <Select value={selectedCustomerId} onValueChange={handleCustomerChange}>
                   <SelectTrigger>
                     {selectedCustomer
@@ -267,85 +294,93 @@ export function CreateJobOrderDialog({
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-zinc-500">
-                  Start from a CRM customer to keep job orders and billing tied to the same record.
-                </p>
               </div>
             )}
             <div className="space-y-2">
-              <Label>Customer Name *</Label>
+              <Label>Name *</Label>
               <Input placeholder="Alex Morgan" {...register("customerName")} readOnly={Boolean(selectedCustomerId)} />
               {errors.customerName && <p className="text-sm text-destructive">{errors.customerName.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Contact No. <span className="text-zinc-400 font-normal">(optional)</span></Label>
+              <Label>Phone <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Input placeholder="+31 6 12345678" {...register("contactNo")} readOnly={Boolean(selectedCustomerId)} />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label>Notes <span className="text-zinc-400 font-normal">(optional)</span></Label>
+              <Label>Notes <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Input placeholder="Special instructions..." {...register("notes")} />
             </div>
-          </div>
+            </div>
+          </section>
 
           <Separator />
 
-          {/* Services */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-zinc-800">Charges</p>
-                <p className="text-xs text-zinc-500">
-                  Add predefined services or enter manual charges for one-off work.
-                </p>
-              </div>
-              <Button type="button" variant="outline" size="sm" onClick={addCustomCharge}>
-                <Plus className="mr-1 h-3 w-3" />
-                Custom Charge
-              </Button>
+          <section className="space-y-3 rounded-[24px] border border-border/60 bg-background/62 p-4">
+            <div>
+              <p className="eyebrow-label">Charges</p>
+              <p className="text-sm font-semibold text-foreground">Charges</p>
             </div>
             {services.length > 0 ? (
               <div className="space-y-2">
-                <Input
-                  placeholder="Search services..."
+                <Combobox
+                  options={serviceComboboxOptions}
                   value={serviceSearch}
-                  onChange={(e) => setServiceSearch(e.target.value)}
-                  className="h-8 text-sm"
+                  onValueChange={setServiceSearch}
+                  onSelect={addService}
+                  placeholder="Search services or type a custom charge..."
+                  emptyMessage="No matching services found."
+                  helperText="Select an existing service, or type a custom charge for a one-off item."
+                  renderOption={(option) => {
+                    const service = services.find((entry) => entry.id === option.value);
+                    return (
+                      <>
+                        <span className="font-medium text-foreground">
+                          {option.label}
+                          {service?.pricingType === "per_kilo" ? <Scale className="ml-1 inline h-3 w-3 text-muted-foreground" /> : null}
+                        </span>
+                        {option.description ? (
+                          <span className="text-xs text-muted-foreground">{option.description}</span>
+                        ) : null}
+                      </>
+                    );
+                  }}
+                  footer={serviceSearch.trim() && !exactServiceMatch ? (
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Add custom charge "{serviceSearch.trim()}"</p>
+                        <p className="text-xs text-muted-foreground">Creates a one-off charge for this job order only.</p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => addCustomCharge(serviceSearch.trim())}
+                      >
+                        Add custom
+                      </Button>
+                    </div>
+                  ) : null}
                 />
-                <div className="flex flex-wrap gap-1.5">
-                  {filteredServices.map((svc) => (
-                    <button
-                      key={svc.id}
-                      type="button"
-                      onClick={() => addService(svc)}
-                      className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50 transition-colors"
-                    >
-                      {svc.name}
-                      {svc.pricingType === "per_kilo" && <Scale className="ml-1 inline h-3 w-3 text-zinc-400" />}
-                    </button>
-                  ))}
-                </div>
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed border-zinc-200 px-3 py-4 text-sm text-zinc-500">
-                No service templates yet. Use <span className="font-medium text-zinc-700">Custom Charge</span> to add billable work manually.
+              <div className="rounded-2xl border border-dashed border-border/70 px-3 py-4 text-sm text-muted-foreground">
+                No service templates
               </div>
             )}
 
-            {/* Line items */}
             {items.length > 0 && (
-              <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 overflow-hidden">
+              <div className="overflow-hidden rounded-[22px] border border-border/60">
                 {items.map((item, idx) => (
-                  <div key={item.id} className="flex items-center gap-3 px-3 py-2">
+                  <div key={item.id} className="flex items-center gap-3 border-b border-border/50 px-3 py-3 last:border-b-0">
                     <div className="min-w-0 flex-1">
                       {item.isCustom ? (
                         <Input
                           value={item.name}
                           onChange={(e) => updateName(idx, e.target.value)}
                           placeholder="Custom charge name"
-                          className="h-8 text-sm"
+                          className="h-9 text-sm"
                         />
                       ) : (
-                        <p className="text-sm font-medium text-zinc-800">{item.name}</p>
+                        <p className="text-sm font-medium text-foreground">{item.name}</p>
                       )}
                       {item.pricingType === "per_kilo" ? (
                         <div className="flex items-center gap-1.5 mt-1">
@@ -357,11 +392,11 @@ export function CreateJobOrderDialog({
                             value={item.weight || ""}
                             onChange={(e) => updateWeight(idx, parseFloat(e.target.value) || 0)}
                             className={cn(
-                              "h-6 w-24 text-xs",
+                              "h-7 w-24 text-xs",
                               (!item.weight || item.weight <= 0) && "border-amber-400 focus-visible:ring-amber-400"
                             )}
                           />
-                          <span className="text-xs text-zinc-400">kg × {currencySymbol}{item.unitPrice.toFixed(2)}/kg</span>
+                          <span className="text-xs text-muted-foreground">kg × {currencySymbol}{item.unitPrice.toFixed(2)}/kg</span>
                           {(!item.weight || item.weight <= 0) && (
                             <span className="text-[10px] font-medium text-amber-600">weight required</span>
                           )}
@@ -375,42 +410,46 @@ export function CreateJobOrderDialog({
                             placeholder="0.00"
                             value={item.unitPrice || ""}
                             onChange={(e) => updateUnitPrice(idx, parseFloat(e.target.value) || 0)}
-                            className="h-6 w-24 text-xs"
+                            className="h-7 w-24 text-xs"
                           />
-                          <span className="text-xs text-zinc-400">unit price</span>
+                          <span className="text-xs text-muted-foreground">unit price</span>
                         </div>
                       ) : (
-                        <p className="text-xs text-zinc-400">{currencySymbol}{item.unitPrice.toFixed(2)} each</p>
+                        <p className="text-xs text-muted-foreground">{currencySymbol}{item.unitPrice.toFixed(2)} each</p>
                       )}
                     </div>
                     {item.pricingType !== "per_kilo" && (
                       <div className="flex items-center gap-1">
                         <button type="button" onClick={() => updateQty(idx, -1)}
-                          className="flex h-5 w-5 items-center justify-center rounded border border-zinc-200 text-zinc-500 hover:bg-zinc-50 text-xs">−</button>
+                          className="flex h-6 w-6 items-center justify-center rounded-full border border-border/70 text-foreground/70 hover:bg-muted text-xs">−</button>
                         <span className="w-5 text-center text-xs font-semibold">{item.quantity}</span>
                         <button type="button" onClick={() => updateQty(idx, 1)}
-                          className="flex h-5 w-5 items-center justify-center rounded border border-zinc-200 text-zinc-500 hover:bg-zinc-50 text-xs">+</button>
+                          className="flex h-6 w-6 items-center justify-center rounded-full border border-border/70 text-foreground/70 hover:bg-muted text-xs">+</button>
                       </div>
                     )}
-                    <span className="w-16 text-right text-sm font-semibold tabular-nums text-zinc-800">
+                    <span className="w-16 text-right text-sm font-semibold tabular-nums text-foreground">
                       {currencySymbol}{item.total.toFixed(2)}
                     </span>
-                    <button type="button" onClick={() => removeItem(idx)} className="text-zinc-300 hover:text-red-400">
+                    <button type="button" onClick={() => removeItem(idx)} className="text-muted-foreground/50 hover:text-red-400">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 ))}
-                <div className="flex justify-between px-3 py-2 bg-zinc-50 font-semibold text-sm text-zinc-800">
+                <div className="flex justify-between bg-muted/35 px-3 py-3 text-sm font-semibold text-foreground">
                   <span>Total</span>
                   <span className="tabular-nums">{currencySymbol}{grandTotal.toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
             )}
-          </div>
+          </section>
 
           <Separator />
 
-          {/* Priority, due date, staff */}
+          <section className="space-y-4 rounded-[24px] border border-border/60 bg-background/62 p-4">
+            <div>
+              <p className="eyebrow-label">Handling</p>
+              <h3 className="mt-1 text-sm font-semibold text-foreground">Priority and staff</h3>
+            </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Priority</Label>
@@ -447,10 +486,10 @@ export function CreateJobOrderDialog({
           </div>
           {employees.length > 0 && (
             <div className="space-y-2">
-              <Label>Assign Staff <span className="text-zinc-400 font-normal">(optional)</span></Label>
-              <div className="max-h-28 overflow-y-auto rounded-md border border-zinc-200 divide-y divide-zinc-100">
+              <Label>Assign Staff <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <div className="max-h-32 overflow-y-auto divide-y divide-border/50 rounded-2xl border border-border/60">
                 {employees.map((emp) => (
-                  <label key={emp.id} className="flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-zinc-50">
+                  <label key={emp.id} className="flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-muted/20">
                     <input
                       type="checkbox"
                       className="rounded"
@@ -461,16 +500,22 @@ export function CreateJobOrderDialog({
                         )
                       }
                     />
-                    <span className="text-sm text-zinc-700">{emp.name}</span>
+                    <span className="text-sm text-foreground/85">{emp.name}</span>
                   </label>
                 ))}
               </div>
             </div>
           )}
+          </section>
 
           <DialogFooter>
+            {!isOnline && (
+              <p className="mr-auto flex items-center gap-1.5 text-xs text-amber-700">
+                <WifiOff className="h-3.5 w-3.5" /> Offline
+              </p>
+            )}
             <Button type="button" variant="outline" onClick={() => handleClose(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || !isOnline}>
               {isSubmitting ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>

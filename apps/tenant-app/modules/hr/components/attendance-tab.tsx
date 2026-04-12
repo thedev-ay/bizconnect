@@ -66,12 +66,12 @@ export function AttendanceTab({ employees, records, tenantSlug, tenantId }: Atte
 
   return (
     <div className="space-y-6">
-      {/* Log form */}
-      <div className="rounded-lg border border-zinc-200 p-4">
-        <p className="mb-3 text-sm font-semibold text-zinc-900">Log Attendance</p>
+      <div className="rounded-[24px] border border-border/70 bg-background/70 p-4">
+        <p className="eyebrow-label">Attendance</p>
+        <p className="mb-3 text-sm font-semibold text-foreground">Log</p>
         <div className="grid gap-3 sm:grid-cols-5">
           <div className="space-y-1">
-            <Label className="text-xs text-zinc-600">Employee</Label>
+            <Label className="text-xs text-muted-foreground">Employee</Label>
             <Select key={employeeKey} value={employeeId} onValueChange={(v) => { if (v) setEmployeeId(v); }}>
               <SelectTrigger className="h-8 text-xs">{employeeId ? employees.find((e) => e.id === employeeId)?.name : <span className="text-muted-foreground">Select...</span>}</SelectTrigger>
               <SelectContent>
@@ -80,51 +80,50 @@ export function AttendanceTab({ employees, records, tenantSlug, tenantId }: Atte
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-zinc-600">Date</Label>
+            <Label className="text-xs text-muted-foreground">Date</Label>
             <Input type="date" className="h-8 text-xs" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-zinc-600">Clock In</Label>
+            <Label className="text-xs text-muted-foreground">Clock In</Label>
             <Input type="time" className="h-8 text-xs" value={clockIn} onChange={(e) => setClockIn(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-zinc-600">Clock Out <span className="text-zinc-400">(optional)</span></Label>
+            <Label className="text-xs text-muted-foreground">Clock Out <span className="text-muted-foreground">(optional)</span></Label>
             <Input type="time" className="h-8 text-xs" value={clockOut} onChange={(e) => setClockOut(e.target.value)} />
           </div>
           <div className="flex items-end">
-            <Button size="sm" className="h-8 w-full" onClick={handleLog} disabled={saving}>
+            <Button size="sm" className="h-8 w-full rounded-full" onClick={handleLog} disabled={saving}>
               {saving ? "Saving..." : "Log"}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Records table */}
       <Table>
         <TableHeader>
-          <TableRow className="border-zinc-100 hover:bg-transparent">
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Employee</TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Date</TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Clock In</TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Clock Out</TableHead>
-            <TableHead className="text-right text-xs font-medium uppercase tracking-wide text-zinc-500">Hours</TableHead>
+          <TableRow className="border-border/60 hover:bg-transparent">
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Employee</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Date</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">In</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Out</TableHead>
+            <TableHead className="text-right text-xs uppercase tracking-[0.22em] text-muted-foreground">Hours</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {records.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="py-12 text-center text-sm text-zinc-400">No attendance records yet.</TableCell>
+              <TableCell colSpan={5} className="py-12 text-center text-sm text-muted-foreground">No attendance records yet.</TableCell>
             </TableRow>
           ) : (
             records.map((r) => (
-              <TableRow key={r.id} className="border-zinc-100 hover:bg-zinc-50/50">
-                <TableCell className="text-sm font-medium text-zinc-900">{r.employeeName}</TableCell>
-                <TableCell className="text-sm text-zinc-500">{format(new Date(r.date), "MMM d, yyyy")}</TableCell>
-                <TableCell className="text-sm text-zinc-700">{r.clockIn ? format(new Date(r.clockIn), "h:mm a") : <span className="text-zinc-300">—</span>}</TableCell>
-                <TableCell className={cn("text-sm", r.clockOut ? "text-zinc-700" : "text-amber-600")}>
+              <TableRow key={r.id} className="border-border/60 hover:bg-muted/20">
+                <TableCell className="text-sm font-medium text-foreground">{r.employeeName}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{format(new Date(r.date), "MMM d, yyyy")}</TableCell>
+                <TableCell className="text-sm text-foreground">{r.clockIn ? format(new Date(r.clockIn), "h:mm a") : <span className="text-muted-foreground/50">—</span>}</TableCell>
+                <TableCell className={cn("text-sm", r.clockOut ? "text-foreground" : "text-amber-600")}>
                   {r.clockOut ? format(new Date(r.clockOut), "h:mm a") : "Still in"}
                 </TableCell>
-                <TableCell className="text-right text-sm font-medium text-zinc-900">{hoursWorked(r)}</TableCell>
+                <TableCell className="text-right text-sm font-medium text-foreground">{hoursWorked(r)}</TableCell>
               </TableRow>
             ))
           )}

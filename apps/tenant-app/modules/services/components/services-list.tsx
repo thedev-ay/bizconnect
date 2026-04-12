@@ -56,52 +56,52 @@ export function ServicesList({ services, tenantSlug, tenantId, currencySymbol, c
   const categories = Array.from(new Set(services.map((s) => s.category ?? "Uncategorized"))).sort();
 
   return (
-    <div className="space-y-6 p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-zinc-500">
-          {services.length} service{services.length !== 1 ? "s" : ""} ·{" "}
-          {services.filter((s) => s.isActive).length} active
-        </p>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-1.5 h-4 w-4" /> Add Service
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
+        <div>
+          <p className="eyebrow-label">Services</p>
+          <h2 className="mt-1 text-lg font-semibold text-foreground">Catalog</h2>
+        </div>
+        <Button size="sm" onClick={() => setCreateOpen(true)} className="rounded-full px-4">
+          <Plus className="mr-1.5 h-4 w-4" /> Add
         </Button>
       </div>
 
       {services.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-sm text-zinc-400">No services yet. Add your first service.</p>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <p className="text-sm text-muted-foreground">No services</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-6 px-5 pb-5">
           {categories.map((cat) => {
             const group = services.filter((s) => (s.category ?? "Uncategorized") === cat);
             return (
               <div key={cat}>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">{cat}</p>
-                <div className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 overflow-hidden">
+                <p className="mb-2 px-1 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-muted-foreground">{cat}</p>
+                <div className="overflow-hidden rounded-[26px] border border-border/60 bg-background/72">
                   {group.map((service) => (
                     <div
                       key={service.id}
                       className={cn(
-                        "flex items-center gap-4 px-4 py-3 bg-white transition-colors",
+                        "flex items-center gap-4 border-b border-border/50 px-4 py-3 transition-colors last:border-b-0 hover:bg-muted/20",
                         !service.isActive && "opacity-50"
                       )}
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-zinc-800">{service.name}</p>
+                        <p className="text-sm font-medium text-foreground">{service.name}</p>
                         {service.description && (
-                          <p className="mt-0.5 text-xs text-zinc-400 truncate max-w-sm">{service.description}</p>
+                          <p className="mt-0.5 max-w-sm truncate text-xs text-muted-foreground">{service.description}</p>
                         )}
                       </div>
 
-                      <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-600">
+                      <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground/75">
                         {PRICING_TYPE_LABELS[service.pricingType]}
                       </span>
 
-                      <span className="shrink-0 w-24 text-right text-sm font-semibold tabular-nums text-zinc-800">
+                      <span className="w-24 shrink-0 text-right text-sm font-semibold tabular-nums text-foreground">
                         {currencySymbol}{Number(service.price).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
-                        {service.pricingType === "per_kilo" && <span className="text-xs font-normal text-zinc-400">/kg</span>}
-                        {service.pricingType === "per_piece" && <span className="text-xs font-normal text-zinc-400">/pc</span>}
+                        {service.pricingType === "per_kilo" && <span className="text-xs font-normal text-muted-foreground">/kg</span>}
+                        {service.pricingType === "per_piece" && <span className="text-xs font-normal text-muted-foreground">/pc</span>}
                       </span>
 
                       <Switch
@@ -112,7 +112,7 @@ export function ServicesList({ services, tenantSlug, tenantId, currencySymbol, c
 
                       <DropdownMenu>
                         <DropdownMenuTrigger render={
-                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-zinc-400 hover:text-zinc-700" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground" />
                         }>
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>

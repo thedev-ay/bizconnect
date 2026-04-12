@@ -33,7 +33,7 @@ export function PendingSalesBadge({ tenantId }: PendingSalesBadgeProps) {
   if (count === 0) return null;
 
   return (
-    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold text-white">
+    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full border border-amber-200 bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-800 shadow-[0_8px_16px_-12px_rgba(180,83,9,0.75)]">
       {count}
     </span>
   );

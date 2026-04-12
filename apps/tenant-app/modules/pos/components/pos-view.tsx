@@ -7,6 +7,7 @@ import { POSTerminal } from "./pos-terminal";
 import type { PromoType } from "@/modules/promotions";
 import { db } from "@/lib/local-db";
 import { flushPendingSales, getPendingSaleCount } from "@/lib/offline-sale";
+import { ContentPanel } from "@/components/layout/page-shell";
 
 interface POSViewProps {
   tenantSlug: string;
@@ -124,30 +125,32 @@ export function POSView({ tenantSlug, tenantId, tenantName, currencySymbol, curr
 
   if (isPending) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-zinc-400">Loading products...</p>
-      </div>
+      <ContentPanel className="flex h-full items-center justify-center p-6">
+        <p className="text-sm text-muted-foreground">Loading products...</p>
+      </ContentPanel>
     );
   }
 
   return (
     <div className="flex h-full flex-col gap-2">
       {pendingCount > 0 && (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+        <div className="app-panel-subtle flex items-center gap-2 rounded-2xl border-amber-200/70 bg-amber-50/90 px-4 py-3 text-sm text-amber-900">
           <span className="h-2 w-2 rounded-full bg-amber-400" />
           {pendingCount} sale{pendingCount > 1 ? "s" : ""} saved offline — will sync when back online
         </div>
       )}
-      <POSTerminal
-        products={products}
-        services={services}
-        servicesEnabled={servicesEnabled}
-        tenantSlug={tenantSlug}
-        tenantId={tenantId}
-        tenantName={tenantName}
-        currencySymbol={currencySymbol}
-        currencyLocale={currencyLocale}
-      />
+      <ContentPanel className="min-h-0 flex-1 overflow-hidden p-2 sm:p-3">
+        <POSTerminal
+          products={products}
+          services={services}
+          servicesEnabled={servicesEnabled}
+          tenantSlug={tenantSlug}
+          tenantId={tenantId}
+          tenantName={tenantName}
+          currencySymbol={currencySymbol}
+          currencyLocale={currencyLocale}
+        />
+      </ContentPanel>
     </div>
   );
 }

@@ -125,23 +125,23 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
               placeholder="Search by name or phone..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); }}
-              className="pl-8 h-8 text-sm"
+              className="h-9 rounded-2xl border-border/70 bg-background/90 pl-8 text-sm"
             />
           </div>
 
           {/* Card list */}
-          <div className="flex-1 overflow-y-auto rounded-xl border border-zinc-200 bg-white">
+          <div className="flex-1 overflow-y-auto rounded-[24px] border border-slate-200/80 bg-slate-50/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
             {filtered.length === 0 && !noMatchAndSearch && (
-              <p className="py-8 text-center text-xs text-zinc-300">No cards yet</p>
+              <p className="py-8 text-center text-xs text-muted-foreground">No cards yet</p>
             )}
 
             {noMatchAndSearch && (
               <div className="flex flex-col items-center gap-2 py-6 px-4">
-                <p className="text-xs text-zinc-400 text-center">No card for "{search}"</p>
+                <p className="text-center text-xs text-muted-foreground">No card for "{search}"</p>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1 text-xs"
+                  className="gap-1 rounded-full text-xs"
                   onClick={() => setNewCardOpen(true)}
                 >
                   <Plus className="h-3 w-3" />
@@ -150,7 +150,7 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
               </div>
             )}
 
-            <div className="divide-y divide-zinc-100">
+            <div className="divide-y divide-border/60">
               {filtered.map((card) => {
                 const progress = Math.min(card.currentStamps, settings.stampsPerReward);
                 const isReady = card.currentStamps >= settings.stampsPerReward;
@@ -159,15 +159,15 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
                     key={card.id}
                     onClick={() => { setSelectedId(card.id); setConfirmDelete(false); }}
                     className={cn(
-                      "w-full px-3 py-2.5 text-left transition-colors hover:bg-zinc-50",
-                      selectedId === card.id && "bg-zinc-50"
+                      "w-full px-3 py-3 text-left transition-colors hover:bg-white/80",
+                      selectedId === card.id && "bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]"
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-zinc-800">{card.customerName}</p>
+                        <p className="truncate text-sm font-semibold text-slate-950">{card.customerName}</p>
                         {card.phone && (
-                          <div className="flex items-center gap-1 text-xs text-zinc-400">
+                          <div className="flex items-center gap-1 text-xs text-slate-500">
                             <Phone className="h-2.5 w-2.5" />
                             {card.phone}
                           </div>
@@ -178,17 +178,17 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
                           Ready!
                         </span>
                       ) : (
-                        <span className="shrink-0 text-[10px] font-semibold text-zinc-400 tabular-nums">
+                          <span className="shrink-0 text-[10px] font-semibold text-slate-500 tabular-nums">
                           {progress}/{settings.stampsPerReward}
                         </span>
                       )}
                     </div>
                     {/* Mini progress bar */}
-                    <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-zinc-100">
+                    <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-slate-200">
                       <div
                         className={cn(
                           "h-full rounded-full transition-all",
-                          isReady ? "bg-emerald-500" : "bg-blue-400"
+                          isReady ? "bg-emerald-500" : "bg-primary"
                         )}
                         style={{ width: `${(progress / settings.stampsPerReward) * 100}%` }}
                       />
@@ -205,17 +205,17 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
           {selected ? (
             <div className="flex h-full flex-col gap-4">
               {/* Card */}
-              <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <div className="rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-[0_22px_48px_-34px_rgba(15,23,42,0.26)]">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="text-xl font-bold text-zinc-900">{selected.customerName}</h2>
+                    <h2 className="text-xl font-bold text-slate-950">{selected.customerName}</h2>
                     {selected.phone && (
-                      <div className="mt-0.5 flex items-center gap-1 text-sm text-zinc-400">
+                      <div className="mt-0.5 flex items-center gap-1 text-sm text-slate-500">
                         <Phone className="h-3.5 w-3.5" />
                         {selected.phone}
                       </div>
                     )}
-                    <p className="mt-1 text-xs text-zinc-400">
+                    <p className="mt-1 text-xs text-slate-500">
                       Member since {format(new Date(selected.createdAt), "MMM d, yyyy")}
                       {" · "}{selected.totalStamps} total stamps
                     </p>
@@ -234,8 +234,8 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
                 {/* Stamp progress */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-zinc-700">Stamps</p>
-                    <p className="text-sm font-bold tabular-nums text-zinc-900">
+                    <p className="text-sm font-semibold text-slate-950">Stamps</p>
+                    <p className="text-sm font-bold tabular-nums text-slate-950">
                       {selected.currentStamps} / {settings.stampsPerReward}
                     </p>
                   </div>
@@ -243,8 +243,8 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
                     current={selected.currentStamps}
                     total={settings.stampsPerReward}
                   />
-                  <p className="text-xs text-zinc-400">
-                    Reward: <span className="font-medium text-zinc-600">{settings.rewardDescription}</span>
+                  <p className="text-xs text-slate-500">
+                    Reward: <span className="font-medium text-slate-950">{settings.rewardDescription}</span>
                     {" · "}
                     {canRedeem
                       ? "Ready to claim!"
@@ -259,10 +259,10 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
                   <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-3">
                     <p className="text-sm font-medium text-red-700">Delete this loyalty card? This cannot be undone.</p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setConfirmDelete(false)}>
-                        Cancel
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={handleDelete} disabled={actionLoading === "delete"}>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => setConfirmDelete(false)}>
+                      Cancel
+                    </Button>
+                      <Button size="sm" variant="destructive" className="rounded-full" onClick={handleDelete} disabled={actionLoading === "delete"}>
                         {actionLoading === "delete" ? "Deleting..." : "Yes, delete"}
                       </Button>
                     </div>
@@ -272,7 +272,7 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-destructive hover:text-destructive border-destructive/30"
+                      className="rounded-full border-destructive/30 text-destructive hover:text-destructive"
                       onClick={() => setConfirmDelete(true)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -282,7 +282,7 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
                         <Button
                           variant="outline"
                           size="sm"
-                          className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                          className="gap-1.5 rounded-full border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                           onClick={handleRedeem}
                           disabled={!!actionLoading}
                         >
@@ -294,7 +294,7 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
                         size="sm"
                         onClick={handleAddStamp}
                         disabled={!!actionLoading}
-                        className="gap-1.5"
+                        className="gap-1.5 rounded-full"
                       >
                         <Star className="h-3.5 w-3.5" />
                         {actionLoading === "stamp" ? "Adding..." : "Add Stamp"}
@@ -306,28 +306,28 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
 
               {/* Activity */}
               {selected.recentActivity.length > 0 && (
-                <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
-                  <div className="border-b border-zinc-100 px-4 py-2.5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 flex items-center gap-1.5">
+                <div className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_18px_40px_-34px_rgba(15,23,42,0.18)]">
+                  <div className="border-b border-slate-200/80 px-4 py-3">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
                       <Clock className="h-3 w-3" />
                       Recent Activity
                     </p>
                   </div>
-                  <div className="divide-y divide-zinc-100 max-h-48 overflow-y-auto">
+                  <div className="max-h-48 divide-y divide-slate-200/80 overflow-y-auto">
                     {selected.recentActivity.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between px-4 py-2.5">
+                      <div key={a.id} className="flex items-center justify-between px-4 py-3">
                         <div className="flex items-center gap-2">
                           {a.type === "stamp" ? (
                             <Star className="h-3.5 w-3.5 text-blue-400" />
                           ) : (
                             <Gift className="h-3.5 w-3.5 text-emerald-500" />
                           )}
-                          <span className="text-sm text-zinc-700">
+                          <span className="text-sm text-slate-950">
                             {a.type === "stamp" ? "Stamp added" : `Reward redeemed (${a.stampsUsed} stamps)`}
-                            {a.note && <span className="text-zinc-400"> · {a.note}</span>}
+                            {a.note && <span className="text-slate-500"> · {a.note}</span>}
                           </span>
                         </div>
-                        <span className="text-xs text-zinc-400">
+                        <span className="text-xs text-slate-500">
                           {format(new Date(a.createdAt), "MMM d, h:mm a")}
                         </span>
                       </div>
@@ -337,10 +337,10 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
               )}
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-zinc-200">
+            <div className="flex h-full items-center justify-center rounded-[24px] border border-dashed border-border/70">
               <div className="text-center">
-                <Star className="mx-auto h-8 w-8 text-zinc-200" />
-                <p className="mt-2 text-sm text-zinc-400">Select a card or create a new one</p>
+                <Star className="mx-auto h-8 w-8 text-muted-foreground/30" />
+                <p className="mt-2 text-sm text-muted-foreground">Select a card or create a new one</p>
               </div>
             </div>
           )}

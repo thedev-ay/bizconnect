@@ -35,7 +35,7 @@ export function Paginator({ page, totalPages, onPage }: PaginatorProps) {
   const pageWindow = getPageWindow(page, totalPages);
 
   return (
-    <div className="border-t border-zinc-100 pt-3 mt-3">
+    <div className="mt-3 border-t border-border/50 pt-3">
       <Pagination>
         <PaginationContent>
           <PaginationItem>
@@ -55,10 +55,10 @@ export function Paginator({ page, totalPages, onPage }: PaginatorProps) {
                 <button
                   onClick={() => onPage(p)}
                   className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-md text-sm transition-colors",
+                    "flex h-9 w-9 items-center justify-center rounded-full text-sm transition-colors",
                     p === page
-                      ? "border border-zinc-200 bg-white font-semibold text-zinc-900 shadow-xs"
-                      : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                      ? "border border-border/70 bg-background font-semibold text-foreground shadow-[0_8px_24px_-18px_rgba(15,23,42,0.35)]"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   {p + 1}

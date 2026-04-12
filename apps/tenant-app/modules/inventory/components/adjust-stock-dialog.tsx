@@ -9,6 +9,7 @@ import { useOnlineStatus } from "@/lib/use-online-status";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -66,42 +67,44 @@ export function AdjustStockDialog({ item, tenantSlug, tenantId, open, onOpenChan
 
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setQty(""); }}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
         <DialogHeader>
-          <DialogTitle>Adjust Stock</DialogTitle>
+          <p className="eyebrow-label">Stock</p>
+          <DialogTitle>Adjust</DialogTitle>
+          <DialogDescription>{item.name}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-4 py-3">
-            <p className="text-sm font-medium text-zinc-800">{item.name}</p>
-            <p className="text-xs text-zinc-500 mt-0.5">Current stock: <strong>{item.quantity}</strong></p>
+          <div className="rounded-2xl border border-border/60 bg-muted/35 px-4 py-3">
+            <p className="text-sm font-medium text-foreground">{item.name}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">On hand {item.quantity}</p>
           </div>
 
           <div className="space-y-2">
-            <Label>Adjustment type</Label>
+            <Label>Type</Label>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setType("add")}
                 className={cn(
-                  "flex-1 rounded-lg border py-2 text-sm font-medium transition-colors",
+                  "flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-colors",
                   type === "add"
-                    ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                    : "border-zinc-200 text-zinc-500 hover:bg-zinc-50"
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                    : "border-border/70 text-muted-foreground hover:bg-muted/40"
                 )}
               >
-                + Add stock
+                Add
               </button>
               <button
                 type="button"
                 onClick={() => setType("remove")}
                 className={cn(
-                  "flex-1 rounded-lg border py-2 text-sm font-medium transition-colors",
+                  "flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-colors",
                   type === "remove"
-                    ? "border-red-400 bg-red-50 text-red-700"
-                    : "border-zinc-200 text-zinc-500 hover:bg-zinc-50"
+                    ? "border-red-300 bg-red-50 text-red-700"
+                    : "border-border/70 text-muted-foreground hover:bg-muted/40"
                 )}
               >
-                − Remove stock
+                Remove
               </button>
             </div>
           </div>
@@ -120,9 +123,9 @@ export function AdjustStockDialog({ item, tenantSlug, tenantId, open, onOpenChan
           </div>
 
           {qty && Number(qty) > 0 && (
-            <div className="flex justify-between rounded-lg bg-zinc-50 px-4 py-2.5 text-sm">
-              <span className="text-zinc-500">New stock</span>
-              <span className={cn("font-semibold", newQty < 0 ? "text-red-600" : "text-zinc-800")}>
+            <div className="flex justify-between rounded-2xl border border-border/60 bg-muted/35 px-4 py-3 text-sm">
+              <span className="text-muted-foreground">New stock</span>
+              <span className={cn("font-semibold", newQty < 0 ? "text-red-700" : "text-foreground")}>
                 {Math.max(0, newQty)}
               </span>
             </div>
@@ -130,13 +133,13 @@ export function AdjustStockDialog({ item, tenantSlug, tenantId, open, onOpenChan
         </div>
         <DialogFooter>
           {!isOnline && (
-            <p className="flex items-center gap-1.5 text-xs text-amber-600 mr-auto">
-              <WifiOff className="h-3.5 w-3.5" /> You're offline
+            <p className="mr-auto flex items-center gap-1.5 text-xs text-amber-700">
+              <WifiOff className="h-3.5 w-3.5" /> Offline
             </p>
           )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving || !qty || Number(qty) <= 0 || !isOnline}>
-            {saving ? "Saving..." : "Confirm"}
+            {saving ? "Saving..." : "Apply"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -68,74 +68,84 @@ export function CreateUserDialog({ tenantSlug, tenantId, activeModuleSlugs }: Cr
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>
+      <DialogTrigger render={<Button className="rounded-full px-4" />}>
         <Plus className="mr-2 h-4 w-4" />
-        Add User
+        New
       </DialogTrigger>
-      <DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="flex max-h-[90vh] min-w-[min(92vw,56rem)] w-[min(95vw,64rem)] max-w-none flex-col overflow-hidden border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
         <DialogHeader>
-          <DialogTitle>Add New User</DialogTitle>
-          <DialogDescription>Create a new user account for this workspace.</DialogDescription>
+          <p className="eyebrow-label text-primary">New User</p>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Full Name</Label>
-            <Input id="name" placeholder="John Doe" {...register("name")} />
-            {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="john@example.com" {...register("email")} />
-            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Initial Password</Label>
-            <Input id="password" type="password" {...register("password")} />
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
+            <section className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white p-4">
+              <div>
+                <p className="eyebrow-label text-primary">Profile</p>
+                <h3 className="text-sm font-semibold text-slate-950">Member Details</h3>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input id="name" placeholder="John Doe" {...register("name")} />
+                  {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" placeholder="john@example.com" {...register("email")} />
+                  {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Initial Password</Label>
+                  <Input id="password" type="password" {...register("password")} />
+                  {errors.password && (
+                    <p className="text-sm text-destructive">{errors.password.message}</p>
+                  )}
+                </div>
+                <div className="space-y-2 md:max-w-xs">
+                  <Label>Role</Label>
+                  <Select
+                    defaultValue="member"
+                    onValueChange={(v) => {
+                      if (v) setRole(v);
+                      setValue("role", v as any);
+                    }}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue>
+                        {{ owner: "Owner", admin: "Admin", member: "Member" }[role] ?? role}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="owner">Owner</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="member">Member</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </section>
+
+            {role === "member" && (
+              <section className="space-y-3 rounded-[24px] border border-slate-200/80 bg-white p-4">
+                <div>
+                  <p className="eyebrow-label text-primary">Access</p>
+                  <h3 className="text-sm font-semibold text-slate-950">Module Permissions</h3>
+                </div>
+                <PermissionEditor
+                  value={permissions}
+                  onChange={setPermissions}
+                  activeModuleSlugs={activeModuleSlugs}
+                />
+              </section>
             )}
           </div>
-          <div className="space-y-2">
-            <Label>Role</Label>
-            <Select
-              defaultValue="member"
-              onValueChange={(v) => {
-                if (v) setRole(v);
-                setValue("role", v as any);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="owner">Owner</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="member">Member</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
-          {/* Permission editor — only for members */}
-          {role === "member" && (
-            <div className="space-y-2">
-              <Label>Module Permissions</Label>
-              <p className="text-xs text-zinc-400">
-                Toggle modules on to grant access. Expand each module to set action-level permissions.
-              </p>
-              <PermissionEditor
-                value={permissions}
-                onChange={setPermissions}
-                activeModuleSlugs={activeModuleSlugs}
-              />
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          <DialogFooter className="-mx-5 -mb-5 mt-4 shrink-0 border-t border-slate-200/80 px-5 py-4">
+            <Button type="button" variant="outline" className="rounded-full" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create User"}
+            <Button type="submit" className="rounded-full" disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Save"}
             </Button>
           </DialogFooter>
         </form>

@@ -33,6 +33,35 @@ export async function createCustomer(
   return customer;
 }
 
+export async function updateCustomer(
+  tenantSlug: string,
+  tenantId: string,
+  customerId: string,
+  input: CreateCustomerInput
+) {
+  await authorize(tenantSlug, "crm.edit");
+  const parsed = createCustomerSchema.parse(input);
+
+  const tags = parsed.tags
+    ? parsed.tags.split(",").map((t) => t.trim()).filter(Boolean)
+    : [];
+
+  const customer = await prisma.customer.update({
+    where: { id: customerId, tenantId },
+    data: {
+      name: parsed.name,
+      email: parsed.email || null,
+      phone: parsed.phone || null,
+      address: parsed.address || null,
+      notes: parsed.notes || null,
+      tags,
+    },
+  });
+
+  revalidatePath(`/${tenantSlug}/crm`);
+  return customer;
+}
+
 export async function deleteCustomer(
   tenantSlug: string,
   tenantId: string,

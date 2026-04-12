@@ -10,6 +10,7 @@ export interface Appointment {
   status: string; // pending, confirmed, in-progress, done, cancelled, no-show
   employeeId: string | null;
   employeeName: string | null;
+  staffName: string | null;
   serviceId: string | null;
   serviceName: string | null;
   createdAt: Date;

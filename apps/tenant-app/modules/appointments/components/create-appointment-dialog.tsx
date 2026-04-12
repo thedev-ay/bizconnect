@@ -1,20 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, AlertCircle, CheckCircle } from "lucide-react";
+import { Plus, AlertCircle, CheckCircle, WifiOff } from "lucide-react";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { createAppointmentSchema, type CreateAppointmentInput } from "../schema";
-import { createAppointment, getStaffAvailability } from "../actions";
+import { createAppointment, createAppointmentService, getStaffAvailability } from "../actions";
 
 interface ServiceOption {
   id: string;
@@ -54,15 +56,23 @@ export function CreateAppointmentDialog({
   open: externalOpen,
   onOpenChange: externalOnOpenChange,
 }: CreateAppointmentDialogProps) {
+  const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = externalOnOpenChange ?? setInternalOpen;
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
 
+  const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>(services);
   const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [serviceQuery, setServiceQuery] = useState("");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [staffQuery, setStaffQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
+  const [newServiceDuration, setNewServiceDuration] = useState("60");
+  const [newServicePrice, setNewServicePrice] = useState("0");
+  const [creatingService, setCreatingService] = useState(false);
   const [availability, setAvailability] = useState<{
     isWorkingDay: boolean;
     workStart: string | null;
@@ -75,10 +85,32 @@ export function CreateAppointmentDialog({
     resolver: zodResolver(createAppointmentSchema),
   });
 
-  const selectedService = services.find((s) => s.id === selectedServiceId);
+  useEffect(() => {
+    setServiceOptions(services);
+  }, [services]);
+
+  const selectedService = serviceOptions.find((s) => s.id === selectedServiceId);
   const qualifiedStaff = staff.filter(
     (s) => !selectedServiceId || s.serviceIds.includes(selectedServiceId)
   );
+  const normalizedServiceQuery = serviceQuery.trim().toLowerCase();
+  const matchingServices = normalizedServiceQuery
+    ? serviceOptions.filter((s) => s.name.toLowerCase().includes(normalizedServiceQuery))
+    : serviceOptions;
+  const exactServiceMatch = normalizedServiceQuery
+    ? serviceOptions.find((s) => s.name.trim().toLowerCase() === normalizedServiceQuery) ?? null
+    : null;
+  const canCreateService = serviceQuery.trim().length > 0 && !exactServiceMatch;
+  const serviceComboboxOptions: ComboboxOption[] = serviceOptions.map((service) => ({
+    value: service.id,
+    label: service.name,
+    description: `${service.duration}m · ${currencySymbol}${Number(service.price).toLocaleString(currencyLocale)}`,
+  }));
+  const staffComboboxOptions: ComboboxOption[] = qualifiedStaff.map((member) => ({
+    value: member.id,
+    label: member.name,
+    description: member.position ?? "Staff",
+  }));
 
   // Check availability when employee + date changes
   useEffect(() => {
@@ -100,10 +132,11 @@ export function CreateAppointmentDialog({
       );
       if (!stillQualifies) {
         setSelectedEmployeeId("");
-        setValue("employeeId", "");
+        setValue("employeeId", undefined, { shouldValidate: true });
+        setValue("staffName", staffQuery.trim(), { shouldValidate: false });
       }
     }
-  }, [selectedServiceId]);
+  }, [selectedEmployeeId, selectedServiceId, setValue, staff, staffQuery]);
 
   // Pre-fill date/time when dialog opens with a defaultStart (e.g. from calendar slot click)
   useEffect(() => {
@@ -119,15 +152,127 @@ export function CreateAppointmentDialog({
     setOpen(o);
     if (!o) {
       reset();
+      setServiceOptions(services);
       setSelectedServiceId("");
+      setServiceQuery("");
       setSelectedEmployeeId("");
+      setStaffQuery("");
       setSelectedDate("");
       setSelectedTime("");
+      setNewServiceDuration("60");
+      setNewServicePrice("0");
       setAvailability(null);
     }
   }
 
+  function selectService(service: ServiceOption | ComboboxOption) {
+    const id = "id" in service ? service.id : service.value;
+    const name = "name" in service ? service.name : service.label;
+    setSelectedServiceId(id);
+    setServiceQuery(name);
+    setValue("serviceId", id, { shouldValidate: true });
+  }
+
+  function handleServiceQueryChange(value: string) {
+    setServiceQuery(value);
+
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      setSelectedServiceId("");
+      setValue("serviceId", "", { shouldValidate: true });
+      return;
+    }
+
+    const match = serviceOptions.find((service) => service.name.trim().toLowerCase() === normalized);
+    if (match) {
+      selectService(match);
+      return;
+    }
+
+    setSelectedServiceId("");
+    setValue("serviceId", "", { shouldValidate: true });
+  }
+
+  function selectStaff(staffMember: StaffOption | ComboboxOption) {
+    const id = "id" in staffMember ? staffMember.id : staffMember.value;
+    const name = "name" in staffMember ? staffMember.name : staffMember.label;
+    setSelectedEmployeeId(id);
+    setStaffQuery(name);
+    setValue("employeeId", id, { shouldValidate: true });
+    setValue("staffName", "", { shouldValidate: false });
+  }
+
+  function handleStaffQueryChange(value: string) {
+    setStaffQuery(value);
+
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      setSelectedEmployeeId("");
+      setValue("employeeId", undefined, { shouldValidate: true });
+      setValue("staffName", "", { shouldValidate: false });
+      return;
+    }
+
+    const match = qualifiedStaff.find((member) => member.name.trim().toLowerCase() === normalized);
+    if (match) {
+      selectStaff(match);
+      return;
+    }
+
+    setSelectedEmployeeId("");
+    setValue("employeeId", undefined, { shouldValidate: true });
+    setValue("staffName", value.trim(), { shouldValidate: false });
+  }
+
+  async function handleCreateService() {
+    if (!isOnline) {
+      toast.error("You're offline. Connect to create services.");
+      return;
+    }
+
+    const name = serviceQuery.trim();
+    const duration = Number(newServiceDuration);
+    const price = Number(newServicePrice);
+
+    if (!name) {
+      toast.error("Enter a service name first.");
+      return;
+    }
+
+    setCreatingService(true);
+    try {
+      const created = await createAppointmentService(tenantSlug, tenantId, {
+        name,
+        duration,
+        price,
+      });
+
+      const nextService: ServiceOption = {
+        id: created.id,
+        name: created.name,
+        duration: created.duration,
+        price: String(created.price),
+      };
+
+      setServiceOptions((current) => {
+        const withoutDuplicate = current.filter((service) => service.id !== nextService.id);
+        return [...withoutDuplicate, nextService].sort((a, b) => a.name.localeCompare(b.name));
+      });
+      selectService(nextService);
+      toast.success("Service created");
+      router.refresh();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to create service");
+    } finally {
+      setCreatingService(false);
+    }
+  }
+
   async function onSubmit(data: CreateAppointmentInput) {
+    if (!isOnline) {
+      toast.error("You're offline. Connect to book appointments.");
+      return;
+    }
     try {
       await createAppointment(tenantSlug, tenantId, data);
       toast.success("Appointment booked");
@@ -141,77 +286,96 @@ export function CreateAppointmentDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
       {externalOpen === undefined && (
-        <DialogTrigger render={<Button />}>
-          <Plus className="mr-2 h-4 w-4" /> New Appointment
+        <DialogTrigger render={<Button className="rounded-full px-4" />}>
+          <Plus className="mr-2 h-4 w-4" /> New
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Book Appointment</DialogTitle></DialogHeader>
+      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
+        <DialogHeader>
+          <p className="eyebrow-label">Appointment</p>
+          <DialogTitle>Book</DialogTitle>
+          <DialogDescription>Service and time</DialogDescription>
+        </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-
-          {/* Step 1: Service */}
           <div className="space-y-2">
             <Label>Service *</Label>
-            <Select
-              value={selectedServiceId}
-              onValueChange={(v) => { if (v) { setSelectedServiceId(v); setValue("serviceId", v); } }}
-            >
-              <SelectTrigger>
-                <SelectValue>
-                  {selectedServiceId
-                    ? services.find((s) => s.id === selectedServiceId)?.name
-                    : <span className="text-muted-foreground">Select a service...</span>}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {services.map((svc) => (
-                  <SelectItem key={svc.id} value={svc.id}>
-                    {svc.name} — {svc.duration}min · {currencySymbol}{Number(svc.price).toLocaleString(currencyLocale)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              options={serviceComboboxOptions}
+              value={serviceQuery}
+              onValueChange={handleServiceQueryChange}
+              onSelect={selectService}
+              selectedValue={selectedServiceId}
+              placeholder="Select or type a service..."
+              emptyMessage="No matching services found."
+              helperText="Pick an existing service or type a new name to create it."
+              footer={canCreateService ? (
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Create "{serviceQuery.trim()}"</p>
+                      <p className="text-xs text-muted-foreground">This saves a new service, then selects it for the appointment.</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleCreateService}
+                      disabled={creatingService || !newServiceDuration || !newServicePrice}
+                    >
+                      {creatingService ? "Creating..." : "Create"}
+                    </Button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="new-service-duration">Duration (minutes)</Label>
+                      <Input
+                        id="new-service-duration"
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={newServiceDuration}
+                        onChange={(e) => setNewServiceDuration(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new-service-price">Price ({currencySymbol})</Label>
+                      <Input
+                        id="new-service-price"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={newServicePrice}
+                        onChange={(e) => setNewServicePrice(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            />
             {errors.serviceId && <p className="text-sm text-destructive">{errors.serviceId.message}</p>}
           </div>
 
-          {/* Step 2: Staff */}
           <div className="space-y-2">
-            <Label>Staff Member *</Label>
-            <Select
-              value={selectedEmployeeId}
-              onValueChange={(v) => { if (v) { setSelectedEmployeeId(v); setValue("employeeId", v); } }}
+            <Label>Staff <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Combobox
+              options={staffComboboxOptions}
+              value={staffQuery}
+              onValueChange={handleStaffQueryChange}
+              onSelect={selectStaff}
+              selectedValue={selectedEmployeeId}
+              placeholder={selectedServiceId ? "Select or type a staff name..." : "Select service first"}
               disabled={!selectedServiceId}
-            >
-              <SelectTrigger>
-                <SelectValue>
-                  {selectedEmployeeId
-                    ? qualifiedStaff.find((s) => s.id === selectedEmployeeId)?.name
-                    : <span className="text-muted-foreground">{selectedServiceId ? "Select staff..." : "Select a service first"}</span>}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {qualifiedStaff.length === 0 ? (
-                  <SelectItem value="_none" disabled>No qualified staff for this service</SelectItem>
-                ) : (
-                  qualifiedStaff.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}{s.position ? ` — ${s.position}` : ""}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            {errors.employeeId && <p className="text-sm text-destructive">{errors.employeeId.message}</p>}
+              emptyMessage="No matching staff found. Keep typing to save a custom name."
+              helperText="Pick a registered staff member, or type a name to store it only on this appointment."
+            />
           </div>
 
-          {/* Step 3: Date & Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Date *</Label>
               <Input
                 type="date"
                 value={selectedDate}
-                disabled={!selectedEmployeeId}
+                disabled={!selectedServiceId}
                 onChange={(e) => {
                   const date = e.target.value;
                   setSelectedDate(date);
@@ -223,8 +387,8 @@ export function CreateAppointmentDialog({
             </div>
             <div className="space-y-2">
               <Label>
-                Start Time *
-                {selectedService && <span className="ml-1 text-xs text-muted-foreground">(+{selectedService.duration}min)</span>}
+                Time *
+                {selectedService && <span className="ml-1 text-xs text-muted-foreground">(+{selectedService.duration}m)</span>}
               </Label>
               <Input
                 type="time"
@@ -242,10 +406,9 @@ export function CreateAppointmentDialog({
             </div>
           </div>
 
-          {/* Availability indicator */}
           {selectedEmployeeId && selectedDate && (
             <div className={cn(
-              "rounded-md border px-3 py-2 text-xs",
+              "rounded-2xl border px-3 py-2.5 text-xs",
               checkingAvailability && "text-muted-foreground",
               availability?.isWorkingDay === false && "border-destructive/50 bg-destructive/5 text-destructive",
               availability?.isWorkingDay === true && "border-green-500/50 bg-green-500/5 text-green-700",
@@ -259,7 +422,7 @@ export function CreateAppointmentDialog({
                       <span>Available {availability.workStart}–{availability.workEnd}</span>
                       {availability.bookedSlots.length > 0 && (
                         <div className="mt-0.5 text-amber-700">
-                          Already booked: {availability.bookedSlots.map((s) =>
+                          Booked: {availability.bookedSlots.map((s) =>
                             `${new Date(s.start).toLocaleTimeString(currencyLocale, { hour: "2-digit", minute: "2-digit" })}–${new Date(s.end).toLocaleTimeString(currencyLocale, { hour: "2-digit", minute: "2-digit" })}`
                           ).join(", ")}
                         </div>
@@ -269,17 +432,16 @@ export function CreateAppointmentDialog({
                 ) : (
                   <div className="flex items-center gap-1.5">
                     <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                    Staff does not work on this day
+                    Off day
                   </div>
                 )
               )}
             </div>
           )}
 
-          {/* Customer Info */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2">
-              <Label>Customer Name *</Label>
+              <Label>Customer *</Label>
               <Input placeholder="Alex Morgan" {...register("customerName")} />
               {errors.customerName && <p className="text-sm text-destructive">{errors.customerName.message}</p>}
             </div>
@@ -295,12 +457,17 @@ export function CreateAppointmentDialog({
 
           <div className="space-y-2">
             <Label>Notes</Label>
-            <Textarea rows={2} placeholder="Any special notes..." {...register("notes")} />
+            <Textarea rows={2} placeholder="Optional" {...register("notes")} />
           </div>
 
           <DialogFooter>
+            {!isOnline && (
+              <p className="flex items-center gap-1.5 text-xs text-amber-600 mr-auto">
+                <WifiOff className="h-3.5 w-3.5" /> You're offline
+              </p>
+            )}
             <Button type="button" variant="outline" onClick={() => handleOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Booking..." : "Book Appointment"}</Button>
+            <Button type="submit" disabled={isSubmitting || !isOnline}>{isSubmitting ? "Booking..." : "Book"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

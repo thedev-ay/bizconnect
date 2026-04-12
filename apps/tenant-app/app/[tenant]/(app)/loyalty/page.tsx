@@ -1,5 +1,6 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
+import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
 import { LoyaltyShell, LoyaltySettingsDialog, NewCardButton } from "@/modules/loyalty";
 import type { LoyaltyCard, LoyaltyActivity } from "@/modules/loyalty";
 
@@ -77,20 +78,13 @@ export default async function LoyaltyPage({ params }: LoyaltyPageProps) {
   const redeemableCards = cards.filter((c) => c.currentStamps >= settings.stampsPerReward).length;
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div className="flex items-center justify-between shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Loyalty Cards</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">
-            {totalCards} card{totalCards !== 1 ? "s" : ""}
-            {redeemableCards > 0 && (
-              <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                {redeemableCards} ready to redeem
-              </span>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <PageShell className="h-auto min-h-full">
+      <PageHeader
+        eyebrow="Loyalty"
+        title="Cards"
+        description={`${totalCards} total${redeemableCards > 0 ? ` · ${redeemableCards} ready` : ""}`}
+        action={
+          <div className="flex items-center gap-2">
           <LoyaltySettingsDialog
             tenantSlug={tenantSlug}
             tenantId={tenant.id}
@@ -100,17 +94,18 @@ export default async function LoyaltyPage({ params }: LoyaltyPageProps) {
             tenantSlug={tenantSlug}
             tenantId={tenant.id}
           />
-        </div>
-      </div>
+          </div>
+        }
+      />
 
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <ContentPanel className="min-h-0 flex-1 overflow-hidden border-slate-200/70 bg-white/82 p-4 shadow-[0_20px_60px_-28px_rgba(15,23,42,0.18)]">
         <LoyaltyShell
           cards={cards}
           settings={settings}
           tenantSlug={tenantSlug}
           tenantId={tenant.id}
         />
-      </div>
-    </div>
+      </ContentPanel>
+    </PageShell>
   );
 }

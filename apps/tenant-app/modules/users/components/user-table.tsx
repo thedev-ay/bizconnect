@@ -28,8 +28,8 @@ import { EditUserDialog } from "./edit-user-dialog";
 
 const ROLE_PILL: Record<string, string> = {
   owner: "bg-zinc-900 text-white",
-  admin: "bg-zinc-100 text-zinc-700",
-  member: "bg-zinc-50 text-zinc-500 border border-zinc-200",
+  admin: "bg-primary/10 text-primary",
+  member: "bg-muted text-muted-foreground border border-border",
 };
 
 interface UserTableProps {
@@ -76,26 +76,26 @@ export function UserTable({ users, tenantSlug, tenantId, currentUserId, activeMo
     <>
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead className="text-zinc-500">Name</TableHead>
-            <TableHead className="text-zinc-500">Email</TableHead>
-            <TableHead className="text-zinc-500">Role</TableHead>
-            <TableHead className="text-zinc-500">Status</TableHead>
-            <TableHead className="text-zinc-500">Joined</TableHead>
-            <TableHead />
+          <TableRow className="border-border/60 hover:bg-transparent">
+            <TableHead className="pl-5 text-xs uppercase tracking-[0.22em] text-muted-foreground">Name</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Email</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Role</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Status</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Joined</TableHead>
+            <TableHead className="w-16 pr-5" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {users.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+              <TableCell colSpan={6} className="px-5 py-8 text-center text-muted-foreground">
                 No users found.
               </TableCell>
             </TableRow>
           ) : (
             users.map((user) => (
-              <TableRow key={user.id} className={loading === user.id ? "opacity-50" : ""}>
-                <TableCell className="font-medium">
+              <TableRow key={user.id} className={cn("border-border/60 hover:bg-muted/20", loading === user.id && "opacity-50")}>
+                <TableCell className="pl-5 font-medium text-foreground">
                   {user.name ?? "—"}
                   {user.id === currentUserId && (
                     <span className="ml-2 text-xs text-muted-foreground">(you)</span>
@@ -110,7 +110,7 @@ export function UserTable({ users, tenantSlug, tenantId, currentUserId, activeMo
                 <TableCell>
                   <span className={cn(
                     "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                    user.isActive ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"
+                    user.isActive ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
                   )}>
                     {user.isActive ? "Active" : "Inactive"}
                   </span>
@@ -118,10 +118,10 @@ export function UserTable({ users, tenantSlug, tenantId, currentUserId, activeMo
                 <TableCell className="text-muted-foreground">
                   {format(new Date(user.createdAt), "MMM d, yyyy")}
                 </TableCell>
-                <TableCell>
+                <TableCell className="pr-5">
                   {user.id !== currentUserId && (
                     <DropdownMenu>
-                      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
+                      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" />}>
                         <MoreHorizontal className="h-4 w-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">

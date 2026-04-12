@@ -1,10 +1,10 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { JobOrderBoard, CreateJobOrderDialog, WorkflowStageEditor } from "@/modules/job-orders";
-import { StatCards } from "./stat-cards";
 import type { JobOrder, WorkflowStage } from "../types";
 import { db } from "@/lib/local-db";
+import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
 
 interface JobOrdersViewProps {
   tenantSlug: string;
@@ -33,8 +33,6 @@ export function JobOrdersView({
   billingEnabled,
   initialCustomerId,
 }: JobOrdersViewProps) {
-  const queryClient = useQueryClient();
-
   const { data, isPending } = useQuery<JobOrdersData>({
     queryKey: ["job-orders", tenantSlug],
     queryFn: async () => {
@@ -65,61 +63,43 @@ export function JobOrdersView({
   const customers = data?.customers ?? [];
   const employees = data?.employees ?? [];
 
-  const completedStage = stages.find((s) => s.type === "completed");
   const activeStages = stages.filter((s) => s.type === "active");
   const firstActiveSlug = activeStages[0]?.slug;
 
   const activeOrders = jobOrders.filter((j) => activeStages.some((s) => s.slug === j.status));
-  const completedToday = jobOrders.filter((j) => {
-    if (!completedStage || j.status !== completedStage.slug || !j.completedAt) return false;
-    const d = new Date(j.completedAt);
-    const now = new Date();
-    return d.toDateString() === now.toDateString();
-  });
-  const today = jobOrders.filter((j) => new Date(j.createdAt).toDateString() === new Date().toDateString());
-
-  function invalidate() {
-    queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] });
-  }
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div className="flex items-center justify-between shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Job Orders</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">
-            {isPending ? "Loading..." : `${activeOrders.length} active orders`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <WorkflowStageEditor
-            tenantSlug={tenantSlug}
-            tenantId={tenantId}
-            stages={stages}
-            stageCounts={Object.fromEntries(stages.map((s) => [s.slug, jobOrders.filter((j) => j.status === s.slug).length]))}
-          />
-          <CreateJobOrderDialog
-            tenantSlug={tenantSlug}
-            tenantId={tenantId}
-            services={services}
-            customers={customers}
-            employees={employees}
-            currencySymbol={currencySymbol}
-            currencyLocale={currencyLocale}
-            firstStageSlug={firstActiveSlug ?? "received"}
-            initialCustomerId={initialCustomerId}
-            disabled={activeStages.length === 0}
-          />
-        </div>
-      </div>
-
-      <StatCards
-        active={activeOrders.length}
-        completedToday={completedToday.length}
-        receivedToday={today.length}
+    <PageShell className="h-auto min-h-full">
+      <PageHeader
+        eyebrow="Workflow"
+        title="Job Orders"
+        description={isPending ? "Loading" : `${activeOrders.length} active`}
+        action={
+          <div className="flex items-center gap-2">
+            <WorkflowStageEditor
+              tenantSlug={tenantSlug}
+              tenantId={tenantId}
+              stages={stages}
+              stageCounts={Object.fromEntries(stages.map((s) => [s.slug, jobOrders.filter((j) => j.status === s.slug).length]))}
+            />
+            <CreateJobOrderDialog
+              tenantSlug={tenantSlug}
+              tenantId={tenantId}
+              services={services}
+              customers={customers}
+              employees={employees}
+              currencySymbol={currencySymbol}
+              currencyLocale={currencyLocale}
+              firstStageSlug={firstActiveSlug ?? "received"}
+              initialCustomerId={initialCustomerId}
+              disabled={activeStages.length === 0}
+            />
+          </div>
+        }
+        className="py-4 sm:py-5"
       />
 
-      <div className="min-h-0 flex-1">
+      <ContentPanel className="min-h-0 flex-1 overflow-hidden p-5">
         <JobOrderBoard
           jobOrders={jobOrders}
           stages={stages}
@@ -133,7 +113,7 @@ export function JobOrdersView({
           employees={employees}
           billingEnabled={billingEnabled}
         />
-      </div>
-    </div>
+      </ContentPanel>
+    </PageShell>
   );
 }

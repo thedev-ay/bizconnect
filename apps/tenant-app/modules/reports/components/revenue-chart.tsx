@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import type { RevenueDataPoint, PaymentMethodBreakdown } from "../types";
 
-const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6"];
+const COLORS = ["#0f8b8d", "#22c55e", "#f59e0b", "#ef4444", "#2563eb"];
 
 interface RevenueChartProps {
   data: RevenueDataPoint[];
@@ -32,8 +32,8 @@ export function RevenueChart({ data, currencySymbol, currencyLocale, hasPos = tr
         <defs>
           {hasPos && (
             <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+              <stop offset="5%" stopColor="#0f8b8d" stopOpacity={0.28} />
+              <stop offset="95%" stopColor="#0f8b8d" stopOpacity={0} />
             </linearGradient>
           )}
           {hasBilling && (
@@ -43,7 +43,7 @@ export function RevenueChart({ data, currencySymbol, currencyLocale, hasPos = tr
             </linearGradient>
           )}
         </defs>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+        <CartesianGrid strokeDasharray="3 3" className="stroke-border/70" />
         <XAxis dataKey="label" tick={{ fontSize: 11 }} />
         <YAxis
           tick={{ fontSize: 11 }}
@@ -58,7 +58,7 @@ export function RevenueChart({ data, currencySymbol, currencyLocale, hasPos = tr
             type="monotone"
             dataKey="sales"
             name="POS Sales"
-            stroke="#6366f1"
+            stroke="#0f8b8d"
             fill="url(#colorSales)"
             strokeWidth={2}
           />

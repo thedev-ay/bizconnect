@@ -24,11 +24,13 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
 
   return (
     <Providers>
-      <div className="flex h-screen flex-col overflow-hidden">
+      <div className="flex h-screen flex-col overflow-hidden bg-transparent">
         <OfflineBanner />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar tenant={tenant} modules={session.user.moduleObjects} />
-          <main className="flex-1 overflow-y-auto bg-zinc-50 p-6">{children}</main>
+          <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
+            {children}
+          </main>
         </div>
       </div>
     </Providers>

@@ -1,6 +1,6 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
-import { Card, CardContent } from "@/components/ui/card";
+import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
 import { PromotionsList } from "@/modules/promotions/components/promotions-list";
 import type { Promotion } from "@/modules/promotions";
 
@@ -46,53 +46,21 @@ export default async function PromotionsPage({ params }: PromotionsPageProps) {
     category: p.category?.name ?? null,
   }));
 
-  const now = new Date();
-  const weekFromNow = new Date(now); weekFromNow.setDate(now.getDate() + 7);
-
-  const activeCount = typedPromotions.filter(
-    (p) => p.isActive && (!p.endsAt || new Date(p.endsAt) >= now) && (!p.startsAt || new Date(p.startsAt) <= now)
-  ).length;
-  const scheduledCount = typedPromotions.filter(
-    (p) => p.isActive && p.startsAt && new Date(p.startsAt) > now
-  ).length;
-  const expiringSoonCount = typedPromotions.filter(
-    (p) => p.endsAt && new Date(p.endsAt) >= now && new Date(p.endsAt) <= weekFromNow
-  ).length;
-
-  const stats = [
-    { label: "Total", value: promotions.length, color: "text-zinc-900" },
-    { label: "Active now", value: activeCount, color: "text-emerald-600" },
-    { label: "Scheduled", value: scheduledCount, color: "text-blue-600" },
-    { label: "Expiring this week", value: expiringSoonCount, color: expiringSoonCount > 0 ? "text-amber-600" : "text-zinc-400" },
-  ];
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Promotions</h1>
-        <p className="text-sm text-zinc-500 mt-0.5">Manage discounts and deals applied at checkout</p>
-      </div>
-
-      {/* Stat row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {stats.map((s) => (
-          <Card key={s.label} className="shadow-none border-zinc-200">
-            <CardContent className="p-4">
-              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-zinc-500 mt-0.5">{s.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card className="shadow-none border-zinc-200">
+    <PageShell className="h-auto min-h-full">
+      <PageHeader
+        eyebrow="Promotions"
+        title="Promotions"
+        description={`${typedPromotions.length} total`}
+      />
+      <ContentPanel className="overflow-hidden p-0">
         <PromotionsList
           promotions={typedPromotions}
           tenantSlug={tenantSlug}
           tenantId={tenant.id}
           products={productOptions}
         />
-      </Card>
-    </div>
+      </ContentPanel>
+    </PageShell>
   );
 }

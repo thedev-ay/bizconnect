@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Settings, Plus, Trash2, GripVertical, CheckCircle2, XCircle, ArrowRight } from "lucide-react";
+import { Settings, Plus, Trash2, GripVertical, CheckCircle2, XCircle, ArrowRight, WifiOff } from "lucide-react";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -60,11 +62,11 @@ function SortableStepRow({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="flex items-center gap-2"
+      className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/72 px-3 py-2"
     >
       <button
         type="button"
-        className="shrink-0 cursor-grab text-zinc-300 hover:text-zinc-500 active:cursor-grabbing"
+        className="shrink-0 cursor-grab text-muted-foreground/55 hover:text-foreground/75 active:cursor-grabbing"
         {...attributes}
         {...listeners}
       >
@@ -75,7 +77,7 @@ function SortableStepRow({
         value={stage.name}
         onChange={(e) => onUpdate({ name: e.target.value })}
         placeholder="Step name"
-        className={cn("h-8 text-sm flex-1", !stage.name.trim() && "border-amber-300 focus-visible:ring-amber-300")}
+        className={cn("h-9 flex-1 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0", !stage.name.trim() && "text-amber-700")}
       />
 
 
@@ -83,7 +85,7 @@ function SortableStepRow({
         type="button"
         onClick={onDelete}
         disabled={deleting}
-        className="shrink-0 text-zinc-300 hover:text-red-400 transition-colors disabled:opacity-40"
+        className="shrink-0 rounded-full p-1 text-muted-foreground/45 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-40"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>
@@ -93,6 +95,7 @@ function SortableStepRow({
 
 export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts }: WorkflowStageEditorProps) {
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -177,6 +180,7 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
 
   async function doDeleteStep(stage: EditableStage) {
     if (!stage.id) return;
+    if (!isOnline) { toast.error("You're offline. Connect to delete stages."); return; }
     setDeletingId(stage.id);
     setPendingDelete(null);
     try {
@@ -196,6 +200,7 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
 
   async function handleSave() {
     if (hasErrors) return;
+    if (!isOnline) { toast.error("You're offline. Connect to save the workflow."); return; }
     setSaving(true);
     try {
       // Recalculate sortOrders: active steps first (sorted), then completed, then cancelled
@@ -256,25 +261,25 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
         Workflow
       </DialogTrigger>
 
-      <DialogContent className="min-w-4xl max-h-[90vh] flex flex-col gap-0">
+      <DialogContent className="min-w-4xl max-h-[90vh] flex flex-col gap-0 border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
         <DialogHeader className="pb-4">
-          <DialogTitle>Job Order Workflow</DialogTitle>
-          <p className="text-xs text-zinc-400">
-            Set up the steps your orders go through, from drop-off to pickup.
-          </p>
+          <p className="eyebrow-label">Workflow</p>
+          <DialogTitle>Stages</DialogTitle>
+          <DialogDescription>From intake to claim</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-5 pr-1">
+        <div className="grid flex-1 gap-5 overflow-y-auto pr-1 lg:grid-cols-[minmax(0,1.25fr)_320px]">
+          <div className="space-y-5">
 
-          {/* STEPS */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Steps</p>
-            <p className="text-xs text-zinc-400">The stages an order passes through before it's ready.</p>
+          <div className="space-y-3 rounded-[26px] border border-border/60 bg-background/72 p-4">
+            <div>
+              <p className="eyebrow-label">Active</p>
+              <h3 className="mt-1 text-sm font-semibold text-foreground">Stages</h3>
+            </div>
 
             {steps.length === 0 && (
-              <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-4 py-6 text-center">
-                <p className="text-sm font-medium text-zinc-500">No steps yet</p>
-                <p className="mt-1 text-xs text-zinc-400">Add at least one step to define your workflow.</p>
+              <div className="rounded-2xl border border-dashed border-border/70 bg-muted/25 px-4 py-6 text-center">
+                <p className="text-sm font-medium text-muted-foreground">No steps</p>
               </div>
             )}
 
@@ -296,40 +301,40 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
 
             <button
               onClick={addStep}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-zinc-200 py-2 text-xs font-medium text-zinc-400 hover:border-zinc-300 hover:text-zinc-600 transition-colors"
+              className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border/70 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add a step
+              Add step
             </button>
           </div>
 
-          {/* FLOW PREVIEW */}
           {steps.filter((s) => s.name.trim()).length > 0 && (
-            <div className="rounded-lg bg-zinc-50 border border-zinc-100 px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400 mb-2">Preview</p>
+            <div className="rounded-[26px] border border-border/60 bg-background/72 px-4 py-3">
+              <p className="eyebrow-label text-[0.62rem]">Preview</p>
               <div className="flex flex-wrap items-center gap-1.5">
                 {steps.filter((s) => s.name.trim()).map((s, i) => (
                   <span key={i} className="flex items-center gap-1.5">
-                    <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">
+                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-foreground/80">
                       {s.name}
                     </span>
-                    <ArrowRight className="h-3 w-3 text-zinc-300" />
+                    <ArrowRight className="h-3 w-3 text-muted-foreground/45" />
                   </span>
                 ))}
-                <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                   {doneStage?.name || "Completed"}
                 </span>
               </div>
             </div>
           )}
+          </div>
 
-          {/* DONE STAGE */}
-          <div className="space-y-2 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+          <div className="space-y-4">
+          <div className="space-y-2 rounded-[26px] border border-emerald-100 bg-emerald-50/90 p-4">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
               <div>
-                <p className="text-xs font-semibold text-emerald-800">Completed stage</p>
-                <p className="text-[10px] text-emerald-600">When an order reaches this stage, payment is collected and the order is closed.</p>
+                <p className="text-xs font-semibold text-emerald-800">Completed</p>
+                <p className="text-[10px] text-emerald-600">Payment and closeout</p>
               </div>
             </div>
             {doneStage && (
@@ -342,14 +347,13 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
             )}
           </div>
 
-          {/* CANCEL STAGE */}
           {cancelStage && (
-            <div className="space-y-2 rounded-xl border border-red-100 bg-red-50 p-3">
+            <div className="space-y-2 rounded-[26px] border border-red-100 bg-red-50/90 p-4">
               <div className="flex items-center gap-2">
                 <XCircle className="h-4 w-4 text-red-500 shrink-0" />
                 <div>
-                  <p className="text-xs font-semibold text-red-800">Cancelled stage</p>
-                  <p className="text-[10px] text-red-500">Used when an order is abandoned or refused.</p>
+                  <p className="text-xs font-semibold text-red-800">Cancelled</p>
+                  <p className="text-[10px] text-red-500">Abandoned or refused</p>
                 </div>
               </div>
               <Input
@@ -360,6 +364,7 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
               />
             </div>
           )}
+          </div>
         </div>
 
         {emptyNames && (
@@ -370,7 +375,7 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
         )}
 
         {pendingDelete && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-3 space-y-2 mt-2">
+          <div className="mt-2 space-y-2 rounded-[26px] border border-red-200 bg-red-50 p-4">
             <p className="text-xs font-semibold text-red-800">
               Remove "{pendingDelete.name}"?
             </p>

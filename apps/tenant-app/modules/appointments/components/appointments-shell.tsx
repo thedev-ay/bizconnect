@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { AppointmentCalendar } from "./appointment-calendar";
 import { CreateAppointmentDialog } from "./create-appointment-dialog";
 import type { Appointment } from "../types";
+import { ContentPanel } from "@/components/layout/page-shell";
 
 interface ServiceOption {
   id: string;
@@ -60,11 +60,10 @@ export function AppointmentsShell({
   }
 
   return (
-    <>
-      {/* New Appointment button — sits in the page header row */}
+    <div className="space-y-4">
       <div className="flex justify-end">
-        <Button onClick={handleNewAppointment}>
-          <Plus className="mr-2 h-4 w-4" /> New Appointment
+        <Button onClick={handleNewAppointment} className="rounded-full px-4">
+          <Plus className="mr-2 h-4 w-4" /> New
         </Button>
       </div>
 
@@ -83,8 +82,17 @@ export function AppointmentsShell({
         }}
       />
 
-      <Card className="shadow-none border-zinc-200">
-        <CardContent className="p-5">
+      <ContentPanel className="overflow-hidden p-0">
+        <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
+          <div>
+            <p className="eyebrow-label">Calendar</p>
+            <h2 className="mt-1 text-lg font-semibold text-foreground">Schedule</h2>
+          </div>
+          <div className="rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            Week
+          </div>
+        </div>
+        <div className="p-5">
           <AppointmentCalendar
             appointments={appointments}
             tenantSlug={tenantSlug}
@@ -93,8 +101,8 @@ export function AppointmentsShell({
             slotMinTime={slotMinTime}
             slotMaxTime={slotMaxTime}
           />
-        </CardContent>
-      </Card>
-    </>
+        </div>
+      </ContentPanel>
+    </div>
   );
 }

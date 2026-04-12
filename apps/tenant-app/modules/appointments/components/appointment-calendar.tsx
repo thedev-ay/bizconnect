@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -39,17 +41,17 @@ interface AppointmentCalendarProps {
 
 const STATUS_COLOR: Record<string, string> = {
   pending: "#f59e0b",
-  confirmed: "#3b82f6",
-  "in-progress": "#8b5cf6",
-  done: "#22c55e",
+  confirmed: "#0f93a2",
+  "in-progress": "#0891b2",
+  done: "#10b981",
   cancelled: "#ef4444",
   "no-show": "#9ca3af",
 };
 
 const STATUS_PILL: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700 border-amber-200",
-  confirmed: "bg-blue-50 text-blue-700 border-blue-200",
-  "in-progress": "bg-violet-50 text-violet-700 border-violet-200",
+  confirmed: "bg-cyan-50 text-cyan-700 border-cyan-200",
+  "in-progress": "bg-sky-50 text-sky-700 border-sky-200",
   done: "bg-emerald-50 text-emerald-700 border-emerald-200",
   cancelled: "bg-zinc-100 text-zinc-500 border-zinc-200",
   "no-show": "bg-zinc-100 text-zinc-500 border-zinc-200",
@@ -94,6 +96,7 @@ export function AppointmentCalendar({
   slotMaxTime,
 }: AppointmentCalendarProps) {
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
   const calendarRef = useRef<FullCalendar>(null);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(false);
@@ -121,6 +124,7 @@ export function AppointmentCalendar({
   }
 
   async function handleStatus(id: string, status: string, msg: string) {
+    if (!isOnline) { toast.error("You're offline. Connect to update appointments."); return; }
     setLoading(true);
     try {
       await updateAppointmentStatus(tenantSlug, tenantId, id, status);
@@ -136,7 +140,7 @@ export function AppointmentCalendar({
 
   return (
     <>
-      <div className="fullcalendar-wrapper">
+      <div className="fullcalendar-wrapper rounded-[28px] border border-border/50 bg-background/60 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
@@ -197,65 +201,61 @@ export function AppointmentCalendar({
         />
       </div>
 
-      {/* Appointment detail dialog */}
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold text-zinc-900">
-              {selected?.serviceName ?? selected?.customerName}
-            </DialogTitle>
+            <p className="eyebrow-label">Appointment</p>
+            <DialogTitle className="text-base font-semibold text-foreground">{selected?.serviceName ?? selected?.customerName}</DialogTitle>
+            <DialogDescription>{selected?.customerName}</DialogDescription>
           </DialogHeader>
           {selected && (
             <div className="space-y-4">
-              {/* Status badge */}
               <div>
                 <StatusPill status={selected.status} />
               </div>
 
-              {/* Details */}
-              <div className="rounded-lg border border-zinc-100 bg-zinc-50 divide-y divide-zinc-100">
+              <div className="divide-y divide-border/50 rounded-2xl border border-border/60 bg-muted/35">
                 <div className="flex items-center gap-2.5 px-3 py-2.5">
-                  <Clock className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
-                  <span className="text-sm text-zinc-700">
+                  <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="text-sm text-foreground">
                     {format(new Date(selected.startAt), "MMM d, yyyy · h:mm a")}
                     {" – "}
                     {format(new Date(selected.endAt), "h:mm a")}
                   </span>
                 </div>
                 <div className="flex items-start gap-2.5 px-3 py-2.5">
-                  <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                  <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-zinc-700">{selected.customerName}</p>
+                    <p className="text-sm font-medium text-foreground">{selected.customerName}</p>
                     {selected.customerPhone && (
-                      <p className="text-xs text-zinc-400">{selected.customerPhone}</p>
+                      <p className="text-xs text-muted-foreground">{selected.customerPhone}</p>
                     )}
                     {selected.customerEmail && (
-                      <p className="text-xs text-zinc-400">{selected.customerEmail}</p>
+                      <p className="text-xs text-muted-foreground">{selected.customerEmail}</p>
                     )}
                   </div>
                 </div>
                 {selected.serviceName && (
                   <div className="flex items-center gap-2.5 px-3 py-2.5">
-                    <CheckCircle className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
-                    <span className="text-sm text-zinc-700">{selected.serviceName}</span>
+                    <CheckCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="text-sm text-foreground">{selected.serviceName}</span>
                   </div>
                 )}
                 {selected.employeeName && (
                   <div className="flex items-center gap-2.5 px-3 py-2.5">
-                    <UserCheck className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
-                    <span className="text-sm text-zinc-700">{selected.employeeName}</span>
+                    <UserCheck className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="text-sm text-foreground">{selected.employeeName}</span>
                   </div>
                 )}
               </div>
 
               {selected.notes && (
-                <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2.5">
-                  <p className="mb-1 text-xs font-medium text-zinc-400">Notes</p>
-                  <p className="text-sm text-zinc-600">{selected.notes}</p>
+                <div className="rounded-2xl border border-border/60 bg-muted/35 px-3 py-2.5">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">Notes</p>
+                  <p className="text-sm text-foreground/80">{selected.notes}</p>
                 </div>
               )}
 
-              {/* Actions */}
               {(selected.status === "pending" || selected.status === "confirmed" || selected.status === "in-progress") && (
                 <div className="flex gap-2">
                   <Button

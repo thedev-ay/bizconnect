@@ -106,38 +106,39 @@
 
 @layer base {
   :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --background: oklch(0.992 0.004 95);
+    --foreground: oklch(0.235 0.022 218);
+    --card: oklch(0.998 0.002 95);
+    --card-foreground: oklch(0.235 0.022 218);
+    --popover: oklch(0.998 0.002 95);
+    --popover-foreground: oklch(0.235 0.022 218);
+    --primary: oklch(0.53 0.103 196);
+    --primary-foreground: oklch(0.985 0.005 180);
+    --secondary: oklch(0.972 0.008 205);
+    --secondary-foreground: oklch(0.305 0.03 210);
+    --muted: oklch(0.976 0.006 205);
+    --muted-foreground: oklch(0.52 0.022 214);
+    --accent: oklch(0.964 0.014 195);
+    --accent-foreground: oklch(0.28 0.035 206);
+    --destructive: oklch(0.61 0.185 26);
+    --border: oklch(0.905 0.008 220);
+    --input: oklch(0.932 0.007 220);
+    --ring: oklch(0.61 0.092 196);
+    --chart-1: oklch(0.68 0.12 192);
+    --chart-2: oklch(0.74 0.08 162);
+    --chart-3: oklch(0.66 0.11 220);
+    --chart-4: oklch(0.78 0.07 90);
+    --chart-5: oklch(0.56 0.09 235);
+    --radius: 0.95rem;
+    --sidebar: oklch(0.26 0.028 218);
+    --sidebar-foreground: oklch(0.94 0.01 188);
+    --sidebar-primary: oklch(0.62 0.11 191);
+    --sidebar-primary-foreground: oklch(0.19 0.015 214);
+    --sidebar-accent: oklch(0.34 0.025 214);
+    --sidebar-accent-foreground: oklch(0.96 0.006 188);
+    --sidebar-border: oklch(0.34 0.02 214);
+    --sidebar-ring: oklch(0.66 0.09 191);
+    --font-heading: var(--font-sans, sans-serif);
   }
   .dark {
     --background: oklch(0.145 0 0);
@@ -179,9 +180,64 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
+    background-image:
+      radial-gradient(circle at top left, color-mix(in oklch, var(--primary) 8%, transparent) 0, transparent 24rem),
+      linear-gradient(180deg, oklch(0.996 0.003 95) 0%, oklch(0.986 0.004 220) 100%);
+    min-height: 100vh;
   }
   html {
     font-family: var(--font-sans, sans-serif);
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to bottom, rgb(255 255 255 / 0.28), transparent 18rem),
+      radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.2) 1px, transparent 0);
+    background-size: auto, 28px 28px;
+    opacity: 0.55;
+    z-index: -1;
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 22%, white);
+  }
+}
+
+@layer components {
+  .app-canvas {
+    @apply bg-transparent;
+  }
+
+  .app-panel {
+    @apply rounded-[calc(var(--radius)+10px)] border border-white/80 bg-white/88 shadow-[0_20px_60px_-24px_rgba(15,23,42,0.24)] backdrop-blur-xl;
+  }
+
+  .app-panel-subtle {
+    @apply rounded-[calc(var(--radius)+6px)] border border-border/80 bg-card/96 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.2)];
+  }
+
+  .page-title {
+    @apply text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-[2rem];
+  }
+
+  .page-subtitle {
+    @apply mt-1 max-w-2xl text-sm leading-6 text-muted-foreground;
+  }
+
+  .eyebrow-label {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-primary/75;
+  }
+
+  .metric-value {
+    @apply text-[1.75rem] font-semibold tracking-[-0.045em] text-foreground;
+  }
+
+  .metric-caption {
+    @apply text-xs font-medium text-muted-foreground;
   }
 }
 

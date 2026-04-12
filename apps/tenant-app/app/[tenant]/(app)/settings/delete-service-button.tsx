@@ -35,7 +35,7 @@ export function DeleteServiceButton({ serviceId, tenantSlug, tenantId }: DeleteS
     <Button
       variant="ghost"
       size="icon"
-      className="h-8 w-8 text-zinc-400 hover:text-red-600"
+      className="h-8 w-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600"
       disabled={loading}
       onClick={handleDelete}
     >

@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,21 +13,29 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createCustomerSchema, type CreateCustomerInput } from "../schema";
-import { createCustomer } from "../actions";
+import { updateCustomer } from "../actions";
+import type { Customer } from "../types";
 
-interface AddCustomerDialogProps {
+interface EditCustomerDialogProps {
+  customer: Customer;
   tenantSlug: string;
   tenantId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function AddCustomerDialog({ tenantSlug, tenantId }: AddCustomerDialogProps) {
-  const [open, setOpen] = useState(false);
+export function EditCustomerDialog({
+  customer,
+  tenantSlug,
+  tenantId,
+  open,
+  onOpenChange,
+}: EditCustomerDialogProps) {
   const router = useRouter();
 
   const {
@@ -40,29 +47,37 @@ export function AddCustomerDialog({ tenantSlug, tenantId }: AddCustomerDialogPro
     resolver: zodResolver(createCustomerSchema),
   });
 
+  useEffect(() => {
+    if (open) {
+      reset({
+        name: customer.name,
+        email: customer.email ?? "",
+        phone: customer.phone ?? "",
+        address: customer.address ?? "",
+        notes: customer.notes ?? "",
+        tags: customer.tags.join(", "),
+      });
+    }
+  }, [open, customer, reset]);
+
   async function onSubmit(data: CreateCustomerInput) {
     try {
-      await createCustomer(tenantSlug, tenantId, data);
-      toast.success("Customer added");
-      setOpen(false);
-      reset();
+      await updateCustomer(tenantSlug, tenantId, customer.id, data);
+      toast.success("Customer updated");
+      onOpenChange(false);
       router.refresh();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to add customer");
+      toast.error(e instanceof Error ? e.message : "Failed to update customer");
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button className="rounded-full px-4" />}>
-          <Plus className="mr-2 h-4 w-4" />
-          New
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
         <DialogHeader>
           <p className="eyebrow-label">CRM</p>
-          <DialogTitle>New</DialogTitle>
-          <DialogDescription>Customer</DialogDescription>
+          <DialogTitle>Edit</DialogTitle>
+          <DialogDescription>{customer.name}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid gap-4 rounded-[24px] border border-border/60 bg-background/62 p-4 sm:grid-cols-2">
@@ -94,11 +109,11 @@ export function AddCustomerDialog({ tenantSlug, tenantId }: AddCustomerDialogPro
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Adding..." : "Save"}
+              {isSubmitting ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </form>

@@ -1,5 +1,6 @@
 "use client";
 
+import type * as React from "react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -26,7 +27,7 @@ import { XCircle, Printer, AlertTriangle, RotateCcw, CheckCircle2, Ban, Wallet }
 import { approveReturn, processRefund, rejectReturn, voidSale } from "../actions";
 import { ReceiptPrintDialog } from "@/components/receipt";
 import { ReturnDialog } from "./return-dialog";
-import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 interface SaleItem {
   id: string;
@@ -50,9 +51,9 @@ interface SaleReturn {
   status: string;
   refundAmount: string | null;
   refundMethod: string | null;
-  approvedAt: Date | null;
-  refundedAt: Date | null;
-  createdAt: Date;
+  approvedAt: string | Date | null;
+  refundedAt: string | Date | null;
+  createdAt: string | Date;
   items: SaleReturnItem[];
 }
 
@@ -67,7 +68,7 @@ interface SaleDetailProps {
     change: string;
     paymentMethod: string;
     status: string;
-    createdAt: Date;
+    createdAt: string | Date;
     servedByName?: string | null;
     items: SaleItem[];
     returns: SaleReturn[];
@@ -86,6 +87,13 @@ const PAYMENT_LABEL: Record<string, string> = {
   card: "Card",
   gcash: "GCash",
   maya: "Maya",
+};
+
+const RETURN_TONE: Record<string, React.ComponentProps<typeof StatusBadge>["tone"]> = {
+  pending: "warning",
+  approved: "blue",
+  refunded: "success",
+  rejected: "neutral",
 };
 
 export function SaleDetailDialog({
@@ -189,53 +197,62 @@ export function SaleDetailDialog({
   return (
     <>
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-xl">
-        <SheetHeader className="border-b border-zinc-100 pb-4">
+      <SheetContent side="right" className="w-full border-l-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(236,253,250,0.92)_100%)] sm:max-w-xl">
+        <SheetHeader className="border-b border-border/70 pb-5">
           <div className="flex items-center justify-between gap-2">
-            <SheetTitle className="text-base">{sale.referenceNo}</SheetTitle>
+            <div>
+              <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Transaction</p>
+              <SheetTitle className="text-base">{sale.referenceNo}</SheetTitle>
+            </div>
             {isVoided && (
-              <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-500">
+              <StatusBadge tone="neutral">
                 Voided
-              </span>
+              </StatusBadge>
             )}
           </div>
-          <SheetDescription className="mt-0.5 text-xs text-zinc-400">
+          <SheetDescription className="mt-1 text-xs text-muted-foreground">
             {format(new Date(sale.createdAt), "MMM d, yyyy · h:mm a")}
             {sale.servedByName && ` · ${sale.servedByName}`}
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 space-y-5 overflow-y-auto p-4">
-          <section className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Payment Method</p>
-                <p className="mt-1 text-sm font-semibold text-zinc-900">
+        <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
+          <section className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[calc(var(--radius)+2px)] border border-border/70 bg-white/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-primary/70">Payment</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
                   {PAYMENT_LABEL[sale.paymentMethod] ?? sale.paymentMethod}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Items</p>
-                <p className="mt-1 text-sm font-semibold text-zinc-900">
+              </p>
+            </div>
+            <div className="rounded-[calc(var(--radius)+2px)] border border-border/70 bg-white/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-primary/70">Items</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
                   {sale.items.length} item{sale.items.length !== 1 ? "s" : ""}
-                </p>
-              </div>
+              </p>
+            </div>
+            <div className="rounded-[calc(var(--radius)+2px)] border border-border/70 bg-white/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-primary/70">Status</p>
+              <p className="mt-2">
+                <StatusBadge tone={isVoided ? "neutral" : "success"} className="capitalize">
+                  {sale.status}
+                </StatusBadge>
+              </p>
             </div>
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-zinc-900">Line Items</h3>
-            <div className="overflow-hidden rounded-xl border border-zinc-100 bg-zinc-50">
-              <div className="divide-y divide-zinc-100">
+            <h3 className="text-sm font-semibold text-foreground">Items</h3>
+            <div className="overflow-hidden rounded-[calc(var(--radius)+4px)] border border-border/70 bg-white/80">
+              <div className="divide-y divide-border/60">
                 {sale.items.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between px-3 py-2">
+                  <div key={item.id} className="flex items-center justify-between px-4 py-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-zinc-800">{item.name}</p>
-                      <p className="text-xs text-zinc-400">
+                      <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">
                         {item.quantity} × {fmt(item.unitPrice)}
                       </p>
                     </div>
-                    <span className="shrink-0 text-sm font-semibold tabular-nums text-zinc-800">
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
                       {fmt(item.total)}
                     </span>
                   </div>
@@ -244,8 +261,8 @@ export function SaleDetailDialog({
             </div>
           </section>
 
-          <section className="space-y-1.5 rounded-xl border border-zinc-200 p-4 text-sm">
-            <div className="flex justify-between text-zinc-500">
+          <section className="space-y-1.5 rounded-[calc(var(--radius)+4px)] border border-border/70 bg-white/80 p-4 text-sm">
+            <div className="flex justify-between text-muted-foreground">
               <span>Subtotal</span>
               <span className="tabular-nums">{fmt(sale.subtotal)}</span>
             </div>
@@ -256,15 +273,15 @@ export function SaleDetailDialog({
               </div>
             )}
             <Separator />
-            <div className="flex justify-between font-bold text-zinc-900">
+            <div className="flex justify-between text-base font-semibold text-foreground">
               <span>Total</span>
               <span className="tabular-nums">{fmt(sale.total)}</span>
             </div>
-            <div className="flex justify-between text-zinc-500">
+            <div className="flex justify-between text-muted-foreground">
               <span>Paid</span>
               <span className="tabular-nums">{fmt(sale.amountPaid)}</span>
             </div>
-            <div className="flex justify-between text-zinc-500">
+            <div className="flex justify-between text-muted-foreground">
               <span>Change</span>
               <span className="tabular-nums">{fmt(sale.change)}</span>
             </div>
@@ -272,36 +289,27 @@ export function SaleDetailDialog({
 
           {sale.returns.length > 0 && (
             <section className="space-y-3">
-              <h3 className="text-sm font-semibold text-zinc-900">Returns</h3>
+              <h3 className="text-sm font-semibold text-foreground">Returns</h3>
               <div className="space-y-3">
                 {sale.returns.map((saleReturn) => (
-                  <div key={saleReturn.id} className="rounded-xl border border-zinc-200 p-4">
+                  <div key={saleReturn.id} className="rounded-[calc(var(--radius)+4px)] border border-border/70 bg-white/80 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-mono text-xs text-zinc-400">{saleReturn.referenceNo}</p>
-                        <p className="mt-1 text-sm font-semibold text-zinc-900 capitalize">{saleReturn.reason.replaceAll("_", " ")}</p>
-                        <p className="mt-1 text-xs text-zinc-500">
+                        <p className="font-mono text-xs text-muted-foreground">{saleReturn.referenceNo}</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground capitalize">{saleReturn.reason.replaceAll("_", " ")}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
                           {format(new Date(saleReturn.createdAt), "MMM d, yyyy · h:mm a")}
                         </p>
                       </div>
-                      <span className={cn(
-                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
-                        saleReturn.status === "pending"
-                          ? "bg-amber-50 text-amber-700"
-                          : saleReturn.status === "approved"
-                            ? "bg-blue-50 text-blue-700"
-                            : saleReturn.status === "refunded"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-zinc-100 text-zinc-500"
-                      )}>
+                      <StatusBadge tone={RETURN_TONE[saleReturn.status] ?? "neutral"} className="capitalize">
                         {saleReturn.status}
-                      </span>
+                      </StatusBadge>
                     </div>
 
-                    <div className="mt-3 space-y-1 text-sm text-zinc-600">
-                      <p>{saleReturn.items.length} line item{saleReturn.items.length !== 1 ? "s" : ""} in this return</p>
+                    <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                      <p>{saleReturn.items.length} item{saleReturn.items.length !== 1 ? "s" : ""}</p>
                       {saleReturn.refundAmount && (
-                        <p>Refund amount: <span className="font-semibold text-zinc-900">{fmt(saleReturn.refundAmount)}</span></p>
+                        <p>Refund: <span className="font-semibold text-foreground">{fmt(saleReturn.refundAmount)}</span></p>
                       )}
                       {saleReturn.notes && <p>Notes: {saleReturn.notes}</p>}
                     </div>
@@ -314,7 +322,7 @@ export function SaleDetailDialog({
                           disabled={updatingReturnId === saleReturn.id}
                         >
                           <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
-                          {updatingReturnId === saleReturn.id ? "Approving..." : "Approve Return"}
+                          {updatingReturnId === saleReturn.id ? "Approving..." : "Approve"}
                         </Button>
                         <Button
                           size="sm"
@@ -336,7 +344,7 @@ export function SaleDetailDialog({
                           disabled={updatingReturnId === saleReturn.id}
                         >
                           <Wallet className="mr-2 h-3.5 w-3.5" />
-                          {updatingReturnId === saleReturn.id ? "Processing..." : "Mark Refund Complete"}
+                          {updatingReturnId === saleReturn.id ? "Processing..." : "Complete Refund"}
                         </Button>
                       </div>
                     )}
@@ -347,7 +355,7 @@ export function SaleDetailDialog({
           )}
         </div>
 
-        <SheetFooter className="border-t border-zinc-100">
+        <SheetFooter className="border-t border-border/70">
           <div className="flex w-full flex-wrap justify-end gap-2">
             {!isVoided && (
               <Button
@@ -356,7 +364,7 @@ export function SaleDetailDialog({
                 onClick={() => setReceiptOpen(true)}
               >
                 <Printer className="mr-2 h-3.5 w-3.5" />
-                Reprint Receipt
+                Receipt
               </Button>
             )}
 
@@ -369,12 +377,12 @@ export function SaleDetailDialog({
               >
                 <RotateCcw className="mr-2 h-3.5 w-3.5" />
                 {latestReturn?.status === "pending"
-                  ? "Return Pending"
+                  ? "Pending Return"
                   : latestReturn?.status === "approved"
-                    ? "Refund Pending"
+                    ? "Pending Refund"
                     : allItemsReturned
-                      ? "All Items Returned"
-                      : "Return Items"}
+                      ? "Returned"
+                      : "Return"}
               </Button>
             )}
 
@@ -387,7 +395,7 @@ export function SaleDetailDialog({
                 disabled={voiding}
               >
                 <XCircle className="mr-2 h-3.5 w-3.5" />
-                Void Transaction
+                Void
               </Button>
             )}
           </div>
@@ -401,7 +409,7 @@ export function SaleDetailDialog({
         <DialogHeader>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
-            <DialogTitle>Void Transaction?</DialogTitle>
+            <DialogTitle>Void sale?</DialogTitle>
           </div>
         </DialogHeader>
 
@@ -409,24 +417,16 @@ export function SaleDetailDialog({
           {hasReturnActivity && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
               <p className="text-sm text-amber-900">
-                This sale already has return activity. Use the returns workflow instead of voiding it.
+                This sale already has return activity.
               </p>
             </div>
           )}
           <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
             <p className="text-sm text-amber-900">
-              You are about to void <span className="font-semibold">{sale.referenceNo}</span>.
+              Void <span className="font-semibold">{sale.referenceNo}</span>.
             </p>
           </div>
-          <div className="text-sm text-zinc-600 space-y-1">
-            <p>This action will:</p>
-            <ul className="list-disc pl-5 space-y-0.5">
-              <li>Restore all items to inventory</li>
-              <li>Cancel the payment transaction</li>
-              <li>Mark the sale as voided permanently</li>
-            </ul>
-          </div>
-          <p className="text-xs text-zinc-500">This action cannot be undone.</p>
+          <p className="text-xs text-zinc-500">This cannot be undone.</p>
         </div>
 
         <DialogFooter className="flex gap-2">
@@ -442,7 +442,7 @@ export function SaleDetailDialog({
             onClick={handleVoid}
             disabled={voiding || hasReturnActivity}
           >
-            {voiding ? "Voiding..." : "Void Transaction"}
+            {voiding ? "Voiding..." : "Void"}
           </Button>
         </DialogFooter>
       </DialogContent>

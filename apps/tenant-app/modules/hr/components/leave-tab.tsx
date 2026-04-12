@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createLeaveRequest, updateLeaveStatus, updateLeaveRequestEndDate } from "../actions";
@@ -121,11 +121,12 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-zinc-200 p-4">
-        <p className="mb-3 text-sm font-semibold text-zinc-900">New Leave Request</p>
+      <div className="rounded-[24px] border border-border/70 bg-background/70 p-4">
+        <p className="eyebrow-label">Leave</p>
+        <p className="mb-3 text-sm font-semibold text-foreground">Request</p>
         <div key={formKey} className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label className="text-xs text-zinc-600">Employee</Label>
+            <Label className="text-xs text-muted-foreground">Employee</Label>
             <Select value={employeeId} onValueChange={(v) => { if (v) setEmployeeId(v); }}>
               <SelectTrigger className="h-8 text-xs">
                 {employeeId ? employees.find((e) => e.id === employeeId)?.name : <span className="text-muted-foreground">Select...</span>}
@@ -134,7 +135,7 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-zinc-600">Leave Type</Label>
+            <Label className="text-xs text-muted-foreground">Type</Label>
             <Select value={type} onValueChange={(v) => { if (v) setType(v); }}>
               <SelectTrigger className="h-8 text-xs">
                 {type ? LEAVE_TYPE[type] : <span className="text-muted-foreground">Select...</span>}
@@ -147,64 +148,66 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-zinc-600">Start Date</Label>
+            <Label className="text-xs text-muted-foreground">Start</Label>
             <Input type="date" className="h-8 text-xs" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-zinc-600">End Date {type === "sick" ? <span className="text-zinc-400">(optional)</span> : <span className="text-red-500">*</span>}</Label>
+            <Label className="text-xs text-muted-foreground">End {type === "sick" ? <span className="text-muted-foreground">(optional)</span> : <span className="text-red-500">*</span>}</Label>
             <Input type="date" className="h-8 text-xs" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <Label className="text-xs text-zinc-600">Reason <span className="text-zinc-400">(optional)</span></Label>
+            <Label className="text-xs text-muted-foreground">Reason <span className="text-muted-foreground">(optional)</span></Label>
             <Textarea className="text-xs" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
           <div className="sm:col-span-2">
-            <Button size="sm" onClick={handleSubmit} disabled={saving}>{saving ? "Submitting..." : "Submit Request"}</Button>
+            <Button size="sm" className="rounded-full" onClick={handleSubmit} disabled={saving}>{saving ? "Submitting..." : "Submit"}</Button>
           </div>
         </div>
       </div>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
           <DialogHeader>
-            <DialogTitle>Update Leave End Date</DialogTitle>
+            <p className="eyebrow-label">Leave</p>
+            <DialogTitle>Update</DialogTitle>
+            <DialogDescription>End date</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="text-xs text-zinc-600">End Date</Label>
+              <Label className="text-xs text-muted-foreground">End Date</Label>
               <Input type="date" className="h-8 text-xs" value={editingEndDate} min={editingStartDate} onChange={(e) => setEditingEndDate(e.target.value)} />
             </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleUpdateEndDate} disabled={loading !== null}>{loading !== null ? "Saving..." : "Save"}</Button>
-            </div>
+            <DialogFooter>
+              <Button variant="outline" className="rounded-full" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+              <Button className="rounded-full" onClick={handleUpdateEndDate} disabled={loading !== null}>{loading !== null ? "Saving..." : "Save"}</Button>
+            </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>
 
       <Table>
         <TableHeader>
-          <TableRow className="border-zinc-100 hover:bg-transparent">
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Employee</TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Type</TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">From</TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">To</TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Reason</TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Status</TableHead>
-            <TableHead />
+          <TableRow className="border-border/60 hover:bg-transparent">
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Employee</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Type</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">From</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">To</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Reason</TableHead>
+            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Status</TableHead>
+            <TableHead className="w-24" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {requests.length === 0 ? (
-            <TableRow><TableCell colSpan={7} className="py-12 text-center text-sm text-zinc-400">No leave requests yet.</TableCell></TableRow>
+            <TableRow><TableCell colSpan={7} className="py-12 text-center text-sm text-muted-foreground">No leave requests yet.</TableCell></TableRow>
           ) : (
             requests.map((r) => (
-              <TableRow key={r.id} className={cn("border-zinc-100 hover:bg-zinc-50/50", loading === r.id && "opacity-50")}>
-                <TableCell className="text-sm font-medium text-zinc-900">{r.employeeName}</TableCell>
-                <TableCell className="text-sm text-zinc-700">{LEAVE_TYPE[r.type] ?? r.type}</TableCell>
-                <TableCell className="text-sm text-zinc-500">{format(new Date(r.startDate), "MMM d, yyyy")}</TableCell>
-                <TableCell className="text-sm text-zinc-500">{r.endDate ? format(new Date(r.endDate), "MMM d, yyyy") : <span className="text-zinc-300">—</span>}</TableCell>
-                <TableCell className="max-w-[160px] truncate text-sm text-zinc-400">{r.reason ?? <span className="text-zinc-300">—</span>}</TableCell>
+              <TableRow key={r.id} className={cn("border-border/60 hover:bg-muted/20", loading === r.id && "opacity-50")}>
+                <TableCell className="text-sm font-medium text-foreground">{r.employeeName}</TableCell>
+                <TableCell className="text-sm text-foreground">{LEAVE_TYPE[r.type] ?? r.type}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{format(new Date(r.startDate), "MMM d, yyyy")}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{r.endDate ? format(new Date(r.endDate), "MMM d, yyyy") : <span className="text-muted-foreground/50">—</span>}</TableCell>
+                <TableCell className="max-w-[160px] truncate text-sm text-muted-foreground">{r.reason ?? <span className="text-muted-foreground/50">—</span>}</TableCell>
                 <TableCell>
                   <span className={cn(
                     "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
@@ -216,22 +219,22 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
                 <TableCell>
                   {r.status === "pending" && r.type !== "sick" && (
                     <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600 hover:text-emerald-700" onClick={() => handleStatus(r.id, "approved")}>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-full text-emerald-600 hover:text-emerald-700" onClick={() => handleStatus(r.id, "approved")}>
                         <CheckCircle className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => handleStatus(r.id, "rejected")}>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-full text-red-500 hover:text-red-600" onClick={() => handleStatus(r.id, "rejected")}>
                         <XCircle className="h-4 w-4" />
                       </Button>
                     </div>
                   )}
                   {r.status === "approved" && !r.endDate && (
-                    <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => { setEditingLeaveId(r.id); setEditingStartDate(format(new Date(r.startDate), "yyyy-MM-dd")); setEditingEndDate(""); setEditDialogOpen(true); }}>
-                      Add End Date
+                    <Button size="sm" variant="outline" className="h-6 rounded-full text-xs" onClick={() => { setEditingLeaveId(r.id); setEditingStartDate(format(new Date(r.startDate), "yyyy-MM-dd")); setEditingEndDate(""); setEditDialogOpen(true); }}>
+                      Add End
                     </Button>
                   )}
                   {r.status === "approved" && r.endDate && (
-                    <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => { setEditingLeaveId(r.id); setEditingStartDate(format(new Date(r.startDate), "yyyy-MM-dd")); setEditingEndDate(format(new Date(r.endDate!), "yyyy-MM-dd")); setEditDialogOpen(true); }}>
-                      Edit Date
+                    <Button size="sm" variant="ghost" className="h-6 rounded-full text-xs" onClick={() => { setEditingLeaveId(r.id); setEditingStartDate(format(new Date(r.startDate), "yyyy-MM-dd")); setEditingEndDate(format(new Date(r.endDate!), "yyyy-MM-dd")); setEditDialogOpen(true); }}>
+                      Edit End
                     </Button>
                   )}
                 </TableCell>
