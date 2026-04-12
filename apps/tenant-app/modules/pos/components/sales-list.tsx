@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import type * as React from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -21,6 +23,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { SaleDetailDialog } from "./sale-detail-dialog";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Button } from "@/components/ui/button";
 
 interface SaleItem {
   id: string;
@@ -44,9 +48,9 @@ interface SaleReturnRecord {
   status: string;
   refundAmount: string | null;
   refundMethod: string | null;
-  approvedAt: Date | null;
-  refundedAt: Date | null;
-  createdAt: Date;
+  approvedAt: string | Date | null;
+  refundedAt: string | Date | null;
+  createdAt: string | Date;
   items: SaleReturnItem[];
 }
 
@@ -61,7 +65,7 @@ interface SaleRecord {
   change: string;
   paymentMethod: string;
   status: string;
-  createdAt: Date;
+  createdAt: string | Date;
   servedByName?: string | null;
   items: SaleItem[];
   returns: SaleReturnRecord[];
@@ -75,18 +79,28 @@ interface SalesListProps {
   currencySymbol: string;
   currencyLocale: string;
   highlightedSaleId?: string;
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  summary: {
+    filteredCount: number;
+    filteredReturns: number;
+  };
 }
 
-const STATUS_PILL: Record<string, string> = {
-  completed: "bg-emerald-50 text-emerald-700",
-  voided: "bg-zinc-100 text-zinc-500",
+const STATUS_PILL: Record<string, React.ComponentProps<typeof StatusBadge>["tone"]> = {
+  completed: "success",
+  voided: "neutral",
 };
 
-const RETURN_STATUS_PILL: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700",
-  approved: "bg-blue-50 text-blue-700",
-  rejected: "bg-zinc-100 text-zinc-500",
-  refunded: "bg-emerald-50 text-emerald-700",
+const RETURN_STATUS_PILL: Record<string, React.ComponentProps<typeof StatusBadge>["tone"]> = {
+  pending: "warning",
+  approved: "blue",
+  rejected: "neutral",
+  refunded: "success",
 };
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -96,10 +110,10 @@ const PAYMENT_LABEL: Record<string, string> = {
   maya: "Maya",
 };
 
-const SOURCE_BADGE: Record<string, { label: string; className: string }> = {
-  pos:         { label: "POS",       className: "bg-blue-50 text-blue-700" },
-  "job-order": { label: "Job Order", className: "bg-violet-50 text-violet-700" },
-  appointment: { label: "Booking",   className: "bg-amber-50 text-amber-700" },
+const SOURCE_BADGE: Record<string, { label: string; tone: React.ComponentProps<typeof StatusBadge>["tone"] }> = {
+  pos:         { label: "POS",       tone: "blue" },
+  "job-order": { label: "Job Order", tone: "violet" },
+  appointment: { label: "Booking",   tone: "warning" },
 };
 
 export function SalesList({
@@ -110,45 +124,58 @@ export function SalesList({
   currencySymbol,
   currencyLocale,
   highlightedSaleId,
+  pagination,
+  summary,
 }: SalesListProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [search, setSearch] = useState("");
-  const [paymentFilter, setPaymentFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [sourceFilter, setSourceFilter] = useState("all");
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const sources = Array.from(new Set(sales.map((s) => s.source)));
-  const [selectedSaleId, setSelectedSaleId] = useState<string | null>(highlightedSaleId ?? null);
-
-  const filtered = sales.filter((s) => {
-    if (search && !s.referenceNo.toLowerCase().includes(search.toLowerCase())) return false;
-    if (paymentFilter !== "all" && s.paymentMethod !== paymentFilter) return false;
-    if (statusFilter !== "all" && s.status !== statusFilter) return false;
-    if (sourceFilter !== "all" && s.source !== sourceFilter) return false;
-    return true;
-  });
+  // Accumulate sources seen across fetches so filtering doesn't shrink the dropdown options
+  const knownSourcesRef = useRef<Set<string>>(new Set<string>());
+  sales.forEach((s) => knownSourcesRef.current.add(s.source));
+  const sources: string[] = Array.from(knownSourcesRef.current);
+  const search = searchParams.get("search") ?? "";
+  const paymentFilter = searchParams.get("payment") ?? "all";
+  const statusFilter = searchParams.get("status") ?? "all";
+  const sourceFilter = searchParams.get("source") ?? "all";
+  const selectedSaleId = searchParams.get("saleId") ?? highlightedSaleId ?? null;
 
   const selectedSale =
-    filtered.find((sale) => sale.id === selectedSaleId) ??
     sales.find((sale) => sale.id === selectedSaleId) ??
     null;
+  const pageValue = pagination.page;
 
   useEffect(() => {
     if (!highlightedSaleId) return;
-    setSelectedSaleId(highlightedSaleId);
     const row = document.getElementById(`sale-row-${highlightedSaleId}`);
     row?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [highlightedSaleId]);
 
-  function updateSaleQuery(saleId: string | null) {
+  useEffect(() => {
+    if (!selectedSaleId) return;
+    if (sales.some((sale) => sale.id === selectedSaleId)) return;
     const params = new URLSearchParams(searchParams.toString());
-    if (saleId) {
-      params.set("saleId", saleId);
-    } else {
+    params.delete("saleId");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, sales, searchParams, selectedSaleId]);
+
+  function updateLedgerQuery(updates: Record<string, string | null>, resetPage = false) {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === "" || value === "all") {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    }
+    if (resetPage) {
+      params.delete("page");
+    }
+    if (updates.saleId === null) {
       params.delete("saleId");
     }
     const query = params.toString();
@@ -156,13 +183,11 @@ export function SalesList({
   }
 
   function openSale(saleId: string) {
-    setSelectedSaleId(saleId);
-    updateSaleQuery(saleId);
+    updateLedgerQuery({ saleId });
   }
 
   function closeSale() {
-    setSelectedSaleId(null);
-    updateSaleQuery(null);
+    updateLedgerQuery({ saleId: null });
   }
 
   const fmt = (v: string) =>
@@ -171,136 +196,250 @@ export function SalesList({
   return (
     <>
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 p-4 border-b border-zinc-100">
-        <Input
-          placeholder="Search reference no..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-8 w-52 text-sm"
-        />
-        <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-          <SelectTrigger className="h-8 w-36 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All methods</SelectItem>
-            <SelectItem value="cash">Cash</SelectItem>
-            <SelectItem value="card">Card</SelectItem>
-            <SelectItem value="gcash">GCash</SelectItem>
-            <SelectItem value="maya">Maya</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-8 w-36 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="voided">Voided</SelectItem>
-          </SelectContent>
-        </Select>
-        {mounted && sources.length > 1 && (
-          <Select value={sourceFilter} onValueChange={setSourceFilter}>
-            <SelectTrigger className="h-8 w-36 text-sm">
-              <SelectValue />
+      <div className="space-y-4 border-b border-border/70 bg-white/40 px-4 py-4 sm:px-5">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,160px))]">
+          <div>
+            <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Sales Ledger</p>
+            <h3 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-foreground">
+              Transactions
+            </h3>
+          </div>
+          <div className="rounded-2xl bg-white/75 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-primary/70">Shown</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{summary.filteredCount}</p>
+          </div>
+          <div className="rounded-2xl bg-white/75 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-primary/70">Page</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{pagination.page}</p>
+          </div>
+          <div className="rounded-2xl bg-white/75 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-primary/70">Returns</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{summary.filteredReturns}</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <Input
+            placeholder="Search reference..."
+            value={search}
+            onChange={(e) => updateLedgerQuery({ search: e.target.value || null }, true)}
+            className="h-10 w-full text-sm sm:w-56"
+          />
+          <Select value={paymentFilter} onValueChange={(value) => updateLedgerQuery({ payment: value }, true)}>
+            <SelectTrigger className="h-10 w-full text-sm sm:w-36">
+              <SelectValue>
+                {paymentFilter === "all" ? "Payment" : (PAYMENT_LABEL[paymentFilter] ?? paymentFilter)}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All sources</SelectItem>
-              {sources.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {SOURCE_BADGE[s]?.label ?? s}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">All payments</SelectItem>
+              <SelectItem value="cash">Cash</SelectItem>
+              <SelectItem value="card">Card</SelectItem>
+              <SelectItem value="gcash">GCash</SelectItem>
+              <SelectItem value="maya">Maya</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={statusFilter} onValueChange={(value) => updateLedgerQuery({ status: value }, true)}>
+            <SelectTrigger className="h-10 w-full text-sm sm:w-36">
+              <SelectValue>
+                {statusFilter === "all" ? "Status" : statusFilter === "completed" ? "Completed" : "Voided"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="voided">Voided</SelectItem>
+            </SelectContent>
+          </Select>
+          {mounted && (sources.length > 1 || sourceFilter !== "all") && (
+            <Select value={sourceFilter} onValueChange={(value) => updateLedgerQuery({ source: value }, true)}>
+              <SelectTrigger className="h-10 w-full text-sm sm:w-36">
+                <SelectValue>
+                  {sourceFilter === "all" ? "Source" : (SOURCE_BADGE[sourceFilter]?.label ?? sourceFilter)}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Source</SelectItem>
+                {sources.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {SOURCE_BADGE[s]?.label ?? s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </div>
+
+      <div className="sm:hidden">
+        {sales.length === 0 ? (
+          <div className="px-4 py-12 text-center text-sm text-muted-foreground">No transactions found</div>
+        ) : (
+          <div className="space-y-3 px-4 py-4">
+            {sales.map((sale) => (
+              <button
+                key={sale.id}
+                type="button"
+                onClick={() => openSale(sale.id)}
+                className={cn(
+                  "w-full rounded-[24px] border border-border/70 bg-white p-4 text-left shadow-[0_18px_36px_-30px_rgba(15,23,42,0.25)] transition-all",
+                  sale.status === "voided" && "opacity-70",
+                  selectedSaleId === sale.id && "border-primary/30 ring-2 ring-primary/10"
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-sm font-semibold text-foreground">{sale.referenceNo}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {format(new Date(sale.createdAt), "MMM d, yyyy · h:mm a")}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold text-foreground">{fmt(sale.total)}</p>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <StatusBadge tone={SOURCE_BADGE[sale.source]?.tone ?? "neutral"}>
+                    {SOURCE_BADGE[sale.source]?.label ?? sale.source}
+                  </StatusBadge>
+                  <StatusBadge tone={STATUS_PILL[sale.status] ?? "neutral"} className="capitalize">
+                    {sale.status}
+                  </StatusBadge>
+                  {sale.returns[0] && (
+                    <StatusBadge tone={RETURN_STATUS_PILL[sale.returns[0].status] ?? "neutral"} className="capitalize">
+                      Return {sale.returns[0].status}
+                    </StatusBadge>
+                  )}
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">Payment</p>
+                    <p className="mt-1 font-medium text-foreground">{PAYMENT_LABEL[sale.paymentMethod] ?? sale.paymentMethod}</p>
+                  </div>
+                  <div>
+                    <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">Items</p>
+                    <p className="mt-1 font-medium text-foreground">
+                      {sale.items.length} item{sale.items.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow className="border-zinc-100 hover:bg-transparent">
-            <TableHead className="pl-5 text-xs font-semibold uppercase tracking-wide text-zinc-500">Reference</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Source</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Date</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Items</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Payment</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Status</TableHead>
-            <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 pr-5">Total</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filtered.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7} className="py-12 text-center text-sm text-zinc-400">
-                No transactions found
-              </TableCell>
+      <div className="hidden overflow-x-auto sm:block">
+        <Table className="min-w-[760px]">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="pl-5 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Reference</TableHead>
+              <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Source</TableHead>
+              <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Date</TableHead>
+              <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Items</TableHead>
+              <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Payment</TableHead>
+              <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Status</TableHead>
+              <TableHead className="pr-5 text-right text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Total</TableHead>
             </TableRow>
-          ) : (
-            filtered.map((sale) => (
-              <TableRow
-                key={sale.id}
-                id={`sale-row-${sale.id}`}
-                className={cn(
-                  "border-zinc-50 cursor-pointer transition-colors hover:bg-zinc-50",
-                  sale.status === "voided" && "opacity-60",
-                  selectedSaleId === sale.id && "bg-emerald-50/60 ring-1 ring-emerald-200"
-                )}
-                onClick={() => openSale(sale.id)}
-              >
-                <TableCell className="pl-5">
-                  <span className="font-mono text-sm font-medium text-zinc-800">
-                    {sale.referenceNo}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span className={cn(
-                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                    SOURCE_BADGE[sale.source]?.className ?? "bg-zinc-100 text-zinc-500"
-                  )}>
-                    {SOURCE_BADGE[sale.source]?.label ?? sale.source}
-                  </span>
-                </TableCell>
-                <TableCell className="text-sm text-zinc-500">
-                  {format(new Date(sale.createdAt), "MMM d, yyyy · h:mm a")}
-                </TableCell>
-                <TableCell className="text-sm text-zinc-500">
-                  <div>{sale.items.length} item{sale.items.length !== 1 ? "s" : ""}</div>
-                  {sale.returns.length > 0 && (
-                    <div className="mt-0.5 text-xs text-zinc-400">
-                      {sale.returns.length} return{sale.returns.length !== 1 ? "s" : ""}
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell className="text-sm text-zinc-500">
-                  {PAYMENT_LABEL[sale.paymentMethod] ?? sale.paymentMethod}
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className={cn(
-                      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
-                      STATUS_PILL[sale.status] ?? "bg-zinc-100 text-zinc-500"
-                    )}>
-                      {sale.status}
-                    </span>
-                    {sale.returns[0] && (
-                      <span className={cn(
-                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
-                        RETURN_STATUS_PILL[sale.returns[0].status] ?? "bg-zinc-100 text-zinc-500"
-                      )}>
-                        Return {sale.returns[0].status}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="pr-5 text-right text-sm font-semibold tabular-nums text-zinc-800">
-                  {fmt(sale.total)}
+          </TableHeader>
+          <TableBody>
+            {sales.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="py-16 text-center text-sm text-muted-foreground">
+                  No transactions found
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              sales.map((sale) => (
+                <TableRow
+                  key={sale.id}
+                  id={`sale-row-${sale.id}`}
+                  className={cn(
+                    "cursor-pointer bg-transparent transition-colors hover:bg-primary/5",
+                    sale.status === "voided" && "opacity-60",
+                    selectedSaleId === sale.id && "bg-primary/8 ring-1 ring-inset ring-primary/20"
+                  )}
+                  onClick={() => openSale(sale.id)}
+                >
+                  <TableCell className="pl-5">
+                    <div className="space-y-0.5">
+                      <span className="font-mono text-sm font-semibold text-foreground">
+                        {sale.referenceNo}
+                      </span>
+                      {sale.servedByName ? (
+                        <p className="text-xs text-muted-foreground">Served by {sale.servedByName}</p>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge tone={SOURCE_BADGE[sale.source]?.tone ?? "neutral"}>
+                      {SOURCE_BADGE[sale.source]?.label ?? sale.source}
+                    </StatusBadge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {format(new Date(sale.createdAt), "MMM d, yyyy · h:mm a")}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    <div>{sale.items.length} item{sale.items.length !== 1 ? "s" : ""}</div>
+                    {sale.returns.length > 0 && (
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {sale.returns.length} return{sale.returns.length !== 1 ? "s" : ""}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {PAYMENT_LABEL[sale.paymentMethod] ?? sale.paymentMethod}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge tone={STATUS_PILL[sale.status] ?? "neutral"} className="capitalize">
+                        {sale.status}
+                      </StatusBadge>
+                      {sale.returns[0] && (
+                        <StatusBadge
+                          tone={RETURN_STATUS_PILL[sale.returns[0].status] ?? "neutral"}
+                          className="capitalize"
+                        >
+                          Return {sale.returns[0].status}
+                        </StatusBadge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="pr-5 text-right text-sm font-semibold tabular-nums text-foreground">
+                    {fmt(sale.total)}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-border/70 bg-white/35 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <p className="text-sm text-muted-foreground">
+          Page {pagination.page} of {pagination.totalPages}
+        </p>
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => updateLedgerQuery({ page: String(Math.max(1, pageValue - 1)) })}
+            disabled={pagination.page <= 1}
+          >
+            <ChevronLeft className="mr-1 h-3.5 w-3.5" />
+            Prev
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => updateLedgerQuery({ page: String(Math.min(pagination.totalPages, pageValue + 1)) })}
+            disabled={pagination.page >= pagination.totalPages}
+          >
+            Next
+            <ChevronRight className="ml-1 h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
 
       {selectedSale && (
         <SaleDetailDialog

@@ -63,19 +63,18 @@ export function CurrencyForm({ tenantSlug, tenantId, defaultValues }: CurrencyFo
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {/* Quick select */}
       <div className="space-y-1.5">
-        <Label className="text-sm font-medium text-zinc-700">Quick Select</Label>
+        <Label className="text-sm font-medium text-foreground">Quick Select</Label>
         <div className="flex flex-wrap gap-2">
           {COMMON_CURRENCIES.map((c) => (
             <button
               key={c.locale}
               type="button"
               onClick={() => { setValue("currencySymbol", c.symbol); setValue("currencyLocale", c.locale); }}
-              className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
+              className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                 currentSymbol === c.symbol && currentLocale === c.locale
-                  ? "border-zinc-900 bg-zinc-900 text-white"
-                  : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400"
+                  ? "border-teal-600 bg-teal-600 text-white shadow-[0_12px_24px_-18px_rgba(13,148,136,0.9)]"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-teal-200 hover:text-slate-950"
               }`}
             >
               {c.label}
@@ -86,27 +85,27 @@ export function CurrencyForm({ tenantSlug, tenantId, defaultValues }: CurrencyFo
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-zinc-700">Currency Symbol</Label>
+          <Label className="text-sm font-medium text-foreground">Currency Symbol</Label>
           <Input {...register("currencySymbol")} placeholder="€" />
           {errors.currencySymbol && <p className="text-xs text-red-600">{errors.currencySymbol.message}</p>}
         </div>
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-zinc-700">Locale</Label>
+          <Label className="text-sm font-medium text-foreground">Locale</Label>
           <Input {...register("currencyLocale")} placeholder="nl-NL" />
-          <p className="text-xs text-zinc-400">Controls number formatting (e.g. nl-NL, en-US)</p>
+          <p className="text-xs text-muted-foreground">Controls number formatting</p>
           {errors.currencyLocale && <p className="text-xs text-red-600">{errors.currencyLocale.message}</p>}
         </div>
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-zinc-700">Default Tax Rate (%)</Label>
+          <Label className="text-sm font-medium text-foreground">Default Tax Rate (%)</Label>
           <Input type="number" step="0.01" min="0" max="100" {...register("defaultTaxRate", { valueAsNumber: true })} placeholder="12" />
-          <p className="text-xs text-zinc-400">Applied by default to new invoices</p>
+          <p className="text-xs text-muted-foreground">Applied by default to new invoices</p>
           {errors.defaultTaxRate && <p className="text-xs text-red-600">{errors.defaultTaxRate.message}</p>}
         </div>
       </div>
 
       <div className="flex justify-end pt-2">
-        <Button type="submit" disabled={saving}>
-          {saving ? "Saving…" : "Save Changes"}
+        <Button type="submit" className="rounded-full" disabled={saving}>
+          {saving ? "Saving…" : "Save"}
         </Button>
       </div>
     </form>

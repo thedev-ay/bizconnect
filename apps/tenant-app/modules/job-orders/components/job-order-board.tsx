@@ -107,10 +107,17 @@ export function JobOrderBoard({
   const activeStageCount = stages.filter((s) => s.type === "active").length;
 
   useEffect(() => {
+    if (!stages.length) return;
+    if (activeTab && stages.some((stage) => stage.slug === activeTab)) return;
+    const firstActiveStage = stages.find((stage) => stage.type === "active") ?? stages[0];
+    setActiveTab(firstActiveStage?.slug ?? "");
+  }, [stages, activeTab]);
+
+  useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const observer = new ResizeObserver(([entry]) => {
-      setUseKanban(entry.contentRect.width >= activeStageCount * MIN_COL_WIDTH);
+      setUseKanban(window.innerWidth >= 1024 && entry.contentRect.width >= activeStageCount * MIN_COL_WIDTH);
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -172,12 +179,10 @@ export function JobOrderBoard({
   }
 
   return (
-    <div ref={containerRef} className="flex h-full flex-col gap-3">
-
-      {/* Search + tabs (tabs hidden in kanban mode) */}
-      <div className="flex items-center gap-3 shrink-0 flex-wrap">
+    <div ref={containerRef} className="flex h-full min-h-0 flex-col gap-3">
+      <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         {!useKanban && (
-          <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0">
+          <div className="flex w-full min-w-0 items-center gap-1 overflow-x-auto rounded-[22px] border border-border/60 bg-muted/25 p-1 sm:flex-1 sm:rounded-full">
             {stages.map((stage) => {
               const count = jobOrders.filter((j) => j.status === stage.slug).length;
               const isActive = activeTab === stage.slug;
@@ -187,17 +192,17 @@ export function JobOrderBoard({
                   key={stage.slug}
                   onClick={() => setActiveTab(stage.slug)}
                   className={cn(
-                    "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
+                    "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
                     isActive
-                      ? "bg-zinc-900 text-white shadow-sm"
-                      : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
+                      ? "bg-foreground text-background shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]"
+                      : "text-muted-foreground hover:bg-background hover:text-foreground"
                   )}
                 >
                   {stage.name}
                   {count > 0 && (
                     <span className={cn(
-                      "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none",
-                      isActive ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-600"
+                      "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums",
+                      isActive ? "bg-white/20 text-white" : "bg-muted text-foreground/70"
                       )}>
                       {count}
                     </span>
@@ -208,13 +213,13 @@ export function JobOrderBoard({
           </div>
         )}
 
-        <div className={cn("relative shrink-0", useKanban ? "w-full sm:w-72" : "w-56")}>
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+        <div className={cn("relative shrink-0", useKanban ? "w-full sm:w-72" : "w-full sm:w-56")}>
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Name, job no, phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-8 text-sm"
+            className="h-9 rounded-full border-border/70 bg-background/75 pl-8 text-sm"
           />
         </div>
       </div>
@@ -227,8 +232,6 @@ export function JobOrderBoard({
             stages={stages}
             tenantSlug={tenantSlug}
             tenantId={tenantId}
-            currencySymbol={currencySymbol}
-            currencyLocale={currencyLocale}
             onSelect={setSelected}
             onEdit={setEditing}
             onClaim={setClaiming}
@@ -236,44 +239,43 @@ export function JobOrderBoard({
         </div>
       )}
 
-      {/* Tab board — shown when kanban doesn't fit */}
+      {/* Mobile / narrow widths use selected-stage lists instead of desktop kanban */}
       {!useKanban && <div className="flex-1 min-h-0 overflow-y-auto">
         {visibleCards.length === 0 ? (
-          <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-200 text-center">
+          <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-[28px] border border-dashed border-border/70 text-center">
             {q ? (
               <>
-                <Search className="h-6 w-6 text-zinc-200" />
-                <p className="text-sm text-zinc-400">No matches for "{search}"</p>
+                <Search className="h-6 w-6 text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">No matches</p>
               </>
             ) : isCompletedTab ? (
               <>
-                <CheckCircle2 className="h-6 w-6 text-zinc-200" />
-                <p className="text-sm text-zinc-400">No completed orders yet</p>
+                <CheckCircle2 className="h-6 w-6 text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">No completed orders</p>
               </>
             ) : isCancelledTab ? (
               <>
-                <XCircle className="h-6 w-6 text-zinc-200" />
-                <p className="text-sm text-zinc-400">No cancelled orders</p>
+                <XCircle className="h-6 w-6 text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">No cancelled orders</p>
               </>
             ) : (
               <>
-                <Clock className="h-6 w-6 text-zinc-200" />
-                <p className="text-sm text-zinc-400">No orders in this stage</p>
+                <Clock className="h-6 w-6 text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">No orders in this stage</p>
               </>
             )}
           </div>
         ) : isListTab ? (
-          /* Completed / Cancelled — compact list */
-          <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
-            <div className="divide-y divide-zinc-100">
+          <div className="overflow-hidden rounded-[28px] border border-border/60 bg-background/72">
+            <div className="divide-y divide-border/50">
               {visibleCards.map((jo) => (
                 <div
                   key={jo.id}
                   onClick={() => setSelected(jo)}
-                  className="flex cursor-pointer items-center gap-4 px-4 py-3 hover:bg-zinc-50 transition-colors"
+                  className="flex cursor-pointer items-center gap-4 px-4 py-3 transition-colors hover:bg-muted/20"
                 >
-                  <span className="font-mono text-xs font-semibold text-zinc-400 shrink-0">{jo.jobNo}</span>
-                  <span className="flex-1 text-sm font-medium text-zinc-800 truncate">{jo.customerName}</span>
+                  <span className="shrink-0 font-mono text-xs font-semibold text-muted-foreground">{jo.jobNo}</span>
+                  <span className="flex-1 truncate text-sm font-medium text-foreground">{jo.customerName}</span>
                   {isCompletedTab && (() => {
                     const badge = getBillingBadge(jo);
                     return (
@@ -290,7 +292,7 @@ export function JobOrderBoard({
                   {!jo.invoiceId && isCompletedTab && (
                     <button
                       type="button"
-                      className="rounded-full border border-zinc-200 px-2 py-1 text-[10px] font-semibold text-zinc-600 hover:bg-zinc-50"
+                      className="rounded-full border border-border/70 px-2 py-1 text-[10px] font-semibold text-foreground/75 hover:bg-muted/30"
                       onClick={(event) => {
                         event.stopPropagation();
                         handleCreateInvoice(jo.id);
@@ -300,12 +302,12 @@ export function JobOrderBoard({
                     </button>
                   )}
                   {jo.contactNo && (
-                    <span className="hidden sm:flex items-center gap-1 text-xs text-zinc-400 shrink-0">
+                    <span className="hidden shrink-0 items-center gap-1 text-xs text-muted-foreground sm:flex">
                       <Phone className="h-3 w-3" />
                       {jo.contactNo}
                     </span>
                   )}
-                  <span className="text-xs text-zinc-400 shrink-0">
+                  <span className="shrink-0 text-xs text-muted-foreground">
                     {isCompletedTab && jo.claimedAt
                       ? format(new Date(jo.claimedAt), "MMM d, h:mm a")
                       : format(new Date(jo.createdAt), "MMM d")}
@@ -315,8 +317,7 @@ export function JobOrderBoard({
             </div>
           </div>
         ) : (
-          /* Active stages — card grid */
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 pb-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3 pb-4">
             {visibleCards.map((jo) => {
               const isOverdue = jo.dueDate && new Date(jo.dueDate) < new Date();
               const grandTotal = jo.items.reduce((s, i) => s + Number(i.total), 0);
@@ -329,15 +330,14 @@ export function JobOrderBoard({
                   key={jo.id}
                   onClick={() => setSelected(jo)}
                   className={cn(
-                    "cursor-pointer rounded-xl border bg-white p-4 shadow-sm transition-all hover:shadow-md flex flex-col gap-3",
+                    "flex cursor-pointer flex-col gap-3 rounded-[26px] border bg-background/78 p-4 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.3)] transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_44px_-30px_rgba(15,23,42,0.34)]",
                     jo.priority === "urgent"
                       ? "border-red-200 hover:border-red-300"
-                      : "border-zinc-200 hover:border-zinc-300"
+                      : "border-border/60 hover:border-primary/20"
                   )}
                 >
-                  {/* Top: job no + priority */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-semibold text-zinc-400">{jo.jobNo}</span>
+                    <span className="font-mono text-xs font-semibold text-muted-foreground">{jo.jobNo}</span>
                     {priority.badge ? (
                       <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold", priority.badge)}>
                         {priority.label}
@@ -347,9 +347,8 @@ export function JobOrderBoard({
                     )}
                   </div>
 
-                  {/* Customer */}
                 <div>
-                  <p className="text-sm font-bold text-zinc-900 leading-tight">{jo.customerName}</p>
+                  <p className="text-sm font-bold leading-tight text-foreground">{jo.customerName}</p>
                   {jo.invoiceStatus && (
                     <span
                       className={cn(
@@ -361,59 +360,56 @@ export function JobOrderBoard({
                     </span>
                   )}
                   {jo.contactNo && (
-                      <div className="mt-0.5 flex items-center gap-1 text-xs text-zinc-400">
+                      <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                         <Phone className="h-3 w-3 shrink-0" />
                         {jo.contactNo}
                       </div>
                     )}
                   </div>
 
-                  {/* Services */}
                   <div className="flex-1">
                     {jo.items.length > 0 ? (
                       <div className="space-y-0.5">
                         {jo.items.slice(0, 2).map((item) => (
-                          <p key={item.id} className="truncate text-xs text-zinc-500">
+                          <p key={item.id} className="truncate text-xs text-muted-foreground">
                             {item.name}
                             {item.weight != null ? ` · ${Number(item.weight)} kg` : ` · ×${item.quantity}`}
                           </p>
                         ))}
                         {jo.items.length > 2 && (
-                          <p className="text-xs text-zinc-400">+{jo.items.length - 2} more</p>
+                          <p className="text-xs text-muted-foreground">+{jo.items.length - 2} more</p>
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs italic text-zinc-300">No services added</p>
+                      <p className="text-xs italic text-muted-foreground/60">No services</p>
                     )}
                   </div>
 
-                  {/* Footer: dates + total */}
                   <div className="flex items-end justify-between gap-2">
                     <div>
                       {jo.dueDate && (
-                        <p className={cn("text-[10px] font-medium", isOverdue ? "text-red-500" : "text-zinc-400")}>
+                        <p className={cn("text-[10px] font-medium", isOverdue ? "text-red-500" : "text-muted-foreground")}>
                           Due {format(new Date(jo.dueDate), "MMM d")}
                           {isOverdue && " · overdue"}
                         </p>
                       )}
-                      <p className="text-xs text-zinc-400">
+                      <p className="text-xs text-muted-foreground">
                         {format(new Date(jo.createdAt), "MMM d, h:mm a")}
                       </p>
                     </div>
                     {grandTotal > 0 && (
-                      <p className="text-sm font-bold text-zinc-800 tabular-nums shrink-0">
+                      <p className="shrink-0 text-sm font-bold tabular-nums text-foreground">
                         {currencySymbol}{grandTotal.toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
                       </p>
                     )}
                   </div>
 
-                  {/* Advance button */}
                   {nextStage && (
                     <button
                       onClick={(e) => handleAdvance(e, jo)}
                       disabled={advancing === jo.id}
                       className={cn(
-                        "flex w-full items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-50",
+                        "flex w-full items-center justify-center gap-1 rounded-2xl px-3 py-2.5 text-xs font-semibold transition-colors disabled:opacity-50",
                         jo.priority === "urgent"
                           ? "bg-red-600 text-white hover:bg-red-700"
                           : isReadyForCompletion

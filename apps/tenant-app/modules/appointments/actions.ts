@@ -5,6 +5,53 @@ import { prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
 import { createAppointmentSchema, type CreateAppointmentInput } from "./schema";
 
+export async function createAppointmentService(
+  tenantSlug: string,
+  tenantId: string,
+  input: { name: string; duration: number; price: number; description?: string }
+) {
+  await authorize(tenantSlug, "services.create");
+
+  const name = input.name.trim();
+  if (!name) throw new Error("Service name is required");
+  if (!Number.isInteger(input.duration) || input.duration <= 0) {
+    throw new Error("Duration must be at least 1 minute");
+  }
+  if (Number.isNaN(input.price) || input.price < 0) {
+    throw new Error("Price must be 0 or more");
+  }
+
+  const existing = await prisma.service.findFirst({
+    where: {
+      tenantId,
+      name: {
+        equals: name,
+        mode: "insensitive",
+      },
+    },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  const service = await prisma.service.create({
+    data: {
+      tenantId,
+      name,
+      description: input.description?.trim() || null,
+      duration: input.duration,
+      price: input.price,
+      isActive: true,
+    },
+  });
+
+  revalidatePath(`/${tenantSlug}/appointments`);
+  revalidatePath(`/${tenantSlug}/staff`);
+
+  return service;
+}
+
 /** Check if a staff member is available at a given datetime. */
 export async function getStaffAvailability(
   employeeId: string,
@@ -59,43 +106,41 @@ export async function createAppointment(
   const service = await prisma.service.findUnique({ where: { id: parsed.serviceId } });
   if (!service) throw new Error("Service not found");
 
-  const employee = await prisma.employee.findUnique({ where: { id: parsed.employeeId } });
-  if (!employee) throw new Error("Staff member not found");
-
   const startAt = new Date(parsed.startAt);
   const endAt = new Date(startAt.getTime() + service.duration * 60 * 1000);
 
-  // Validate working hours
-  const dayOfWeek = startAt.getDay();
-  const workingHours = await prisma.workingHours.findUnique({
-    where: { employeeId_dayOfWeek: { employeeId: parsed.employeeId, dayOfWeek } },
-  });
+  if (parsed.employeeId) {
+    const employee = await prisma.employee.findUnique({ where: { id: parsed.employeeId } });
+    if (!employee) throw new Error("Staff member not found");
 
-  if (!workingHours) {
-    throw new Error(`${employee.name} does not work on ${startAt.toLocaleDateString("en-US", { weekday: "long" })}s`);
-  }
+    // Validate working hours
+    const dayOfWeek = startAt.getDay();
+    const workingHours = await prisma.workingHours.findUnique({
+      where: { employeeId_dayOfWeek: { employeeId: parsed.employeeId, dayOfWeek } },
+    });
 
-  const startHHMM = startAt.toTimeString().slice(0, 5);
-  const endHHMM = endAt.toTimeString().slice(0, 5);
+    if (!workingHours) {
+      throw new Error(`${employee.name} does not work on ${startAt.toLocaleDateString("en-US", { weekday: "long" })}s`);
+    }
 
-  if (startHHMM < workingHours.startTime || endHHMM > workingHours.endTime) {
-    throw new Error(
-      `${employee.name} works ${workingHours.startTime}–${workingHours.endTime} on this day`
-    );
-  }
+    const startHHMM = startAt.toTimeString().slice(0, 5);
+    const endHHMM = endAt.toTimeString().slice(0, 5);
 
-  // Check for conflicts
-  const conflict = await prisma.appointment.findFirst({
-    where: {
-      employeeId: parsed.employeeId,
-      status: { notIn: ["cancelled", "no-show"] },
-      OR: [
-        { startAt: { lt: endAt }, endAt: { gt: startAt } },
-      ],
-    },
-  });
-  if (conflict) {
-    throw new Error(`${employee.name} already has an appointment at that time`);
+    if (startHHMM < workingHours.startTime || endHHMM > workingHours.endTime) {
+      throw new Error(`${employee.name} works ${workingHours.startTime}–${workingHours.endTime} on this day`);
+    }
+
+    // Check for conflicts
+    const conflict = await prisma.appointment.findFirst({
+      where: {
+        employeeId: parsed.employeeId,
+        status: { notIn: ["cancelled", "no-show"] },
+        OR: [{ startAt: { lt: endAt }, endAt: { gt: startAt } }],
+      },
+    });
+    if (conflict) {
+      throw new Error(`${employee.name} already has an appointment at that time`);
+    }
   }
 
   const appointment = await prisma.appointment.create({
@@ -108,9 +153,16 @@ export async function createAppointment(
       notes: parsed.notes || null,
       startAt,
       endAt,
-      employeeId: parsed.employeeId,
-      serviceId: parsed.serviceId,
+      staffName: parsed.employeeId ? null : parsed.staffName?.trim() || null,
       status: "pending",
+      employee: parsed.employeeId
+        ? {
+            connect: { id: parsed.employeeId },
+          }
+        : undefined,
+      service: {
+        connect: { id: parsed.serviceId },
+      },
     },
   });
 

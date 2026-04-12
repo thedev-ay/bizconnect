@@ -3,6 +3,7 @@ import { POSView } from "@/modules/pos";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { History } from "lucide-react";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 
 interface POSPageProps {
   params: Promise<{ tenant: string }>;
@@ -13,20 +14,21 @@ export default async function POSPage({ params }: POSPageProps) {
   const tenant = await getTenant(tenantSlug);
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Point of Sale</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">Point of sale terminal</p>
-        </div>
-        <Link href={`/${tenantSlug}/sales`}>
-          <Button variant="outline" size="sm">
-            <History className="mr-2 h-4 w-4" />
-            Sales History
-          </Button>
-        </Link>
-      </div>
-      <div className="flex-1 overflow-hidden">
+    <PageShell className="h-auto min-h-full">
+      <PageHeader
+        eyebrow="Storefront"
+        title="Point of Sale"
+        className="px-5 py-4 sm:px-6 sm:py-5"
+        action={
+          <Link href={`/${tenantSlug}/sales`}>
+            <Button variant="outline" size="sm">
+              <History className="mr-2 h-4 w-4" />
+              Sales History
+            </Button>
+          </Link>
+        }
+      />
+      <div className="flex-1 overflow-visible 2xl:overflow-hidden">
         <POSView
           tenantSlug={tenantSlug}
           tenantId={tenant.id}
@@ -35,6 +37,6 @@ export default async function POSPage({ params }: POSPageProps) {
           currencyLocale={tenant.currencyLocale}
         />
       </div>
-    </div>
+    </PageShell>
   );
 }

@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { TrendingUp, ShoppingCart, FileText, CheckCircle, RotateCcw, Clock3 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import type { ReportsSummary } from "../types";
 
 function AnimatedCurrency({ value, symbol, locale, className }: {
@@ -35,11 +34,11 @@ const STATS: {
   isCurrency: boolean;
 }[] = [
   { key: "totalRevenue",       label: "Total Revenue",    icon: TrendingUp,  color: "text-violet-600",  bg: "bg-violet-50",  isCurrency: true  },
-  { key: "totalSales",         label: "POS Sales",        icon: ShoppingCart,color: "text-indigo-600",  bg: "bg-indigo-50",  isCurrency: true  },
+  { key: "totalSales",         label: "POS Sales",        icon: ShoppingCart,color: "text-teal-700",    bg: "bg-teal-50",    isCurrency: true  },
   { key: "totalInvoiced",      label: "Invoiced",         icon: FileText,    color: "text-blue-600",    bg: "bg-blue-50",    isCurrency: true  },
   { key: "paidInvoices",       label: "Paid Invoices",    icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50", isCurrency: false },
   { key: "totalRefunded",      label: "Refunded",         icon: RotateCcw,   color: "text-amber-600",   bg: "bg-amber-50",   isCurrency: true  },
-  { key: "pendingReturnCount", label: "Pending Returns",  icon: Clock3,      color: "text-zinc-500",    bg: "bg-zinc-100",   isCurrency: false },
+  { key: "pendingReturnCount", label: "Pending Returns",  icon: Clock3,      color: "text-slate-500",   bg: "bg-slate-100",  isCurrency: false },
 ];
 
 interface Props {
@@ -66,8 +65,15 @@ export function ReportsSummaryCards({ summary, currencySymbol, currencyLocale, h
     if (key === "totalRevenue" && !hasPos && !hasBilling) return false;
     return true;
   });
+  const count = visibleStats.length;
+  const gridCols =
+    count <= 2 ? "sm:grid-cols-2" :
+    count <= 3 ? "sm:grid-cols-3" :
+    count <= 4 ? "sm:grid-cols-2 lg:grid-cols-4" :
+    "sm:grid-cols-3 lg:grid-cols-6";
+
   return (
-    <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+    <div className={`grid gap-4 ${gridCols}`}>
       {visibleStats.map(({ key, label, icon: Icon, color, bg, isCurrency }, i) => (
         <motion.div
           key={key}
@@ -75,11 +81,10 @@ export function ReportsSummaryCards({ summary, currencySymbol, currencyLocale, h
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.055, duration: 0.28, ease: "easeOut" }}
         >
-          <Card className="shadow-none border-zinc-200">
-            <CardContent className="p-5">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_42px_-32px_rgba(15,23,42,0.28)]">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-medium text-zinc-500">{label}</p>
+                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{label}</p>
                   {isCurrency ? (
                     <AnimatedCurrency
                       value={summary[key] as number}
@@ -94,12 +99,11 @@ export function ReportsSummaryCards({ summary, currencySymbol, currencyLocale, h
                     />
                   )}
                 </div>
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${bg}`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${bg}`}>
                   <Icon className={`h-4 w-4 ${color}`} />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+          </div>
         </motion.div>
       ))}
     </div>
@@ -112,29 +116,29 @@ export function TopItemsTable({ items, currencySymbol, currencyLocale }: {
   currencyLocale: string;
 }) {
   return (
-    <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 overflow-hidden">
+    <div className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white">
       {items.map((item, i) => (
         <motion.div
           key={item.name}
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.15 + i * 0.055, duration: 0.25, ease: "easeOut" }}
-          className="flex items-center justify-between px-4 py-3"
+          className="flex items-center justify-between border-b border-slate-200/80 px-5 py-3.5 last:border-b-0"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <span className="text-xs font-bold text-zinc-300 w-4 shrink-0">#{i + 1}</span>
-            <p className="text-sm font-medium text-zinc-800 truncate">{item.name}</p>
+            <span className="w-4 shrink-0 text-xs font-bold text-slate-300">#{i + 1}</span>
+            <p className="truncate text-sm font-medium text-slate-950">{item.name}</p>
           </div>
           <div className="flex items-center gap-6 shrink-0 text-right">
-            <p className="text-xs text-zinc-400 tabular-nums">{item.quantitySold} sold</p>
-            <p className="text-sm font-semibold text-zinc-800 tabular-nums w-20">
+            <p className="text-xs text-slate-500 tabular-nums">{item.quantitySold} sold</p>
+            <p className="w-20 text-sm font-semibold text-slate-950 tabular-nums">
               {currencySymbol}{item.revenue.toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
             </p>
           </div>
         </motion.div>
       ))}
       {items.length === 0 && (
-        <div className="px-4 py-8 text-center text-sm text-zinc-400">No sales data yet</div>
+        <div className="px-5 py-8 text-center text-sm text-muted-foreground">No sales data yet</div>
       )}
     </div>
   );

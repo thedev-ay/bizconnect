@@ -3,11 +3,12 @@ import { authorize } from "@/lib/authorize";
 import { prisma } from "@bizconnect/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, AlertTriangle, Clock, ArrowRight } from "lucide-react";
+import { Package, AlertTriangle, Clock, ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { RevenueChart, TransactionChart } from "@/components/dashboard/revenue-chart";
 import { DashboardStatCards, type DashboardStatCardData } from "@/components/dashboard/stat-cards";
 import { FadeIn } from "@/components/dashboard/fade-in";
+import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
 
 interface DashboardPageProps {
   params: Promise<{ tenant: string }>;
@@ -427,54 +428,51 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     (!moduleSet.has("appointments") && !moduleSet.has("job-orders") && moduleSet.has("inventory"));
 
   return (
-    <div className="space-y-8">
+    <PageShell className="h-auto min-h-full">
       {error === "module_disabled" && (
-        <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="flex items-center gap-2 rounded-2xl border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive shadow-[0_12px_28px_-24px_rgba(220,38,38,0.45)]">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          That module is not available on your current plan.
+          Module unavailable on this plan.
         </div>
       )}
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-          Good {getTimeGreeting()}, {firstName}
-        </h1>
-        <p className="text-sm text-zinc-500 mt-0.5">
-          {new Date().toLocaleDateString("nl-NL", {
-            weekday: "long", month: "long", day: "numeric", year: "numeric",
-          })}
-        </p>
-      </div>
-
-      {/* No modules fallback */}
-      {activeModules.every((m: { isCore: boolean }) => m.isCore) && (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-white py-16 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100">
-            <Package className="h-6 w-6 text-zinc-400" />
+      <PageHeader
+        eyebrow="Overview"
+        title={`Good ${getTimeGreeting()}, ${firstName}`}
+        description={new Date().toLocaleDateString("nl-NL", {
+          weekday: "long", month: "long", day: "numeric",
+        })}
+        action={
+          <div className="hidden items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-[0_12px_28px_-24px_rgba(15,23,42,0.28)] sm:flex">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            Live
           </div>
-          <h3 className="mt-4 text-sm font-semibold text-zinc-700">No business modules enabled</h3>
-          <p className="mt-1 text-sm text-zinc-400">
-            Contact your administrator to enable modules for your workspace.
-          </p>
-        </div>
+        }
+        className="py-4 sm:py-5"
+      />
+
+      {activeModules.every((m: { isCore: boolean }) => m.isCore) && (
+        <ContentPanel className="flex flex-col items-center justify-center border-dashed border-border/80 py-14 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+            <Package className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <h3 className="mt-4 text-sm font-semibold text-foreground">No modules enabled</h3>
+        </ContentPanel>
       )}
 
-      {/* Job Orders & Billing */}
       {opsCards.length > 0 && (
         <section className="space-y-3">
           {showSectionLabels && (
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Job Orders & Billing</p>
+            <p className="eyebrow-label px-1">Jobs & Billing</p>
           )}
           <DashboardStatCards cards={opsCards} />
         </section>
       )}
 
-      {/* Sales — stat cards with charts directly below */}
       {salesCards.length > 0 && (
         <section className="space-y-3">
           {showSectionLabels && (
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Sales</p>
+            <p className="eyebrow-label px-1">Sales</p>
           )}
           <DashboardStatCards cards={salesCards} cols={2} />
           {data.chartData && data.chartData.length > 0 && (
@@ -488,55 +486,52 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
         </section>
       )}
 
-      {/* Operations — appointments, CRM, inventory */}
       {operationsCards.length > 0 && (
         <section className="space-y-3">
           {showSectionLabels && (
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Operations</p>
+            <p className="eyebrow-label px-1">Operations</p>
           )}
           <DashboardStatCards cards={operationsCards} />
         </section>
       )}
 
-      {/* Activity grid — main panel (2/3) + stacked sidebar (1/3) */}
       {(hasActivityPanel || moduleSet.has("pos") || attentionRows.length > 0) && (
         <FadeIn delay={0.15}>
           <div className="grid gap-4 lg:grid-cols-3">
 
-            {/* Main activity panel — first available from: appointments › recent jobs › low stock */}
             {moduleSet.has("appointments") && (
               <div className="lg:col-span-2">
-                <Card className="shadow-none border-zinc-200">
-                  <CardHeader className="flex flex-row items-center justify-between pb-3">
-                    <CardTitle className="text-sm font-semibold text-zinc-700">Upcoming Appointments</CardTitle>
+                <Card className="border-border/60 bg-card/95">
+                  <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-4">
+                    <CardTitle className="text-base text-foreground">Appointments</CardTitle>
                     <Link
                       href={`/${tenantSlug}/appointments`}
-                      className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                      className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                     >
-                      View all <ArrowRight className="h-3 w-3" />
+                      All <ArrowRight className="h-3 w-3" />
                     </Link>
                   </CardHeader>
                   <CardContent className="p-0">
                     {!data.upcomingAppointments?.length ? (
-                      <div className="px-6 py-8 text-center text-sm text-zinc-400">No upcoming appointments</div>
+                      <div className="px-6 py-8 text-center text-sm text-muted-foreground">No appointments</div>
                     ) : (
-                      <div className="divide-y divide-zinc-100">
+                      <div className="divide-y divide-border/50">
                         {data.upcomingAppointments.map((apt) => (
                           <div key={apt.id} className="flex items-center gap-3 px-6 py-3">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-sky-100/80 text-sky-700 ring-1 ring-sky-200/70">
                               <Clock className="h-3.5 w-3.5" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium text-zinc-800">{apt.customerName}</p>
-                              <p className="truncate text-xs text-zinc-400">
+                              <p className="truncate text-sm font-medium text-foreground">{apt.customerName}</p>
+                              <p className="truncate text-xs text-muted-foreground">
                                 {apt.service?.name ?? "—"} · {apt.employee?.name ?? "Unassigned"}
                               </p>
                             </div>
                             <div className="text-right shrink-0">
-                              <p className="text-xs font-medium text-zinc-700">
+                              <p className="text-xs font-medium text-foreground">
                                 {apt.startAt.toLocaleDateString("nl-NL", { month: "short", day: "numeric" })}
                               </p>
-                              <p className="text-xs text-zinc-400">
+                              <p className="text-xs text-muted-foreground">
                                 {apt.startAt.toLocaleTimeString("nl-NL", { hour: "numeric", minute: "2-digit" })}
                               </p>
                             </div>
@@ -552,32 +547,32 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
             {moduleSet.has("job-orders") && !moduleSet.has("appointments") && (
               <div className="lg:col-span-2">
-                <Card className="shadow-none border-zinc-200">
-                  <CardHeader className="flex flex-row items-center justify-between pb-3">
-                    <CardTitle className="text-sm font-semibold text-zinc-700">Recently Completed Jobs</CardTitle>
+                <Card className="border-border/60 bg-card/95">
+                  <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-4">
+                    <CardTitle className="text-base text-foreground">Completed Jobs</CardTitle>
                     <Link
                       href={`/${tenantSlug}/job-orders`}
-                      className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                      className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                     >
-                      View board <ArrowRight className="h-3 w-3" />
+                      Board <ArrowRight className="h-3 w-3" />
                     </Link>
                   </CardHeader>
                   <CardContent className="p-0">
                     {!data.recentCompletedJobs?.length ? (
-                      <div className="px-6 py-8 text-center text-sm text-zinc-400">No completed jobs yet</div>
+                      <div className="px-6 py-8 text-center text-sm text-muted-foreground">No jobs</div>
                     ) : (
-                      <div className="divide-y divide-zinc-100">
+                      <div className="divide-y divide-border/50">
                         {data.recentCompletedJobs.map((job) => (
                           <div key={job.id} className="flex items-center justify-between gap-3 px-6 py-3">
                             <div>
-                              <p className="font-mono text-xs text-zinc-400">{job.jobNo}</p>
-                              <p className="text-sm font-medium text-zinc-800">{job.customerName}</p>
+                              <p className="font-mono text-xs text-muted-foreground">{job.jobNo}</p>
+                              <p className="text-sm font-medium text-foreground">{job.customerName}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs text-zinc-500">
+                              <p className="text-xs text-foreground/80">
                                 {job.completedAt?.toLocaleDateString("nl-NL", { month: "short", day: "numeric" })}
                               </p>
-                              <p className="text-[11px] text-zinc-400">{job.invoice ? "Invoiced" : "Needs invoice"}</p>
+                              <p className="text-[11px] text-muted-foreground">{job.invoice ? "Invoiced" : "Needs invoice"}</p>
                             </div>
                           </div>
                         ))}
@@ -590,28 +585,28 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
             {!moduleSet.has("job-orders") && !moduleSet.has("appointments") && moduleSet.has("inventory") && (
               <div className="lg:col-span-2">
-                <Card className="shadow-none border-zinc-200">
-                  <CardHeader className="flex flex-row items-center justify-between pb-3">
-                    <CardTitle className="text-sm font-semibold text-zinc-700">Low Stock Watchlist</CardTitle>
+                <Card className="border-border/60 bg-card/95">
+                  <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-4">
+                    <CardTitle className="text-base text-foreground">Low Stock</CardTitle>
                     <Link
                       href={`/${tenantSlug}/inventory`}
-                      className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                      className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                     >
-                      View inventory <ArrowRight className="h-3 w-3" />
+                      Inventory <ArrowRight className="h-3 w-3" />
                     </Link>
                   </CardHeader>
                   <CardContent className="p-0">
                     {!data.lowStockWatchlist?.length ? (
-                      <div className="px-6 py-8 text-center text-sm text-zinc-400">No urgent restocks right now</div>
+                      <div className="px-6 py-8 text-center text-sm text-muted-foreground">No urgent restocks</div>
                     ) : (
-                      <div className="divide-y divide-zinc-100">
+                      <div className="divide-y divide-border/50">
                         {data.lowStockWatchlist.map((item) => (
                           <div key={item.id} className="flex items-center justify-between gap-3 px-6 py-3">
                             <div>
-                              <p className="text-sm font-medium text-zinc-800">{item.name}</p>
-                              <p className="text-xs text-zinc-400">Reorder at {item.reorderAt}</p>
+                              <p className="text-sm font-medium text-foreground">{item.name}</p>
+                              <p className="text-xs text-muted-foreground">Reorder at {item.reorderAt}</p>
                             </div>
-                            <p className="text-sm font-semibold text-amber-600">{item.quantity} left</p>
+                            <p className="text-sm font-semibold text-amber-700">{item.quantity} left</p>
                           </div>
                         ))}
                       </div>
@@ -621,34 +616,33 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
               </div>
             )}
 
-            {/* Right sidebar — recent returns + needs attention stacked */}
             {(moduleSet.has("pos") || attentionRows.length > 0) && (
               <div className={`space-y-4 ${!hasActivityPanel ? "lg:col-span-3" : ""}`}>
                 {moduleSet.has("pos") && (
-                  <Card className="shadow-none border-zinc-200">
-                    <CardHeader className="flex flex-row items-center justify-between pb-3">
-                      <CardTitle className="text-sm font-semibold text-zinc-700">Recent Returns</CardTitle>
+                  <Card className="border-border/60 bg-card/95">
+                    <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-4">
+                      <CardTitle className="text-base text-foreground">Returns</CardTitle>
                       <Link
                         href={`/${tenantSlug}/sales`}
-                        className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                        className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                       >
-                        Sales history <ArrowRight className="h-3 w-3" />
+                        Sales <ArrowRight className="h-3 w-3" />
                       </Link>
                     </CardHeader>
                     <CardContent className="p-0">
                       {!data.recentReturns?.length ? (
-                        <div className="px-6 py-8 text-center text-sm text-zinc-400">No return activity yet</div>
+                        <div className="px-6 py-8 text-center text-sm text-muted-foreground">No returns</div>
                       ) : (
-                        <div className="divide-y divide-zinc-100">
+                        <div className="divide-y divide-border/50">
                           {data.recentReturns.map((saleReturn) => (
                             <div key={saleReturn.id} className="flex items-center justify-between gap-3 px-6 py-3">
                               <div>
-                                <p className="font-mono text-xs text-zinc-400">{saleReturn.referenceNo}</p>
-                                <p className="text-sm font-medium text-zinc-800">{saleReturn.sale.referenceNo}</p>
+                                <p className="font-mono text-xs text-muted-foreground">{saleReturn.referenceNo}</p>
+                                <p className="text-sm font-medium text-foreground">{saleReturn.sale.referenceNo}</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-xs capitalize text-zinc-500">{saleReturn.status}</p>
-                                <p className="text-sm font-semibold text-zinc-800">
+                                <p className="text-xs capitalize text-muted-foreground">{saleReturn.status}</p>
+                                <p className="text-sm font-semibold text-foreground">
                                   {tenant.currencySymbol}{Number(saleReturn.refundAmount ?? 0).toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
                                 </p>
                               </div>
@@ -661,9 +655,9 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                 )}
 
                 {attentionRows.length > 0 && (
-                  <Card className="shadow-none border-zinc-200">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-semibold text-zinc-700">Needs Attention</CardTitle>
+                  <Card className="border-border/60 bg-card/95">
+                    <CardHeader className="border-b border-border/50 pb-4">
+                      <CardTitle className="text-base text-foreground">Attention</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       {attentionRows.map((row) => (
@@ -678,15 +672,15 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           </div>
         </FadeIn>
       )}
-    </div>
+    </PageShell>
   );
 }
 
 function StatusDot({ status }: { status: string }) {
   const colors: Record<string, string> = {
     pending: "bg-amber-400",
-    confirmed: "bg-blue-400",
-    "in-progress": "bg-violet-400",
+    confirmed: "bg-sky-400",
+    "in-progress": "bg-cyan-400",
     done: "bg-emerald-400",
   };
   return <div className={`h-2 w-2 shrink-0 rounded-full ${colors[status] ?? "bg-zinc-300"}`} />;
@@ -694,9 +688,9 @@ function StatusDot({ status }: { status: string }) {
 
 function AttentionRow({ label, value, href, warn }: { label: string; value: number; href: string; warn: boolean }) {
   return (
-    <Link href={href} className="flex items-center justify-between hover:opacity-75 transition-opacity">
-      <span className="text-sm text-zinc-600">{label}</span>
-      <Badge variant={warn ? "destructive" : "secondary"} className="text-xs min-w-[1.5rem] justify-center">
+    <Link href={href} className="flex items-center justify-between rounded-2xl border border-transparent px-1 py-1 transition hover:border-border/70 hover:bg-muted/30">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <Badge variant={warn ? "destructive" : "secondary"} className="min-w-[1.5rem] justify-center text-xs">
         {value}
       </Badge>
     </Link>

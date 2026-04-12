@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,9 +40,11 @@ const STATUS_BADGE: Record<string, "default" | "secondary" | "outline" | "destru
 
 export function AppointmentList({ appointments, tenantSlug, tenantId }: AppointmentListProps) {
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
   const [loading, setLoading] = useState<string | null>(null);
 
   async function handleStatus(id: string, status: string, msg: string) {
+    if (!isOnline) { toast.error("You're offline. Connect to update appointments."); return; }
     setLoading(id);
     try {
       await updateAppointmentStatus(tenantSlug, tenantId, id, status);

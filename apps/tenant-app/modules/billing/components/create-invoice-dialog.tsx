@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -97,24 +98,26 @@ export function CreateInvoiceDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>
+      <DialogTrigger render={<Button className="rounded-full px-4" />}>
         <Plus className="mr-2 h-4 w-4" />
-        New Invoice
+        New
       </DialogTrigger>
-      <DialogContent className="max-h-[92vh] overflow-hidden sm:max-w-4xl">
+      <DialogContent className="flex max-h-[94dvh] w-[calc(100%-1rem)] max-w-[72rem] flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)] sm:w-[min(96vw,72rem)] sm:p-5">
         <DialogHeader>
-          <DialogTitle>Create Invoice</DialogTitle>
+          <p className="eyebrow-label text-primary">Billing</p>
+          <DialogTitle>New</DialogTitle>
+          <DialogDescription>Invoice</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div className="max-h-[calc(92vh-10rem)] overflow-y-auto pr-2">
-          <div className="grid gap-5 sm:grid-cols-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1 sm:pr-2">
+            <div className="grid gap-5 rounded-[24px] border border-slate-200/80 bg-white p-4 sm:grid-cols-2">
             {crmEnabled && (
               <div className="space-y-2 sm:col-span-2">
-                <Label>Existing Customer</Label>
+                <Label>Customer</Label>
                 <select
                   value={selectedCustomerId ?? ""}
                   onChange={(event) => handleCustomerChange(event.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                  className="flex h-10 w-full rounded-2xl border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
                 >
                   <option value="">Select a customer from CRM</option>
                   {customers.map((customer) => (
@@ -126,14 +129,14 @@ export function CreateInvoiceDialog({
               </div>
             )}
             <div className="space-y-2">
-              <Label>Customer Name *</Label>
+              <Label>Name *</Label>
               <Input placeholder="Juan dela Cruz" {...register("customerName")} readOnly={Boolean(selectedCustomerId)} />
               {errors.customerName && (
                 <p className="text-sm text-destructive">{errors.customerName.message}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label>Customer Email</Label>
+              <Label>Email</Label>
               <Input
                 type="email"
                 placeholder="juan@example.com"
@@ -167,60 +170,72 @@ export function CreateInvoiceDialog({
             </div>
           </div>
 
-          <Separator className="my-5" />
-
-          <div className="space-y-3">
+          <div className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white p-4">
             <div className="flex items-center justify-between">
               <Label>Line Items</Label>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className="rounded-full"
                 onClick={() => append({ description: "", quantity: 1, unitPrice: 0 })}
               >
                 <Plus className="mr-1 h-3 w-3" /> Add Line
               </Button>
             </div>
 
-            <div className="space-y-2">
-              <div className="grid grid-cols-[minmax(0,1.5fr)_90px_130px_40px] gap-3 text-xs font-medium text-muted-foreground">
+            <div className="space-y-3">
+              <div className="hidden grid-cols-[minmax(0,1.5fr)_90px_130px_40px] gap-3 px-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground sm:grid">
                 <span>Description</span>
                 <span>Qty</span>
                 <span>Unit Price</span>
                 <span />
               </div>
               {fields.map((field, index) => (
-                <div key={field.id} className="grid grid-cols-[minmax(0,1.5fr)_90px_130px_40px] gap-3">
-                  <Input
-                    placeholder="Service or product"
-                    {...register(`items.${index}.description`)}
-                  />
-                  <Input
-                    type="number"
-                    min={1}
-                    {...register(`items.${index}.quantity`)}
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    {...register(`items.${index}.unitPrice`)}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-8 text-muted-foreground"
-                    onClick={() => remove(index)}
-                    disabled={fields.length === 1}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div key={field.id} className="rounded-[20px] border border-slate-200/80 bg-slate-50/40 p-3 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1.5fr)_90px_130px_40px]">
+                    <div className="space-y-1">
+                      <p className="text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground sm:hidden">Description</p>
+                      <Input
+                        placeholder="Service or product"
+                        {...register(`items.${index}.description`)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground sm:hidden">Qty</p>
+                      <Input
+                        type="number"
+                        min={1}
+                        {...register(`items.${index}.quantity`)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground sm:hidden">Unit Price</p>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        {...register(`items.${index}.unitPrice`)}
+                      />
+                    </div>
+                    <div className="flex items-end justify-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 rounded-full text-muted-foreground"
+                        onClick={() => remove(index)}
+                        disabled={fields.length === 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
 
-            <div className="space-y-1 pt-2 text-sm">
+            <div className="space-y-2 rounded-[20px] border border-slate-200/80 bg-slate-50/60 px-4 py-3 text-sm">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
                 <span>{currencySymbol}{subtotal.toFixed(2)}</span>
@@ -236,18 +251,18 @@ export function CreateInvoiceDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Notes</Label>
-            <Textarea placeholder="Optional notes for the customer..." rows={2} {...register("notes")} />
-          </div>
+            <div className="space-y-2 rounded-[24px] border border-slate-200/80 bg-white p-4">
+              <Label>Notes</Label>
+              <Textarea placeholder="Optional notes for the customer..." rows={3} {...register("notes")} />
+            </div>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          <DialogFooter className="-mx-5 -mb-5 mt-4 shrink-0 border-t border-slate-200/80 px-5 py-4">
+            <Button type="button" variant="outline" className="rounded-full" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Invoice"}
+            <Button type="submit" className="rounded-full" disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </form>

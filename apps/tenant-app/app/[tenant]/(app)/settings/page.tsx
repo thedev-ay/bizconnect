@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
 import { authorize } from "@/lib/authorize";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BusinessProfileForm, CurrencyForm, BusinessHoursForm } from "@/modules/settings";
 import { AddServiceDialog } from "@/modules/staff";
@@ -57,28 +57,28 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Settings</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">Manage your business configuration</p>
-        </div>
-        {tab === "services" && (
-          <AddServiceDialog tenantSlug={tenantSlug} tenantId={tenant.id} currencySymbol={tenant.currencySymbol} />
-        )}
-      </div>
+    <PageShell className="h-auto min-h-full">
+      <PageHeader
+        eyebrow="Settings"
+        title="Business configuration"
+        action={
+          tab === "services" ? (
+            <AddServiceDialog tenantSlug={tenantSlug} tenantId={tenant.id} currencySymbol={tenant.currencySymbol} />
+          ) : undefined
+        }
+      />
 
-      {/* Tab nav */}
-      <div className="flex gap-1 border-b border-zinc-200">
+      <ContentPanel className="space-y-4 p-0">
+      <div className="flex gap-2 border-b border-slate-200/80 px-4 pt-3">
         {tabs.map((t) => (
           <Link
             key={t.key}
             href={`/${tenantSlug}/settings?tab=${t.key}`}
             className={cn(
-              "px-4 py-2 text-sm font-medium transition-colors",
+              "rounded-t-2xl border border-transparent px-4 py-2 text-sm font-medium transition-colors",
               tab === t.key
-                ? "border-b-2 border-zinc-900 text-zinc-900"
-                : "text-zinc-500 hover:text-zinc-700"
+                ? "border-slate-200/80 border-b-white bg-white text-slate-950 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.35)]"
+                : "text-slate-500 hover:bg-white/70 hover:text-slate-900"
             )}
           >
             {t.label}
@@ -88,100 +88,101 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
 
       {/* General tab */}
       {tab === "general" && (
-        <div className="space-y-6 max-w-2xl">
-          <Card className="shadow-none border-zinc-200">
-            <CardHeader className="border-b border-zinc-100 px-6 py-4">
-              <CardTitle className="text-sm font-semibold text-zinc-900">Business Profile</CardTitle>
-            </CardHeader>
-            <CardContent className="px-6 py-5">
-              <BusinessProfileForm
-                tenantSlug={tenantSlug}
-                tenantId={tenant.id}
-                defaultValues={{
-                  name: tenant.name,
-                  address: tenant.address ?? "",
-                  phone: tenant.phone ?? "",
-                  email: tenant.email ?? "",
-                }}
-              />
-            </CardContent>
-          </Card>
+        <div className="max-w-3xl px-4 pb-4">
+          <section className="py-4">
+            <div className="mb-5 border-b border-slate-200/80 pb-4">
+              <p className="eyebrow-label text-primary">General</p>
+              <h2 className="text-base font-semibold text-slate-950">Business Profile</h2>
+            </div>
+            <BusinessProfileForm
+              tenantSlug={tenantSlug}
+              tenantId={tenant.id}
+              defaultValues={{
+                name: tenant.name,
+                address: tenant.address ?? "",
+                phone: tenant.phone ?? "",
+                email: tenant.email ?? "",
+              }}
+            />
+          </section>
 
-          <Card className="shadow-none border-zinc-200">
-            <CardHeader className="border-b border-zinc-100 px-6 py-4">
-              <CardTitle className="text-sm font-semibold text-zinc-900">Currency & Tax</CardTitle>
-            </CardHeader>
-            <CardContent className="px-6 py-5">
-              <CurrencyForm
-                tenantSlug={tenantSlug}
-                tenantId={tenant.id}
-                defaultValues={{
-                  currencySymbol: tenant.currencySymbol,
-                  currencyLocale: tenant.currencyLocale,
-                  defaultTaxRate: Number(tenant.defaultTaxRate),
-                }}
-              />
-            </CardContent>
-          </Card>
+          <section className="border-t border-slate-200/80 py-6">
+            <div className="mb-5 border-b border-slate-200/80 pb-4">
+              <p className="eyebrow-label text-primary">Billing</p>
+              <h2 className="text-base font-semibold text-slate-950">Currency & Tax</h2>
+            </div>
+            <CurrencyForm
+              tenantSlug={tenantSlug}
+              tenantId={tenant.id}
+              defaultValues={{
+                currencySymbol: tenant.currencySymbol,
+                currencyLocale: tenant.currencyLocale,
+                defaultTaxRate: Number(tenant.defaultTaxRate),
+              }}
+            />
+          </section>
         </div>
       )}
 
       {/* Business Hours tab */}
       {tab === "hours" && (
-        <div className="max-w-2xl">
-          <Card className="shadow-none border-zinc-200">
-            <CardHeader className="border-b border-zinc-100 px-6 py-4">
-              <CardTitle className="text-sm font-semibold text-zinc-900">Business Hours</CardTitle>
-            </CardHeader>
-            <CardContent className="px-6 py-5">
-              <BusinessHoursForm
-                tenantSlug={tenantSlug}
-                tenantId={tenant.id}
-                initialHours={businessHours.map((h) => ({
-                  dayOfWeek: h.dayOfWeek,
-                  isOpen: h.isOpen,
-                  openTime: h.openTime,
-                  closeTime: h.closeTime,
-                }))}
-              />
-            </CardContent>
-          </Card>
+        <div className="max-w-3xl px-4 pb-4">
+          <section className="py-4">
+            <div className="mb-5 border-b border-slate-200/80 pb-4">
+              <p className="eyebrow-label text-primary">Hours</p>
+              <h2 className="text-base font-semibold text-slate-950">Business Hours</h2>
+            </div>
+            <BusinessHoursForm
+              tenantSlug={tenantSlug}
+              tenantId={tenant.id}
+              initialHours={businessHours.map((h) => ({
+                dayOfWeek: h.dayOfWeek,
+                isOpen: h.isOpen,
+                openTime: h.openTime,
+                closeTime: h.closeTime,
+              }))}
+            />
+          </section>
         </div>
       )}
 
       {/* Services tab */}
       {tab === "services" && (
-        <Card className="shadow-none border-zinc-200">
-          <CardContent className="p-0">
+        <div className="max-w-4xl px-4 pb-4">
+          <section className="py-4">
+            <div className="mb-5 border-b border-slate-200/80 pb-4">
+              <p className="eyebrow-label text-primary">Services</p>
+              <h2 className="text-base font-semibold text-slate-950">Catalog</h2>
+            </div>
             <Table>
               <TableHeader>
-                <TableRow className="border-zinc-100 hover:bg-transparent">
-                  <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Name</TableHead>
-                  <TableHead className="text-xs font-medium uppercase tracking-wide text-zinc-500">Description</TableHead>
-                  <TableHead className="text-right text-xs font-medium uppercase tracking-wide text-zinc-500">Duration</TableHead>
-                  <TableHead className="text-right text-xs font-medium uppercase tracking-wide text-zinc-500">Price</TableHead>
-                  <TableHead />
+                <TableRow className="border-border/60 hover:bg-transparent">
+                  <TableHead className="pl-5 text-xs uppercase tracking-[0.22em] text-muted-foreground">Name</TableHead>
+                  <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Description</TableHead>
+                  <TableHead className="text-right text-xs uppercase tracking-[0.22em] text-muted-foreground">Duration</TableHead>
+                  <TableHead className="text-right text-xs uppercase tracking-[0.22em] text-muted-foreground">Price</TableHead>
+                  <TableHead className="w-16 pr-5" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {typedServices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-12 text-center text-sm text-zinc-400">
-                      No services yet. Add the services your business offers.
+                    <TableCell colSpan={5} className="px-5 py-12 text-center text-sm text-muted-foreground">
+                      No services yet.
                     </TableCell>
                   </TableRow>
                 ) : (
                   typedServices.map((svc) => (
-                    <TableRow key={svc.id} className="border-zinc-100 hover:bg-zinc-50/50">
-                      <TableCell className="text-sm font-medium text-zinc-900">{svc.name}</TableCell>
-                      <TableCell className="text-sm text-zinc-500">
-                        {svc.description ?? <span className="text-zinc-300">—</span>}
+                    <TableRow key={svc.id} className="border-border/60 hover:bg-muted/20">
+                      <TableCell className="pl-5 text-sm font-medium text-foreground">{svc.name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {svc.description ?? <span className="text-muted-foreground/50">—</span>}
                       </TableCell>
-                      <TableCell className="text-right text-sm text-zinc-700">{svc.duration} min</TableCell>
-                      <TableCell className="text-right text-sm font-medium text-zinc-900">
+                      <TableCell className="text-right text-sm text-muted-foreground">{svc.duration} min</TableCell>
+                      <TableCell className="text-right text-sm font-medium text-foreground">
                         {tenant.currencySymbol}{Number(svc.price).toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="pr-5">
                         <DeleteServiceButton serviceId={svc.id} tenantSlug={tenantSlug} tenantId={tenant.id} />
                       </TableCell>
                     </TableRow>
@@ -189,9 +190,10 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
                 )}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+          </section>
+        </div>
       )}
-    </div>
+      </ContentPanel>
+    </PageShell>
   );
 }

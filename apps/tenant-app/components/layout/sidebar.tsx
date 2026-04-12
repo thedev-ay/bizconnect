@@ -5,8 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { ChevronDown, LogOut, MoreHorizontal } from "lucide-react";
-import type { ActiveModule } from "@/lib/module-registry";
+import { ChevronDown, LogOut, Menu, MoreHorizontal } from "lucide-react";
 import { isPrivilegedRole, canViewModule } from "@/lib/permissions";
 import { PendingSalesBadge } from "./pending-sales-badge";
 import * as Icons from "lucide-react";
@@ -19,10 +18,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+
+type SidebarModule = {
+  slug: string;
+  name: string;
+  icon: string | null;
+  sortOrder: number;
+  isCore: boolean;
+};
 
 interface SidebarProps {
   tenant: { slug: string; name: string };
-  modules: ActiveModule[];
+  modules: SidebarModule[];
 }
 
 const MODULE_GROUPS: { label: string; slugs: string[] }[] = [
@@ -41,6 +54,7 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     reports: pathname === `/${tenant.slug}/reports`,
     settings: pathname === `/${tenant.slug}/settings`,
@@ -66,7 +80,17 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
     return (Icons as Record<string, unknown>)[iconName] as LucideIcon | null;
   }
 
-  function NavItem({ slug, name, icon }: { slug: string; name: string; icon?: string | null }) {
+  function NavItem({
+    slug,
+    name,
+    icon,
+    onNavigate,
+  }: {
+    slug: string;
+    name: string;
+    icon?: string | null;
+    onNavigate?: () => void;
+  }) {
     const href = `/${tenant.slug}/${slug}`;
     const isActive = pathname === href || pathname.startsWith(href + "/");
     const Icon = getIcon(icon ?? null);
@@ -75,11 +99,12 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
       <Link
         href={href}
         className={cn(
-          "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+          "flex items-center gap-2.5 rounded-[calc(var(--radius)-4px)] px-3 py-2.5 text-sm transition-all duration-200",
           isActive
-            ? "bg-white/10 text-white font-medium"
-            : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
+            ? "bg-white text-slate-900 shadow-[0_14px_24px_-18px_rgba(15,23,42,0.8)] font-medium"
+            : "text-sidebar-foreground/72 hover:bg-white/10 hover:text-sidebar-foreground"
         )}
+        onClick={onNavigate}
       >
         {Icon && <Icon className="h-4 w-4 shrink-0" />}
         {name}
@@ -95,11 +120,13 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
     name,
     icon,
     children,
+    onNavigate,
   }: {
     slug: string;
     name: string;
     icon?: string | null;
     children: Array<{ label: string; href: string; isActive?: boolean }>;
+    onNavigate?: () => void;
   }) {
     const href = `/${tenant.slug}/${slug}`;
     const isActive = pathname === href || pathname.startsWith(href + "/");
@@ -127,13 +154,14 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
             const firstChild = children[0];
             if (firstChild) {
               router.push(firstChild.href);
+              onNavigate?.();
             }
           }}
           className={cn(
-            "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+            "flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-4px)] px-3 py-2.5 text-sm transition-all duration-200",
             isActive
-              ? "bg-white/10 text-white font-medium"
-              : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
+              ? "bg-white text-slate-900 font-medium shadow-[0_14px_24px_-18px_rgba(15,23,42,0.8)]"
+              : "text-sidebar-foreground/72 hover:bg-white/10 hover:text-sidebar-foreground"
           )}
         >
           {Icon && <Icon className="h-4 w-4 shrink-0" />}
@@ -146,16 +174,17 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
           />
         </button>
         {isOpen && (
-          <div className="ml-6 space-y-0.5 border-l border-white/5 pl-3">
+          <div className="ml-6 space-y-1 border-l border-white/10 pl-3">
             {children.map((child) => (
               <Link
                 key={child.href}
                 href={child.href}
+                onClick={onNavigate}
                 className={cn(
-                  "block rounded-md px-2 py-1.5 text-xs transition-colors",
+                  "block rounded-md px-2.5 py-1.5 text-xs transition-all",
                   child.isActive
-                    ? "bg-white/10 text-white"
-                    : "text-zinc-500 hover:bg-white/5 hover:text-zinc-200"
+                    ? "bg-white/12 text-sidebar-foreground"
+                    : "text-sidebar-foreground/55 hover:bg-white/8 hover:text-sidebar-foreground/88"
                 )}
               >
                 {child.label}
@@ -240,101 +269,148 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
     hasAppointments && { label: "Services", href: `/${tenant.slug}/settings?tab=services`, isActive: pathname === `/${tenant.slug}/settings` && settingsTab === "services" },
   ].filter(Boolean) as { label: string; href: string; isActive: boolean }[];
 
+  function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
+    return (
+      <>
+        <div className="border-b border-white/10 px-4 py-4">
+          <div className="flex items-center gap-3 rounded-[calc(var(--radius)+2px)] border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/95 to-cyan-200 shadow-[0_12px_24px_-14px_rgba(56,189,248,0.75)]">
+              <Icons.Zap className="h-4.5 w-4.5 text-slate-950" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/45">
+                BizConnect
+              </p>
+              <span className="block truncate text-sm font-semibold text-white">{tenant.name}</span>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
+          {groups.map((group) => (
+            <div key={group.label}>
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/40">
+                {group.label}
+              </p>
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  item.slug === "reports" ? (
+                    <NavItemWithChildren
+                      key={item.slug}
+                      slug={item.slug}
+                      name={item.name}
+                      icon={item.icon}
+                      children={reportsChildren}
+                      onNavigate={onNavigate}
+                    />
+                  ) : item.slug === "settings" ? (
+                    <NavItemWithChildren
+                      key={item.slug}
+                      slug={item.slug}
+                      name={item.name}
+                      icon={item.icon}
+                      children={settingsChildren}
+                      onNavigate={onNavigate}
+                    />
+                  ) : (
+                    <NavItem key={item.slug} slug={item.slug} name={item.name} icon={item.icon} onNavigate={onNavigate} />
+                  )
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {ungrouped.length > 0 && (
+            <div>
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/40">
+                Other
+              </p>
+              <div className="space-y-1">
+                {ungrouped.map((item) => (
+                  <NavItem key={item.slug} slug={item.slug} name={item.name} icon={item.icon} onNavigate={onNavigate} />
+                ))}
+              </div>
+            </div>
+          )}
+        </nav>
+
+        <div className="border-t border-white/10 p-3">
+          <div className="flex items-center gap-3 rounded-[calc(var(--radius)+2px)] border border-white/10 bg-white/8 px-3 py-2.5 backdrop-blur-sm">
+            <Avatar className="h-9 w-9 shrink-0">
+              <AvatarFallback className="bg-white/14 text-white text-xs font-medium">
+                {initials ?? "?"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-zinc-50">
+                {session?.user?.name ?? "User"}
+              </p>
+              <p className="truncate text-xs capitalize text-sidebar-foreground/50">
+                {session?.user?.role ?? "member"}
+              </p>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-sidebar-foreground/55 hover:bg-white/10 hover:text-sidebar-foreground"
+                />
+              }>
+                <MoreHorizontal className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="end" className="w-44">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive gap-2"
+                  onClick={() => signOut({ callbackUrl: `/${tenant.slug}/login` })}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
-    <aside className="flex h-full w-60 flex-col bg-zinc-950">
-      {/* Brand */}
-      <div className="flex h-14 items-center gap-2.5 px-4 border-b border-white/5">
-        <div className="flex h-6 w-6 items-center justify-center rounded bg-white/10">
-          <Icons.Zap className="h-3.5 w-3.5 text-white" />
-        </div>
-        <span className="text-sm font-semibold text-white truncate">{tenant.name}</span>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-5">
-        {groups.map((group) => (
-          <div key={group.label}>
-            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
-              {group.label}
+    <>
+      <div className="border-b border-border/70 bg-white/90 px-4 py-3 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.3)] backdrop-blur-sm lg:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-primary/65">
+              BizConnect
             </p>
-            <div className="space-y-0.5">
-              {group.items.map((item) => (
-                item.slug === "reports" ? (
-                  <NavItemWithChildren
-                    key={item.slug}
-                    slug={item.slug}
-                    name={item.name}
-                    icon={item.icon}
-                    children={reportsChildren}
-                  />
-                ) : item.slug === "settings" ? (
-                  <NavItemWithChildren
-                    key={item.slug}
-                    slug={item.slug}
-                    name={item.name}
-                    icon={item.icon}
-                    children={settingsChildren}
-                  />
-                ) : (
-                  <NavItem key={item.slug} slug={item.slug} name={item.name} icon={item.icon} />
-                )
-              ))}
-            </div>
+            <p className="truncate text-sm font-semibold text-foreground">{tenant.name}</p>
           </div>
-        ))}
-
-        {ungrouped.length > 0 && (
-          <div>
-            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
-              Other
-            </p>
-            <div className="space-y-0.5">
-              {ungrouped.map((item) => (
-                <NavItem key={item.slug} slug={item.slug} name={item.name} icon={item.icon} />
-              ))}
-            </div>
-          </div>
-        )}
-      </nav>
-
-      {/* User footer */}
-      <div className="border-t border-white/5 p-3">
-        <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5">
-          <Avatar className="h-7 w-7 shrink-0">
-            <AvatarFallback className="bg-white/10 text-white text-xs font-medium">
-              {initials ?? "?"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-zinc-100">
-              {session?.user?.name ?? "User"}
-            </p>
-            <p className="truncate text-xs capitalize text-zinc-500">
-              {session?.user?.role ?? "member"}
-            </p>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger render={
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 shrink-0 text-zinc-500 hover:text-zinc-100 hover:bg-white/5"
-              />
-            }>
-              <MoreHorizontal className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="end" className="w-44">
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive gap-2"
-                onClick={() => signOut({ callbackUrl: `/${tenant.slug}/login` })}
-              >
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 rounded-full border-border/70 bg-white"
+            onClick={() => setMobileNavOpen(true)}
+          >
+            <Menu className="h-4 w-4" />
+            <span className="sr-only">Open navigation</span>
+          </Button>
         </div>
       </div>
-    </aside>
+
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent side="left" className="w-full max-w-none border-r-white/10 bg-[linear-gradient(180deg,rgba(18,34,39,0.99)_0%,rgba(29,51,59,0.97)_100%)] p-0 text-sidebar-foreground sm:max-w-sm lg:hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Navigation</SheetTitle>
+          </SheetHeader>
+          <div className="flex h-full flex-col">
+            <SidebarBody onNavigate={() => setMobileNavOpen(false)} />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <aside className="hidden h-full w-72 shrink-0 flex-col border-r border-sidebar-border/80 bg-[linear-gradient(180deg,rgba(18,34,39,0.98)_0%,rgba(29,51,59,0.96)_100%)] text-sidebar-foreground shadow-[8px_0_32px_-24px_rgba(15,23,42,0.45)] lg:flex">
+        <SidebarBody />
+      </aside>
+    </>
   );
 }

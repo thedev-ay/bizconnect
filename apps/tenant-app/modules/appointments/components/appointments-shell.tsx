@@ -1,100 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { AppointmentCalendar } from "./appointment-calendar";
-import { CreateAppointmentDialog } from "./create-appointment-dialog";
 import type { Appointment } from "../types";
-
-interface ServiceOption {
-  id: string;
-  name: string;
-  duration: number;
-  price: string;
-}
-
-interface StaffOption {
-  id: string;
-  name: string;
-  position: string | null;
-  serviceIds: string[];
-}
+import { ContentPanel } from "@/components/layout/page-shell";
 
 interface AppointmentsShellProps {
   appointments: Appointment[];
   tenantSlug: string;
   tenantId: string;
-  services: ServiceOption[];
-  staff: StaffOption[];
-  currencySymbol: string;
-  currencyLocale: string;
   slotMinTime: string;
   slotMaxTime: string;
+  onSelectSlot?: (start: Date) => void;
 }
 
 export function AppointmentsShell({
   appointments,
   tenantSlug,
   tenantId,
-  services,
-  staff,
-  currencySymbol,
-  currencyLocale,
   slotMinTime,
   slotMaxTime,
+  onSelectSlot,
 }: AppointmentsShellProps) {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [defaultStart, setDefaultStart] = useState<string | undefined>();
-
-  function handleSlotSelect(start: Date) {
-    const local = new Date(start.getTime() - start.getTimezoneOffset() * 60000);
-    setDefaultStart(local.toISOString().slice(0, 16));
-    setDialogOpen(true);
-  }
-
-  function handleNewAppointment() {
-    setDefaultStart(undefined);
-    setDialogOpen(true);
-  }
-
   return (
-    <>
-      {/* New Appointment button — sits in the page header row */}
-      <div className="flex justify-end">
-        <Button onClick={handleNewAppointment}>
-          <Plus className="mr-2 h-4 w-4" /> New Appointment
-        </Button>
-      </div>
-
-      <CreateAppointmentDialog
-        tenantSlug={tenantSlug}
-        tenantId={tenantId}
-        services={services}
-        staff={staff}
-        defaultStart={defaultStart}
-        currencySymbol={currencySymbol}
-        currencyLocale={currencyLocale}
-        open={dialogOpen}
-        onOpenChange={(o) => {
-          setDialogOpen(o);
-          if (!o) setDefaultStart(undefined);
-        }}
-      />
-
-      <Card className="shadow-none border-zinc-200">
-        <CardContent className="p-5">
+      <ContentPanel className="overflow-hidden p-0">
+        <div className="flex flex-col gap-3 border-b border-border/50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="eyebrow-label">Calendar</p>
+            <h2 className="mt-1 text-lg font-semibold text-foreground">Schedule</h2>
+          </div>
+          <div className="w-fit rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            Week
+          </div>
+        </div>
+        <div className="p-5">
           <AppointmentCalendar
             appointments={appointments}
             tenantSlug={tenantSlug}
             tenantId={tenantId}
-            onSelectSlot={handleSlotSelect}
+            onSelectSlot={onSelectSlot}
             slotMinTime={slotMinTime}
             slotMaxTime={slotMaxTime}
           />
-        </CardContent>
-      </Card>
-    </>
+        </div>
+      </ContentPanel>
   );
 }

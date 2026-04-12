@@ -19,9 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, Check } from "lucide-react";
+import { AlertCircle, Check, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import { createReturn } from "../actions";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 interface SaleItem {
   id: string;
@@ -50,7 +52,7 @@ interface ReturnDialogProps {
     items: SaleItem[];
     returns: SaleReturn[];
     total: string;
-    createdAt: Date;
+    createdAt: string | Date;
   };
   tenantSlug: string;
   tenantId: string;
@@ -83,6 +85,7 @@ export function ReturnDialog({
   const [returnReason, setReturnReason] = useState("damaged");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const isOnline = useOnlineStatus();
 
   const fmt = (v: string) =>
     `${currencySymbol}${Number(v).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}`;
@@ -122,6 +125,10 @@ export function ReturnDialog({
     .reduce((sum, item) => sum + (Number(item.unitPrice) * item.remainingQuantity), 0);
 
   async function handleSubmit() {
+    if (!isOnline) {
+      toast.error("You're offline. Returns require a connection.");
+      return;
+    }
     if (selectedItems.size === 0) {
       toast.error("Please select at least one item to return");
       return;
@@ -164,16 +171,33 @@ export function ReturnDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Return Sale Items</DialogTitle>
-          <p className="text-xs text-zinc-400 mt-1">
+          <DialogTitle>Return Items</DialogTitle>
+          <p className="mt-1 text-xs text-muted-foreground">
             {sale.referenceNo}
           </p>
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[calc(var(--radius)+2px)] border border-border/70 bg-white/80 px-4 py-3">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-primary/70">Sale total</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{fmt(sale.total)}</p>
+            </div>
+            <div className="rounded-[calc(var(--radius)+2px)] border border-border/70 bg-white/80 px-4 py-3">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-primary/70">Returnable lines</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
+                {returnableItems.filter((item) => item.remainingQuantity > 0).length}
+              </p>
+            </div>
+            <div className="rounded-[calc(var(--radius)+2px)] border border-border/70 bg-white/80 px-4 py-3">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-primary/70">Selected</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{selectedItems.size}</p>
+            </div>
+          </div>
+
           {/* Items selection */}
           <div className="space-y-3">
-            <p className="text-sm font-medium text-zinc-700">Select items to return</p>
+            <p className="text-sm font-medium text-foreground">Items</p>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {returnableItems.map((item) => {
                 const isSelected = selectedItems.has(item.id);
@@ -184,20 +208,20 @@ export function ReturnDialog({
                     onClick={() => toggleItem(item.id)}
                     disabled={fullyReturned}
                     className={cn(
-                      "w-full flex items-start gap-3 rounded-lg border p-3 transition-colors text-left",
+                      "flex w-full items-start gap-3 rounded-[calc(var(--radius)+2px)] border p-3 text-left transition-all",
                       isSelected
-                        ? "border-blue-200 bg-blue-50"
+                        ? "border-primary/25 bg-primary/8"
                         : fullyReturned
-                          ? "cursor-not-allowed border-zinc-100 bg-zinc-50 opacity-60"
-                          : "border-zinc-100 bg-zinc-50 hover:border-zinc-200"
+                          ? "cursor-not-allowed border-border/60 bg-muted/45 opacity-60"
+                          : "border-border/70 bg-white/75 hover:border-primary/20 hover:bg-primary/4"
                     )}
                   >
                     <div
                       className={cn(
-                        "h-5 w-5 rounded border flex items-center justify-center shrink-0 mt-0.5 transition-colors",
+                        "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors",
                         isSelected
-                          ? "bg-blue-600 border-blue-600"
-                          : "border-zinc-300 bg-white"
+                          ? "border-primary bg-primary"
+                          : "border-border bg-white"
                       )}
                     >
                       {isSelected && (
@@ -205,16 +229,14 @@ export function ReturnDialog({
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-zinc-800">
+                      <p className="text-sm font-medium text-foreground">
                         {item.name}
                       </p>
-                      <p className="text-xs text-zinc-500 mt-0.5">
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         {item.quantity} × {fmt(item.unitPrice)} = {fmt(item.total)}
                       </p>
                       {fullyReturned ? (
-                        <p className="mt-1 text-[11px] font-medium text-zinc-400">
-                          Already fully returned
-                        </p>
+                        <StatusBadge tone="neutral" className="mt-1.5">Already fully returned</StatusBadge>
                       ) : item.alreadyReturned > 0 ? (
                         <p className="mt-1 text-[11px] font-medium text-amber-600">
                           {item.remainingQuantity} of {item.quantity} still returnable
@@ -226,18 +248,20 @@ export function ReturnDialog({
               })}
             </div>
             {returnableItems.every((item) => item.remainingQuantity <= 0) && (
-              <p className="text-sm text-zinc-400">All sale items have already been returned.</p>
+              <p className="text-sm text-muted-foreground">All sale items have already been returned.</p>
             )}
           </div>
 
           {/* Return reason */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-700">
-              Reason for return
+            <label className="text-sm font-medium text-foreground">
+              Reason
             </label>
-            <Select value={returnReason} onValueChange={setReturnReason}>
+            <Select value={returnReason} onValueChange={(value) => { if (value) setReturnReason(value); }}>
               <SelectTrigger className="h-9">
-                <SelectValue />
+                <SelectValue>
+                {RETURN_REASONS.find((r) => r.value === returnReason)?.label ?? returnReason}
+              </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {RETURN_REASONS.map((reason) => (
@@ -251,8 +275,8 @@ export function ReturnDialog({
 
           {/* Notes */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-700">
-              Notes (optional)
+            <label className="text-sm font-medium text-foreground">
+              Notes
             </label>
             <Input
               placeholder="Add any additional details..."
@@ -265,18 +289,13 @@ export function ReturnDialog({
 
           {/* Refund amount */}
           {selectedItems.size > 0 && (
-            <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+            <div className="rounded-[calc(var(--radius)+2px)] border border-primary/20 bg-primary/8 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-blue-900">
-                  Refund amount
-                </p>
-                <p className="text-lg font-bold text-blue-900 tabular-nums">
+                <p className="text-sm font-medium text-foreground">Refund</p>
+                <p className="text-lg font-bold text-foreground tabular-nums">
                   {fmt(String(refundAmount))}
                 </p>
               </div>
-              <p className="text-xs text-blue-600 mt-1">
-                This amount will be refunded once the return is approved
-              </p>
             </div>
           )}
 
@@ -285,7 +304,7 @@ export function ReturnDialog({
             <div className="flex gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
               <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-700">
-                Damaged items may require manager approval before refund
+                May require approval
               </p>
             </div>
           )}
@@ -301,9 +320,9 @@ export function ReturnDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={submitting || selectedItems.size === 0 || returnableItems.every((item) => item.remainingQuantity <= 0)}
+            disabled={submitting || !isOnline || selectedItems.size === 0 || returnableItems.every((item) => item.remainingQuantity <= 0)}
           >
-            {submitting ? "Creating return..." : "Create Return"}
+            {!isOnline ? <><WifiOff className="mr-2 h-4 w-4" />Offline</> : submitting ? "Creating..." : "Create Return"}
           </Button>
         </DialogFooter>
       </DialogContent>

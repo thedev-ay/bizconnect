@@ -1,7 +1,7 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
 import { authorize } from "@/lib/authorize";
-import { Card, CardContent } from "@/components/ui/card";
+import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
 import { UserTable, CreateUserDialog } from "@/modules/users";
 
 interface UsersPageProps {
@@ -36,23 +36,24 @@ export default async function UsersPage({ params }: UsersPageProps) {
   const canManage = session.user.role === "owner" || session.user.role === "admin";
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Users</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">{users.length} members in this workspace</p>
-        </div>
-        {canManage && (
-          <CreateUserDialog
-            tenantSlug={tenantSlug}
-            tenantId={tenant.id}
-            activeModuleSlugs={activeModuleSlugs}
-          />
-        )}
-      </div>
+    <PageShell className="h-auto min-h-full">
+      <PageHeader
+        eyebrow="Users"
+        title="Workspace"
+        description={`${users.length} members`}
+        action={
+          canManage ? (
+            <CreateUserDialog
+              tenantSlug={tenantSlug}
+              tenantId={tenant.id}
+              activeModuleSlugs={activeModuleSlugs}
+            />
+          ) : undefined
+        }
+      />
 
-      <Card className="shadow-none border-zinc-200">
-        <CardContent className="p-0">
+      <ContentPanel className="p-0">
+        <section className="py-4">
           <UserTable
             users={users.map((u) => ({ ...u, permissions: (u.permissions as Record<string, boolean>) ?? {} }))}
             tenantSlug={tenantSlug}
@@ -60,8 +61,8 @@ export default async function UsersPage({ params }: UsersPageProps) {
             currentUserId={session?.user?.id ?? ""}
             activeModuleSlugs={activeModuleSlugs}
           />
-        </CardContent>
-      </Card>
-    </div>
+        </section>
+      </ContentPanel>
+    </PageShell>
   );
 }

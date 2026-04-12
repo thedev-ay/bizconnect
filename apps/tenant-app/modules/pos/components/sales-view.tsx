@@ -1,11 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { ShoppingBag, TrendingUp, XCircle, Banknote } from "lucide-react";
 import { SalesList } from "./sales-list";
-import { db } from "@/lib/local-db";
 import type { LocalSale } from "@/lib/local-db";
+import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { DataSurfaceLoading } from "@/components/ui/data-surface-loading";
 
 interface SalesViewProps {
   tenantSlug: string;
@@ -16,6 +18,25 @@ interface SalesViewProps {
   highlightedSaleId?: string;
 }
 
+interface SalesResponse {
+  items: LocalSale[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  summary: {
+    totalRevenue: number;
+    todayRevenue: number;
+    todayCount: number;
+    completedCount: number;
+    voidedCount: number;
+    filteredCount: number;
+    filteredReturns: number;
+  };
+}
+
 export function SalesView({
   tenantSlug,
   tenantId,
@@ -24,126 +45,144 @@ export function SalesView({
   currencyLocale,
   highlightedSaleId,
 }: SalesViewProps) {
-  const { data: sales = [], isPending } = useQuery<LocalSale[]>({
-    queryKey: ["sales", tenantSlug],
-    queryFn: async () => {
-      const cached = await db.sales.where("tenantId").equals(tenantId).toArray();
+  const searchParams = useSearchParams();
+  const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const search = searchParams.get("search") ?? "";
+  const payment = searchParams.get("payment") ?? "all";
+  const status = searchParams.get("status") ?? "all";
+  const source = searchParams.get("source") ?? "all";
 
-      let r: Response;
-      try {
-        r = await fetch(`/api/${tenantSlug}/sales`);
-      } catch {
-        if (cached.length > 0) return cached;
-        throw new Error("You're offline and no cached data is available.");
-      }
+  const { data, isPending } = useQuery<SalesResponse>({
+    queryKey: ["sales", tenantSlug, page, search, payment, status, source],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set("page", String(page));
+      params.set("pageSize", "25");
+      if (search) params.set("search", search);
+      if (payment !== "all") params.set("payment", payment);
+      if (status !== "all") params.set("status", status);
+      if (source !== "all") params.set("source", source);
+
+      const r = await fetch(`/api/${tenantSlug}/sales?${params.toString()}`);
       if (!r.ok) {
-        if (cached.length > 0) return cached;
         throw new Error(r.statusText);
       }
-
-      const fresh: LocalSale[] = await r.json();
-
-      await db.transaction("rw", db.sales, db.syncMeta, async () => {
-        await db.sales.where("tenantId").equals(tenantId).delete();
-        await db.sales.bulkPut(fresh.map((s) => ({ ...s, tenantId })));
-        await db.syncMeta.put({ key: `sales:${tenantSlug}`, syncedAt: Date.now() });
-      });
-
-      return fresh;
+      return r.json();
     },
   });
+
+  const sales = data?.items ?? [];
+  const pagination = data?.pagination ?? {
+    page: 1,
+    pageSize: 25,
+    totalItems: 0,
+    totalPages: 1,
+  };
+  const summary = data?.summary ?? {
+    totalRevenue: 0,
+    todayRevenue: 0,
+    todayCount: 0,
+    completedCount: 0,
+    voidedCount: 0,
+    filteredCount: 0,
+    filteredReturns: 0,
+  };
 
   const fmt = (v: number) =>
     `${currencySymbol}${v.toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}`;
 
-  const completed = sales.filter((s) => s.status === "completed");
-  const voided = sales.filter((s) => s.status === "voided");
-  const totalRevenue = completed.reduce((sum, s) => sum + Number(s.total), 0);
-  const todaySales = completed.filter(
-    (s) => new Date(s.createdAt).toDateString() === new Date().toDateString()
-  );
-  const todayRevenue = todaySales.reduce((sum, s) => sum + Number(s.total), 0);
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Sales History</h1>
-        <p className="text-sm text-zinc-500 mt-0.5">
-          {isPending ? "Loading..." : `${sales.length} total transactions`}
-        </p>
+    <PageShell className="h-auto min-h-full gap-5">
+      <PageHeader
+        eyebrow="Commerce"
+        title="Sales History"
+        description={
+          isPending
+            ? "Loading transactions."
+            : `${pagination.totalItems} transactions`
+        }
+        className="px-5 py-4 sm:px-6 sm:py-5"
+      />
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Revenue</p>
+                <p className="metric-value mt-2">{fmt(summary.totalRevenue)}</p>
+                <p className="metric-caption mt-1">filtered</p>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-inner">
+                <TrendingUp className="h-4 w-4" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Today</p>
+                <p className="metric-value mt-2">{fmt(summary.todayRevenue)}</p>
+                <p className="metric-caption mt-1">{summary.todayCount} transactions</p>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 shadow-inner">
+                <Banknote className="h-4 w-4" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Completed</p>
+                <p className="metric-value mt-2">{summary.completedCount}</p>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner">
+                <ShoppingBag className="h-4 w-4" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Voided</p>
+                <p className="metric-value mt-2 text-muted-foreground">{summary.voidedCount}</p>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-muted text-muted-foreground shadow-inner">
+                <XCircle className="h-4 w-4" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-4">
-        <Card className="shadow-none border-zinc-200">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-zinc-500">Total Revenue</p>
-                <p className="mt-1.5 text-2xl font-bold text-zinc-900">{fmt(totalRevenue)}</p>
-                <p className="mt-0.5 text-xs text-zinc-400">all time</p>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50">
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-none border-zinc-200">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-zinc-500">Today's Revenue</p>
-                <p className="mt-1.5 text-2xl font-bold text-zinc-900">{fmt(todayRevenue)}</p>
-                <p className="mt-0.5 text-xs text-zinc-400">{todaySales.length} transactions</p>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
-                <Banknote className="h-4 w-4 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-none border-zinc-200">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-zinc-500">Completed</p>
-                <p className="mt-1.5 text-2xl font-bold text-zinc-900">{completed.length}</p>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100">
-                <ShoppingBag className="h-4 w-4 text-zinc-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-none border-zinc-200">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-zinc-500">Voided</p>
-                <p className="mt-1.5 text-2xl font-bold text-zinc-400">{voided.length}</p>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100">
-                <XCircle className="h-4 w-4 text-zinc-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="shadow-none border-zinc-200">
-        <SalesList
-          sales={sales}
-          tenantSlug={tenantSlug}
-          tenantId={tenantId}
-          tenantName={tenantName}
-          currencySymbol={currencySymbol}
-          currencyLocale={currencyLocale}
-          highlightedSaleId={highlightedSaleId}
-        />
-      </Card>
-    </div>
+      <ContentPanel className="overflow-hidden p-0">
+        {isPending ? (
+          <div className="p-4 sm:p-5">
+            <DataSurfaceLoading label="Loading transactions" variant="table" rows={6} className="min-h-[420px]" />
+          </div>
+        ) : (
+          <SalesList
+            sales={sales}
+            tenantSlug={tenantSlug}
+            tenantId={tenantId}
+            tenantName={tenantName}
+            currencySymbol={currencySymbol}
+            currencyLocale={currencyLocale}
+            highlightedSaleId={highlightedSaleId}
+            pagination={pagination}
+            summary={summary}
+          />
+        )}
+      </ContentPanel>
+    </PageShell>
   );
 }

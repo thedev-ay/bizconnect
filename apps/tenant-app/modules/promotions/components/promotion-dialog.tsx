@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -126,29 +127,29 @@ export function PromotionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="flex max-h-[90vh] min-w-[min(92vw,64rem)] w-[min(96vw,72rem)] max-w-none flex-col overflow-hidden border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Promotion" : "New Promotion"}</DialogTitle>
+          <p className="eyebrow-label">Promotions</p>
+          <DialogTitle>{isEditing ? "Edit" : "New"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
 
-          {/* Basic info */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 rounded-[24px] border border-border/60 bg-background/62 p-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
               <Label>Name *</Label>
               <Input placeholder="e.g. Summer Sale" {...register("name")} />
               {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label>Description</Label>
-              <Textarea rows={2} placeholder="Optional description shown to staff" {...register("description")} />
+              <Label>Description <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <Textarea rows={2} placeholder="Notes" {...register("description")} />
             </div>
           </div>
 
-          {/* Type + value */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 rounded-[24px] border border-border/60 bg-background/62 p-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Promotion Type *</Label>
+              <Label>Type *</Label>
               <Controller
                 control={control}
                 name="type"
@@ -196,10 +197,10 @@ export function PromotionDialog({
 
           {/* Day/time restrictions */}
           {promoType === "day_time" && (
-            <div className="space-y-3 rounded-lg border border-zinc-200 p-3">
-              <p className="text-sm font-medium text-zinc-700">Day & Time Restrictions</p>
+            <div className="space-y-3 rounded-[24px] border border-border/60 bg-background/62 p-4">
+              <p className="eyebrow-label">Schedule</p>
               <div className="space-y-2">
-                <Label className="text-xs text-zinc-500">Active days (leave empty for all days)</Label>
+                <Label className="text-xs text-muted-foreground">Days</Label>
                 <div className="flex flex-wrap gap-1.5">
                   {DAY_LABELS.map((label, i) => (
                     <button
@@ -209,8 +210,8 @@ export function PromotionDialog({
                       className={cn(
                         "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                         (daysOfWeek as number[]).includes(i)
-                          ? "bg-zinc-900 text-white"
-                          : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
                       )}
                     >
                       {label}
@@ -220,34 +221,31 @@ export function PromotionDialog({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs text-zinc-500">Start time</Label>
+                  <Label className="text-xs text-muted-foreground">Start</Label>
                   <Input type="time" {...register("startTime")} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs text-zinc-500">End time</Label>
+                  <Label className="text-xs text-muted-foreground">End</Label>
                   <Input type="time" {...register("endTime")} />
                 </div>
               </div>
             </div>
           )}
 
-          {/* Date range */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 rounded-[24px] border border-border/60 bg-background/62 p-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Starts On <span className="text-zinc-400 font-normal">(optional)</span></Label>
+              <Label>Starts <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Input type="date" {...register("startsAt")} />
             </div>
             <div className="space-y-2">
-              <Label>Ends On <span className="text-zinc-400 font-normal">(optional)</span></Label>
+              <Label>Ends <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Input type="date" {...register("endsAt")} />
             </div>
           </div>
 
-          {/* Product selection */}
-          <div className="space-y-2">
+          <div className="space-y-2 rounded-[24px] border border-border/60 bg-background/62 p-4">
             <Label>
-              Apply to Products{" "}
-              <span className="text-zinc-400 font-normal">(leave empty to apply to all)</span>
+              Products <span className="font-normal text-muted-foreground">(optional)</span>
             </Label>
             <Input
               placeholder="Search products..."
@@ -255,7 +253,7 @@ export function PromotionDialog({
               onChange={(e) => setProductSearch(e.target.value)}
               className="h-8 text-sm"
             />
-            <div className="max-h-48 overflow-y-auto rounded-lg border border-zinc-200 divide-y divide-zinc-100">
+            <div className="max-h-48 overflow-y-auto rounded-[20px] border border-border/70 divide-y divide-border/60">
               {(() => {
                 const filtered = products.filter((p) => {
                   const q = productSearch.toLowerCase();
@@ -301,8 +299,9 @@ export function PromotionDialog({
               )}
             />
           </div>
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="-mx-5 -mb-5 mt-4 shrink-0 border-t border-border/60 px-5 py-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Create Promotion"}

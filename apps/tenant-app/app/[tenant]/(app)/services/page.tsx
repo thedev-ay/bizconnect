@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
 import { authorize } from "@/lib/authorize";
-import { Card } from "@/components/ui/card";
+import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
 import { ServicesList } from "@/modules/services";
+import { NewServiceButton } from "@/modules/services/components/new-service-button";
 import type { Service, PricingType } from "@/modules/services";
 
 interface ServicesPageProps {
@@ -32,15 +33,22 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
   const activeCount = services.filter((s) => s.isActive).length;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Services</h1>
-        <p className="text-sm text-zinc-500 mt-0.5">
-          {services.length} total · {activeCount} active
-        </p>
-      </div>
+    <PageShell className="h-auto min-h-full">
+      <PageHeader
+        eyebrow="Catalog"
+        title="Services"
+        description={`${services.length} total · ${activeCount} active`}
+        className="py-4 sm:py-5"
+        action={
+          <NewServiceButton
+            tenantSlug={tenantSlug}
+            tenantId={tenant.id}
+            currencySymbol={tenant.currencySymbol}
+          />
+        }
+      />
 
-      <Card className="shadow-none border-zinc-200">
+      <ContentPanel className="overflow-hidden p-0">
         <ServicesList
           services={services}
           tenantSlug={tenantSlug}
@@ -48,7 +56,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
           currencySymbol={tenant.currencySymbol}
           currencyLocale={tenant.currencyLocale}
         />
-      </Card>
-    </div>
+      </ContentPanel>
+    </PageShell>
   );
 }

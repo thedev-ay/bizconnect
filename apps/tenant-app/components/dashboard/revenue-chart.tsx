@@ -1,6 +1,7 @@
 "use client";
 
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { TrendingUp, BarChart3 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface RevenueChartProps {
@@ -11,12 +12,18 @@ interface RevenueChartProps {
 export function RevenueChart({ data, currencySymbol }: RevenueChartProps) {
   if (!data || data.length === 0) {
     return (
-      <Card className="shadow-none border-zinc-200">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold text-zinc-700">Revenue Trend</CardTitle>
+      <Card className="border-border/60 bg-card/95">
+        <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-border/50 pb-4">
+          <div>
+            <p className="eyebrow-label">Revenue</p>
+            <CardTitle className="mt-1 text-base text-foreground">Trend</CardTitle>
+          </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100/80 text-emerald-700 ring-1 ring-emerald-200/70">
+            <TrendingUp className="h-4.5 w-4.5" />
+          </div>
         </CardHeader>
-        <CardContent className="px-6 py-12 text-center text-sm text-zinc-400">
-          No sales data available
+        <CardContent className="px-6 py-12 text-center text-sm text-muted-foreground">
+          No sales
         </CardContent>
       </Card>
     );
@@ -32,31 +39,46 @@ export function RevenueChart({ data, currencySymbol }: RevenueChartProps) {
   const avgRevenue = Math.round(data.reduce((sum, d) => sum + d.revenue, 0) / data.length);
 
   return (
-    <Card className="shadow-none border-zinc-200">
-      <CardHeader>
-        <CardTitle className="text-sm font-semibold text-zinc-700">Revenue Trend (Last 30 Days)</CardTitle>
-        <p className="text-xs text-zinc-400 mt-1">
-          Average: {currencySymbol}{avgRevenue.toLocaleString()}
-        </p>
+    <Card className="border-border/60 bg-card/95">
+      <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-border/50 pb-4">
+        <div>
+          <p className="eyebrow-label">Revenue</p>
+          <CardTitle className="mt-1 text-base text-foreground">30 days</CardTitle>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Avg {currencySymbol}{avgRevenue.toLocaleString()}
+          </p>
+        </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100/80 text-emerald-700 ring-1 ring-emerald-200/70">
+          <TrendingUp className="h-4.5 w-4.5" />
+        </div>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="px-2 pb-2 pt-1">
         <ResponsiveContainer width="100%" height={280}>
           <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.16)" vertical={false} />
             <XAxis
               dataKey="dayDisplay"
               fontSize={12}
-              stroke="#9ca3af"
-              tick={{ fill: "#6b7280" }}
+              stroke="#94a3b8"
+              tick={{ fill: "#64748b" }}
+              axisLine={false}
+              tickLine={false}
             />
             <YAxis
               fontSize={12}
-              stroke="#9ca3af"
-              tick={{ fill: "#6b7280" }}
+              stroke="#94a3b8"
+              tick={{ fill: "#64748b" }}
               tickFormatter={(value) => `${currencySymbol}${(value / 1000).toFixed(0)}k`}
+              axisLine={false}
+              tickLine={false}
             />
             <Tooltip
-              contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "6px" }}
+              contentStyle={{
+                backgroundColor: "rgba(255,255,255,0.96)",
+                border: "1px solid rgba(226,232,240,0.9)",
+                borderRadius: "16px",
+                boxShadow: "0 18px 40px -28px rgba(15, 23, 42, 0.35)",
+              }}
               formatter={(value) => [`${currencySymbol}${Number(value).toLocaleString()}`, "Revenue"]}
               labelFormatter={(label) => `${label}`}
             />
@@ -82,12 +104,18 @@ interface TransactionChartProps {
 export function TransactionChart({ data }: TransactionChartProps) {
   if (!data || data.length === 0) {
     return (
-      <Card className="shadow-none border-zinc-200">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold text-zinc-700">Transactions</CardTitle>
+      <Card className="border-border/60 bg-card/95">
+        <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-border/50 pb-4">
+          <div>
+            <p className="eyebrow-label">Volume</p>
+            <CardTitle className="mt-1 text-base text-foreground">Transactions</CardTitle>
+          </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-100/80 text-sky-700 ring-1 ring-sky-200/70">
+            <BarChart3 className="h-4.5 w-4.5" />
+          </div>
         </CardHeader>
-        <CardContent className="px-6 py-12 text-center text-sm text-zinc-400">
-          No transaction data available
+        <CardContent className="px-6 py-12 text-center text-sm text-muted-foreground">
+          No transactions
         </CardContent>
       </Card>
     );
@@ -102,37 +130,52 @@ export function TransactionChart({ data }: TransactionChartProps) {
   const avgTransactions = Math.round(totalTransactions / data.length);
 
   return (
-    <Card className="shadow-none border-zinc-200">
-      <CardHeader>
-        <CardTitle className="text-sm font-semibold text-zinc-700">Transaction Volume</CardTitle>
-        <p className="text-xs text-zinc-400 mt-1">
-          Average: {avgTransactions} sales/day
-        </p>
+    <Card className="border-border/60 bg-card/95">
+      <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-border/50 pb-4">
+        <div>
+          <p className="eyebrow-label">Volume</p>
+          <CardTitle className="mt-1 text-base text-foreground">30 days</CardTitle>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Avg {avgTransactions}/day
+          </p>
+        </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-100/80 text-sky-700 ring-1 ring-sky-200/70">
+          <BarChart3 className="h-4.5 w-4.5" />
+        </div>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="px-2 pb-2 pt-1">
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.16)" vertical={false} />
             <XAxis
               dataKey="dayDisplay"
               fontSize={12}
-              stroke="#9ca3af"
-              tick={{ fill: "#6b7280" }}
+              stroke="#94a3b8"
+              tick={{ fill: "#64748b" }}
+              axisLine={false}
+              tickLine={false}
             />
             <YAxis
               fontSize={12}
-              stroke="#9ca3af"
-              tick={{ fill: "#6b7280" }}
+              stroke="#94a3b8"
+              tick={{ fill: "#64748b" }}
+              axisLine={false}
+              tickLine={false}
             />
             <Tooltip
-              contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "6px" }}
+              contentStyle={{
+                backgroundColor: "rgba(255,255,255,0.96)",
+                border: "1px solid rgba(226,232,240,0.9)",
+                borderRadius: "16px",
+                boxShadow: "0 18px 40px -28px rgba(15, 23, 42, 0.35)",
+              }}
               formatter={(value) => [value, "Transactions"]}
               labelFormatter={(label) => `${label}`}
             />
             <Bar
               dataKey="transactions"
-              fill="#3b82f6"
-              radius={[4, 4, 0, 0]}
+              fill="#0f93a2"
+              radius={[8, 8, 0, 0]}
             />
           </BarChart>
         </ResponsiveContainer>
