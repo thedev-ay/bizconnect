@@ -91,18 +91,18 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
       />
 
       <ContentPanel className="space-y-4 p-5">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-4">
             <div>
-              <h2 className="text-base font-semibold text-foreground">Ready to invoice</h2>
-              <p className="text-sm text-muted-foreground">Completed work</p>
+              <p className="eyebrow-label text-primary">Billing</p>
+              <h2 className="text-base font-semibold text-slate-950">Ready to invoice</h2>
             </div>
-            <div className="text-right text-sm text-muted-foreground">
+            <div className="text-right text-sm text-slate-500">
               {readyToInvoice.length} ready
             </div>
           </div>
 
           {readyToInvoice.length === 0 ? (
-            <div className="rounded-[24px] border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-[24px] border border-dashed border-slate-200/80 px-4 py-8 text-center text-sm text-muted-foreground">
               No completed job orders waiting for billing.
             </div>
           ) : (
@@ -118,18 +118,18 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
                       const result = await createInvoiceForJobOrder(tenantSlug, tenant.id, jobOrder.id);
                       redirect(`/${tenantSlug}/billing?invoiceId=${result.invoiceId}`);
                     }}
-                    className="flex items-center justify-between gap-4 rounded-[24px] border border-border/70 bg-background/80 px-4 py-3"
+                    className="flex items-center justify-between gap-4 rounded-[24px] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_14px_32px_-28px_rgba(15,23,42,0.22)]"
                   >
                     <div>
                       <p className="font-mono text-xs text-muted-foreground">{jobOrder.jobNo}</p>
-                      <p className="text-sm font-semibold text-foreground">{jobOrder.customerName}</p>
+                      <p className="text-sm font-semibold text-slate-950">{jobOrder.customerName}</p>
                       <p className="text-xs text-muted-foreground">
                         {jobOrder.items.length} line item{jobOrder.items.length !== 1 ? "s" : ""}
                       </p>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-foreground">
+                        <p className="text-sm font-semibold text-slate-950">
                           {tenant.currencySymbol}{totalValue.toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
                         </p>
                       </div>

@@ -197,7 +197,7 @@ export function SalesList({
     <>
       {/* Filters */}
       <div className="space-y-4 border-b border-border/70 bg-white/40 px-4 py-4 sm:px-5">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,160px))]">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,160px))]">
           <div>
             <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Sales Ledger</p>
             <h3 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-foreground">
@@ -223,10 +223,10 @@ export function SalesList({
             placeholder="Search reference..."
             value={search}
             onChange={(e) => updateLedgerQuery({ search: e.target.value || null }, true)}
-            className="h-10 w-56 text-sm"
+            className="h-10 w-full sm:w-56 text-sm"
           />
           <Select value={paymentFilter} onValueChange={(value) => updateLedgerQuery({ payment: value }, true)}>
-            <SelectTrigger className="h-10 w-36 text-sm">
+            <SelectTrigger className="h-10 w-full sm:w-36 text-sm">
               <SelectValue>
                 {paymentFilter === "all" ? "Payment" : (PAYMENT_LABEL[paymentFilter] ?? paymentFilter)}
               </SelectValue>
@@ -240,7 +240,7 @@ export function SalesList({
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={(value) => updateLedgerQuery({ status: value }, true)}>
-            <SelectTrigger className="h-10 w-36 text-sm">
+            <SelectTrigger className="h-10 w-full sm:w-36 text-sm">
               <SelectValue>
                 {statusFilter === "all" ? "Status" : statusFilter === "completed" ? "Completed" : "Voided"}
               </SelectValue>
@@ -253,7 +253,7 @@ export function SalesList({
           </Select>
           {mounted && (sources.length > 1 || sourceFilter !== "all") && (
             <Select value={sourceFilter} onValueChange={(value) => updateLedgerQuery({ source: value }, true)}>
-              <SelectTrigger className="h-10 w-36 text-sm">
+              <SelectTrigger className="h-10 w-full sm:w-36 text-sm">
                 <SelectValue>
                   {sourceFilter === "all" ? "Source" : (SOURCE_BADGE[sourceFilter]?.label ?? sourceFilter)}
                 </SelectValue>

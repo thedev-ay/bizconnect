@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
@@ -12,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MoreHorizontal, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Service } from "../types";
 import { PRICING_TYPE_LABELS } from "../types";
@@ -29,7 +29,6 @@ interface ServicesListProps {
 
 export function ServicesList({ services, tenantSlug, tenantId, currencySymbol, currencyLocale }: ServicesListProps) {
   const router = useRouter();
-  const [createOpen, setCreateOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
 
   async function handleToggle(service: Service, isActive: boolean) {
@@ -57,14 +56,11 @@ export function ServicesList({ services, tenantSlug, tenantId, currencySymbol, c
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
+      <div className="border-b border-border/50 px-5 py-4">
         <div>
           <p className="eyebrow-label">Services</p>
           <h2 className="mt-1 text-lg font-semibold text-foreground">Catalog</h2>
         </div>
-        <Button size="sm" onClick={() => setCreateOpen(true)} className="rounded-full px-4">
-          <Plus className="mr-1.5 h-4 w-4" /> Add
-        </Button>
       </div>
 
       {services.length === 0 ? (
@@ -137,14 +133,6 @@ export function ServicesList({ services, tenantSlug, tenantId, currencySymbol, c
           })}
         </div>
       )}
-
-      <ServiceDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        tenantSlug={tenantSlug}
-        tenantId={tenantId}
-        currencySymbol={currencySymbol}
-      />
 
       {editingService && (
         <ServiceDialog

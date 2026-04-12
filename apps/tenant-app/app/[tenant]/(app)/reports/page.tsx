@@ -61,8 +61,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     <PageShell className="h-auto min-h-full">
       <PageHeader
         eyebrow="Reports"
-        title="Reports"
-        description={section === "overview" ? "Overview" : section === "sales" ? "Sales" : "Payments"}
+        title={section === "overview" ? "Overview" : section === "sales" ? "Sales" : "Payments"}
       />
 
       <ContentPanel className="p-4">

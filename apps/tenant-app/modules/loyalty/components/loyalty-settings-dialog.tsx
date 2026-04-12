@@ -56,8 +56,9 @@ export function LoyaltySettingsDialog({ tenantSlug, tenantId, settings }: Loyalt
         <Settings className="h-3.5 w-3.5" />
         Settings
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)]">
         <DialogHeader>
+          <p className="eyebrow-label text-primary">Loyalty</p>
           <DialogTitle>Loyalty Settings</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-1">
@@ -70,7 +71,7 @@ export function LoyaltySettingsDialog({ tenantSlug, tenantId, settings }: Loyalt
               value={stamps}
               onChange={(e) => setStamps(parseInt(e.target.value) || 1)}
             />
-            <p className="text-xs text-zinc-400">Customers earn 1 stamp per job order</p>
+            <p className="text-xs text-muted-foreground">Customers earn 1 stamp per job order</p>
           </div>
           <div className="space-y-2">
             <Label>Reward description</Label>
@@ -81,9 +82,9 @@ export function LoyaltySettingsDialog({ tenantSlug, tenantId, settings }: Loyalt
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving}>
+        <DialogFooter className="border-t border-slate-200/80 pt-4">
+          <Button variant="outline" className="rounded-full" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button className="rounded-full" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>

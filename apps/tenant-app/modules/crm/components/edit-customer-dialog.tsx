@@ -73,14 +73,14 @@ export function EditCustomerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
+      <DialogContent className="max-w-lg border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)]">
         <DialogHeader>
-          <p className="eyebrow-label">CRM</p>
-          <DialogTitle>Edit</DialogTitle>
+          <p className="eyebrow-label text-primary">CRM</p>
+          <DialogTitle>Edit Customer</DialogTitle>
           <DialogDescription>{customer.name}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid gap-4 rounded-[24px] border border-border/60 bg-background/62 p-4 sm:grid-cols-2">
+          <div className="grid gap-4 rounded-[24px] border border-slate-200/80 bg-white p-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
               <Label>Name *</Label>
               <Input placeholder="Alex Morgan" {...register("name")} />
@@ -108,11 +108,11 @@ export function EditCustomerDialog({
             </div>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="border-t border-slate-200/80 pt-4">
+            <Button type="button" variant="outline" className="rounded-full" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" className="rounded-full" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>

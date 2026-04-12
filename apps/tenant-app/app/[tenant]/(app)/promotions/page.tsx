@@ -2,6 +2,7 @@ import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
 import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
 import { PromotionsList } from "@/modules/promotions/components/promotions-list";
+import { NewPromotionButton } from "@/modules/promotions/components/new-promotion-button";
 import type { Promotion } from "@/modules/promotions";
 
 interface PromotionsPageProps {
@@ -52,6 +53,13 @@ export default async function PromotionsPage({ params }: PromotionsPageProps) {
         eyebrow="Promotions"
         title="Promotions"
         description={`${typedPromotions.length} total`}
+        action={
+          <NewPromotionButton
+            tenantSlug={tenantSlug}
+            tenantId={tenant.id}
+            products={productOptions}
+          />
+        }
       />
       <ContentPanel className="overflow-hidden p-0">
         <PromotionsList

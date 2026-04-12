@@ -121,12 +121,12 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
 
   return (
     <div className="space-y-6">
-      <div className="rounded-[24px] border border-border/70 bg-background/70 p-4">
-        <p className="eyebrow-label">Leave</p>
-        <p className="mb-3 text-sm font-semibold text-foreground">Request</p>
+      <div className="rounded-[24px] border border-slate-200/80 bg-white p-4">
+        <p className="eyebrow-label text-primary">Leave</p>
+        <p className="mb-3 text-sm font-semibold text-slate-950">Request</p>
         <div key={formKey} className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Employee</Label>
+            <Label className="text-xs text-slate-500">Employee</Label>
             <Select value={employeeId} onValueChange={(v) => { if (v) setEmployeeId(v); }}>
               <SelectTrigger className="h-8 text-xs">
                 {employeeId ? employees.find((e) => e.id === employeeId)?.name : <span className="text-muted-foreground">Select...</span>}
@@ -135,7 +135,7 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Type</Label>
+            <Label className="text-xs text-slate-500">Type</Label>
             <Select value={type} onValueChange={(v) => { if (v) setType(v); }}>
               <SelectTrigger className="h-8 text-xs">
                 {type ? LEAVE_TYPE[type] : <span className="text-muted-foreground">Select...</span>}
@@ -148,15 +148,15 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Start</Label>
+            <Label className="text-xs text-slate-500">Start</Label>
             <Input type="date" className="h-8 text-xs" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">End {type === "sick" ? <span className="text-muted-foreground">(optional)</span> : <span className="text-red-500">*</span>}</Label>
+            <Label className="text-xs text-slate-500">End {type === "sick" ? <span className="text-muted-foreground">(optional)</span> : <span className="text-red-500">*</span>}</Label>
             <Input type="date" className="h-8 text-xs" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <Label className="text-xs text-muted-foreground">Reason <span className="text-muted-foreground">(optional)</span></Label>
+            <Label className="text-xs text-slate-500">Reason <span className="text-muted-foreground">(optional)</span></Label>
             <Textarea className="text-xs" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
           <div className="sm:col-span-2">
@@ -166,9 +166,9 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
       </div>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-sm border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
+        <DialogContent className="max-w-sm border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)]">
           <DialogHeader>
-            <p className="eyebrow-label">Leave</p>
+            <p className="eyebrow-label text-primary">Leave</p>
             <DialogTitle>Update</DialogTitle>
             <DialogDescription>End date</DialogDescription>
           </DialogHeader>

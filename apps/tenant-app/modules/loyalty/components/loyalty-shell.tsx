@@ -115,9 +115,9 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
 
   return (
     <>
-      <div className="flex h-full gap-4">
+      <div className="flex h-full flex-col gap-4 xl:flex-row">
         {/* Left panel — search + list */}
-        <div className="flex w-72 shrink-0 flex-col gap-2">
+        <div className="flex w-full shrink-0 flex-col gap-2 xl:w-72">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
@@ -206,7 +206,7 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
             <div className="flex h-full flex-col gap-4">
               {/* Card */}
               <div className="rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-[0_22px_48px_-34px_rgba(15,23,42,0.26)]">
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <h2 className="text-xl font-bold text-slate-950">{selected.customerName}</h2>
                     {selected.phone && (
@@ -239,10 +239,12 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
                       {selected.currentStamps} / {settings.stampsPerReward}
                     </p>
                   </div>
-                  <StampGrid
-                    current={selected.currentStamps}
-                    total={settings.stampsPerReward}
-                  />
+                  <div className="overflow-x-auto pb-1">
+                    <StampGrid
+                      current={selected.currentStamps}
+                      total={settings.stampsPerReward}
+                    />
+                  </div>
                   <p className="text-xs text-slate-500">
                     Reward: <span className="font-medium text-slate-950">{settings.rewardDescription}</span>
                     {" · "}
@@ -268,7 +270,7 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <Button
                       variant="outline"
                       size="sm"
@@ -277,7 +279,7 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                    <div className="flex gap-2 ml-auto">
+                    <div className="flex flex-wrap gap-2 sm:ml-auto sm:justify-end">
                       {canRedeem && (
                         <Button
                           variant="outline"

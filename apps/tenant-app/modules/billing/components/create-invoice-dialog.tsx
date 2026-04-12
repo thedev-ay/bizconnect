@@ -102,15 +102,15 @@ export function CreateInvoiceDialog({
         <Plus className="mr-2 h-4 w-4" />
         New
       </DialogTrigger>
-      <DialogContent className="flex max-h-[92vh] min-w-[min(92vw,64rem)] w-[min(96vw,72rem)] max-w-none flex-col overflow-hidden border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
+      <DialogContent className="flex max-h-[92vh] min-w-[min(92vw,64rem)] w-[min(96vw,72rem)] max-w-none flex-col overflow-hidden border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)]">
         <DialogHeader>
-          <p className="eyebrow-label">Billing</p>
+          <p className="eyebrow-label text-primary">Billing</p>
           <DialogTitle>New</DialogTitle>
           <DialogDescription>Invoice</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
-            <div className="grid gap-5 rounded-[24px] border border-border/60 bg-background/62 p-4 sm:grid-cols-2">
+            <div className="grid gap-5 rounded-[24px] border border-slate-200/80 bg-white p-4 sm:grid-cols-2">
             {crmEnabled && (
               <div className="space-y-2 sm:col-span-2">
                 <Label>Customer</Label>
@@ -170,7 +170,7 @@ export function CreateInvoiceDialog({
             </div>
           </div>
 
-          <div className="space-y-4 rounded-[24px] border border-border/60 bg-background/62 p-4">
+          <div className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white p-4">
             <div className="flex items-center justify-between">
               <Label>Line Items</Label>
               <Button
@@ -222,7 +222,7 @@ export function CreateInvoiceDialog({
               ))}
             </div>
 
-            <div className="space-y-2 rounded-[20px] border border-border/60 bg-background/80 px-4 py-3 text-sm">
+            <div className="space-y-2 rounded-[20px] border border-slate-200/80 bg-slate-50/60 px-4 py-3 text-sm">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
                 <span>{currencySymbol}{subtotal.toFixed(2)}</span>
@@ -238,13 +238,13 @@ export function CreateInvoiceDialog({
             </div>
           </div>
 
-            <div className="space-y-2 rounded-[24px] border border-border/60 bg-background/62 p-4">
+            <div className="space-y-2 rounded-[24px] border border-slate-200/80 bg-white p-4">
               <Label>Notes</Label>
               <Textarea placeholder="Optional notes for the customer..." rows={3} {...register("notes")} />
             </div>
           </div>
 
-          <DialogFooter className="-mx-5 -mb-5 mt-4 shrink-0 border-t border-border/60 px-5 py-4">
+          <DialogFooter className="-mx-5 -mb-5 mt-4 shrink-0 border-t border-slate-200/80 px-5 py-4">
             <Button type="button" variant="outline" className="rounded-full" onClick={() => setOpen(false)}>
               Cancel
             </Button>

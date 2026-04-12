@@ -4,6 +4,7 @@ import { getTenant } from "@/lib/tenant";
 import { authorize } from "@/lib/authorize";
 import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
 import { ServicesList } from "@/modules/services";
+import { NewServiceButton } from "@/modules/services/components/new-service-button";
 import type { Service, PricingType } from "@/modules/services";
 
 interface ServicesPageProps {
@@ -38,6 +39,13 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
         title="Services"
         description={`${services.length} total · ${activeCount} active`}
         className="py-4 sm:py-5"
+        action={
+          <NewServiceButton
+            tenantSlug={tenantSlug}
+            tenantId={tenant.id}
+            currencySymbol={tenant.currencySymbol}
+          />
+        }
       />
 
       <ContentPanel className="overflow-hidden p-0">

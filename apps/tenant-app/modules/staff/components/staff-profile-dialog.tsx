@@ -99,9 +99,9 @@ export function StaffProfileDialog({
       </DialogTrigger>
       <DialogContent className="flex max-h-[90vh] min-w-[min(92vw,64rem)] w-[min(96vw,72rem)] max-w-none flex-col overflow-hidden border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
         <DialogHeader>
-          <p className="eyebrow-label">Staff</p>
-          <DialogTitle>{staff.name}</DialogTitle>
-          <DialogDescription>Profile and availability</DialogDescription>
+          <p className="eyebrow-label">HR</p>
+          <DialogTitle>Edit Staff</DialogTitle>
+          <DialogDescription>{staff.name}</DialogDescription>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">

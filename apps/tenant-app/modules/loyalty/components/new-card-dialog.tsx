@@ -61,8 +61,9 @@ export function NewCardDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)]">
         <DialogHeader>
+          <p className="eyebrow-label text-primary">Loyalty</p>
           <DialogTitle>New Loyalty Card</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-1">
@@ -78,7 +79,7 @@ export function NewCardDialog({
           </div>
           <div className="space-y-2">
             <Label>
-              Phone <span className="text-zinc-400 font-normal">(optional)</span>
+              Phone <span className="font-normal text-muted-foreground">(optional)</span>
             </Label>
             <Input
               placeholder="09xxxxxxxxx"
@@ -87,9 +88,9 @@ export function NewCardDialog({
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleCreate} disabled={saving || !name.trim()}>
+        <DialogFooter className="border-t border-slate-200/80 pt-4">
+          <Button variant="outline" className="rounded-full" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button className="rounded-full" onClick={handleCreate} disabled={saving || !name.trim()}>
             {saving ? "Creating..." : "Create Card"}
           </Button>
         </DialogFooter>
@@ -108,7 +109,7 @@ export function NewCardButton({ tenantSlug, tenantId, onCreated }: NewCardButton
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button size="sm" onClick={() => setOpen(true)} className="gap-1.5">
+      <Button size="sm" onClick={() => setOpen(true)} className="gap-1.5 rounded-full">
         <Plus className="h-3.5 w-3.5" />
         New Card
       </Button>

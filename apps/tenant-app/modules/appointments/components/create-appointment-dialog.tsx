@@ -290,9 +290,9 @@ export function CreateAppointmentDialog({
           <Plus className="mr-2 h-4 w-4" /> New
         </DialogTrigger>
       )}
-      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
+      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)]">
         <DialogHeader>
-          <p className="eyebrow-label">Appointment</p>
+          <p className="eyebrow-label text-primary">Appointment</p>
           <DialogTitle>Book</DialogTitle>
           <DialogDescription>Service and time</DialogDescription>
         </DialogHeader>
@@ -460,14 +460,14 @@ export function CreateAppointmentDialog({
             <Textarea rows={2} placeholder="Optional" {...register("notes")} />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="border-t border-slate-200/80 pt-4">
             {!isOnline && (
               <p className="flex items-center gap-1.5 text-xs text-amber-600 mr-auto">
                 <WifiOff className="h-3.5 w-3.5" /> You're offline
               </p>
             )}
-            <Button type="button" variant="outline" onClick={() => handleOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting || !isOnline}>{isSubmitting ? "Booking..." : "Book"}</Button>
+            <Button type="button" variant="outline" className="rounded-full" onClick={() => handleOpen(false)}>Cancel</Button>
+            <Button type="submit" className="rounded-full" disabled={isSubmitting || !isOnline}>{isSubmitting ? "Booking..." : "Book"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

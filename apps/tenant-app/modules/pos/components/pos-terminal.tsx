@@ -402,11 +402,11 @@ export function POSTerminal({
 
   return (
     <>
-      <div className="grid h-full gap-3 overflow-hidden xl:grid-cols-[minmax(0,1fr)_410px]">
+      <div className="grid h-full gap-3 overflow-hidden 2xl:grid-cols-[minmax(0,1fr)_410px]">
 
         {/* ── Left: browser ── */}
         <div className="flex min-h-0 flex-col gap-3 rounded-[calc(var(--radius)+8px)] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.88)_0%,rgba(248,250,252,0.9)_100%)] p-3 shadow-[0_24px_50px_-34px_rgba(15,23,42,0.3)]">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
             <div>
               <p className="eyebrow-label">Browse</p>
               <h2 className="text-lg font-semibold tracking-[-0.03em] text-foreground sm:text-xl">
@@ -456,7 +456,7 @@ export function POSTerminal({
             </div>
           )}
 
-          <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto]">
             <Input
               placeholder={activeTab === "products" ? "Search by name or SKU..." : "Search services..."}
               value={search}
@@ -500,7 +500,7 @@ export function POSTerminal({
 
           {/* Product grid */}
           {activeTab === "products" && (
-            <div className="grid flex-1 grid-cols-2 content-start gap-3 overflow-y-auto pr-1 sm:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid flex-1 grid-cols-2 content-start gap-3 overflow-y-auto pr-1 md:grid-cols-3 xl:grid-cols-4">
               {filteredProducts.map((product) => (
                 <button
                   key={product.id}
@@ -543,7 +543,7 @@ export function POSTerminal({
 
           {/* Service grid */}
           {activeTab === "services" && (
-            <div className="grid flex-1 grid-cols-2 content-start gap-3 overflow-y-auto pr-1 sm:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid flex-1 grid-cols-2 content-start gap-3 overflow-y-auto pr-1 md:grid-cols-3 xl:grid-cols-4">
               {filteredServices.map((service) => (
                 <button
                   key={service.id}
@@ -579,7 +579,7 @@ export function POSTerminal({
         </div>
 
         {/* ── Right: cart & checkout ── */}
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-[calc(var(--radius)+10px)] border border-primary/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(236,253,250,0.96)_54%,rgba(220,252,247,0.88)_100%)] shadow-[0_30px_70px_-34px_rgba(13,148,136,0.32)] xl:sticky xl:top-0 xl:h-full">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-[calc(var(--radius)+10px)] border border-primary/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(236,253,250,0.96)_54%,rgba(220,252,247,0.88)_100%)] shadow-[0_30px_70px_-34px_rgba(13,148,136,0.32)] 2xl:sticky 2xl:top-0 2xl:h-full">
 
           {/* Cart header */}
           <div className="flex shrink-0 items-center justify-between border-b border-primary/10 px-5 py-5">

@@ -93,11 +93,10 @@ export function ServiceDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
+      <DialogContent className="max-w-lg border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)]">
         <DialogHeader>
-          <p className="eyebrow-label">Service</p>
-          <DialogTitle>{isEditing ? "Edit" : "New"}</DialogTitle>
-          <DialogDescription>{isEditing ? service?.name : "Catalog item"}</DialogDescription>
+          <p className="eyebrow-label text-primary">Service</p>
+          <DialogTitle>{isEditing ? "Edit Catalog Item" : "New Catalog Item"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
@@ -149,7 +148,7 @@ export function ServiceDialog({
             <Input placeholder="e.g. Dry Clean, Express" {...register("category")} />
           </div>
 
-          <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-muted/25 px-3 py-2.5">
+          <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3 py-2.5">
             <Label className="cursor-pointer">Active</Label>
             <Controller
               control={control}
@@ -160,9 +159,9 @@ export function ServiceDialog({
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>
+          <DialogFooter className="border-t border-slate-200/80 pt-4">
+            <Button type="button" variant="outline" className="rounded-full" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" className="rounded-full" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : isEditing ? "Save" : "Create"}
             </Button>
           </DialogFooter>

@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Plus, Tag, AlertTriangle } from "lucide-react";
+import { MoreHorizontal, Pencil, Tag, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { togglePromotion, deletePromotion } from "../actions";
 import { PROMO_TYPE_LABELS, DAY_LABELS, type Promotion } from "../types";
@@ -88,7 +88,6 @@ function promoSummary(p: Promotion): string {
 export function PromotionsList({ promotions, tenantSlug, tenantId, products }: PromotionsListProps) {
   const router = useRouter();
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterTab>("all");
 
@@ -167,13 +166,10 @@ export function PromotionsList({ promotions, tenantSlug, tenantId, products }: P
                 )}>
                   {tab.count}
                 </span>
-              )}
-            </button>
-          ))}
+            )}
+          </button>
+        ))}
         </div>
-        <Button size="sm" className="rounded-full" onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-1.5 h-3.5 w-3.5" /> New
-        </Button>
       </div>
 
       {filtered.length === 0 ? (
@@ -278,14 +274,6 @@ export function PromotionsList({ promotions, tenantSlug, tenantId, products }: P
           })}
         </div>
       )}
-
-      <PromotionDialog
-        tenantSlug={tenantSlug}
-        tenantId={tenantId}
-        products={products}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-      />
 
       {editingPromo && (
         <PromotionDialog

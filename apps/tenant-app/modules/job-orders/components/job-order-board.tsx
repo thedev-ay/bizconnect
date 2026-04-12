@@ -310,7 +310,7 @@ export function JobOrderBoard({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 pb-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3 pb-4">
             {visibleCards.map((jo) => {
               const isOverdue = jo.dueDate && new Date(jo.dueDate) < new Date();
               const grandTotal = jo.items.reduce((s, i) => s + Number(i.total), 0);
