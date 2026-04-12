@@ -45,8 +45,8 @@ export function DateRangeFilter({ from, to, granularity }: Props) {
   const today = toDateStr(new Date());
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-[24px] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
-      <div className="flex items-center gap-1">
+    <div className="flex flex-col gap-3 rounded-[24px] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)] sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="flex flex-wrap items-center gap-1">
         {PRESETS.map((p) => {
           const pFrom = toDateStr(daysAgo(p.days));
           const active = from === pFrom && to === today && granularity === p.granularity;
@@ -66,9 +66,9 @@ export function DateRangeFilter({ from, to, granularity }: Props) {
         })}
       </div>
 
-      <span className="select-none text-slate-300">|</span>
+      <span className="hidden select-none text-slate-300 sm:inline">|</span>
 
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {GRANULARITIES.map((g) => (
           <button
             key={g.value}
@@ -84,9 +84,9 @@ export function DateRangeFilter({ from, to, granularity }: Props) {
         ))}
       </div>
 
-      <span className="select-none text-slate-300">|</span>
+      <span className="hidden select-none text-slate-300 sm:inline">|</span>
 
-      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+      <div className="flex flex-col gap-2 text-xs text-slate-500 sm:flex-row sm:items-center sm:gap-1.5">
         <input
           type="date"
           value={from}
@@ -94,7 +94,7 @@ export function DateRangeFilter({ from, to, granularity }: Props) {
           onChange={(e) => push({ from: e.target.value })}
           className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-primary"
         />
-        <span>–</span>
+        <span className="hidden sm:inline">–</span>
         <input
           type="date"
           value={to}

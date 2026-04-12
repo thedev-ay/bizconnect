@@ -132,14 +132,14 @@ export function POSView({ tenantSlug, tenantId, tenantName, currencySymbol, curr
   }
 
   return (
-    <div className="flex h-full flex-col gap-2">
+    <div className="flex h-auto min-h-full flex-col gap-2">
       {pendingCount > 0 && (
         <div className="app-panel-subtle flex items-center gap-2 rounded-2xl border-amber-200/70 bg-amber-50/90 px-4 py-3 text-sm text-amber-900">
           <span className="h-2 w-2 rounded-full bg-amber-400" />
           {pendingCount} sale{pendingCount > 1 ? "s" : ""} saved offline — will sync when back online
         </div>
       )}
-      <ContentPanel className="min-h-0 flex-1 overflow-hidden p-2 sm:p-3">
+      <ContentPanel className="min-h-0 flex-1 overflow-visible p-2 sm:p-3 2xl:overflow-hidden">
         <POSTerminal
           products={products}
           services={services}

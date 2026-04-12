@@ -102,14 +102,14 @@ export function CreateInvoiceDialog({
         <Plus className="mr-2 h-4 w-4" />
         New
       </DialogTrigger>
-      <DialogContent className="flex max-h-[92vh] min-w-[min(92vw,64rem)] w-[min(96vw,72rem)] max-w-none flex-col overflow-hidden border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)]">
+      <DialogContent className="flex max-h-[94dvh] w-[calc(100%-1rem)] max-w-[72rem] flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)] sm:w-[min(96vw,72rem)] sm:p-5">
         <DialogHeader>
           <p className="eyebrow-label text-primary">Billing</p>
           <DialogTitle>New</DialogTitle>
           <DialogDescription>Invoice</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1 sm:pr-2">
             <div className="grid gap-5 rounded-[24px] border border-slate-200/80 bg-white p-4 sm:grid-cols-2">
             {crmEnabled && (
               <div className="space-y-2 sm:col-span-2">
@@ -185,39 +185,52 @@ export function CreateInvoiceDialog({
             </div>
 
             <div className="space-y-3">
-              <div className="grid grid-cols-[minmax(0,1.5fr)_90px_130px_40px] gap-3 px-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              <div className="hidden grid-cols-[minmax(0,1.5fr)_90px_130px_40px] gap-3 px-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground sm:grid">
                 <span>Description</span>
                 <span>Qty</span>
                 <span>Unit Price</span>
                 <span />
               </div>
               {fields.map((field, index) => (
-                <div key={field.id} className="grid grid-cols-[minmax(0,1.5fr)_90px_130px_40px] gap-3">
-                  <Input
-                    placeholder="Service or product"
-                    {...register(`items.${index}.description`)}
-                  />
-                  <Input
-                    type="number"
-                    min={1}
-                    {...register(`items.${index}.quantity`)}
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    {...register(`items.${index}.unitPrice`)}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-8 rounded-full text-muted-foreground"
-                    onClick={() => remove(index)}
-                    disabled={fields.length === 1}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div key={field.id} className="rounded-[20px] border border-slate-200/80 bg-slate-50/40 p-3 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1.5fr)_90px_130px_40px]">
+                    <div className="space-y-1">
+                      <p className="text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground sm:hidden">Description</p>
+                      <Input
+                        placeholder="Service or product"
+                        {...register(`items.${index}.description`)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground sm:hidden">Qty</p>
+                      <Input
+                        type="number"
+                        min={1}
+                        {...register(`items.${index}.quantity`)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground sm:hidden">Unit Price</p>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        {...register(`items.${index}.unitPrice`)}
+                      />
+                    </div>
+                    <div className="flex items-end justify-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 rounded-full text-muted-foreground"
+                        onClick={() => remove(index)}
+                        disabled={fields.length === 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

@@ -112,112 +112,182 @@ export function InvoiceList({
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          <TableRow className="border-border/60 hover:bg-transparent">
-            <TableHead className="pl-5 text-xs uppercase tracking-[0.22em] text-muted-foreground">Invoice</TableHead>
-            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Customer</TableHead>
-            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Due</TableHead>
-            <TableHead className="text-right text-xs uppercase tracking-[0.22em] text-muted-foreground">Total</TableHead>
-            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Status</TableHead>
-            <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Paid</TableHead>
-            <TableHead className="w-12 pr-4" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {invoices.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7} className="py-12 text-center text-sm text-muted-foreground">
-                No invoices yet.
-              </TableCell>
-            </TableRow>
-          ) : (
-            invoices.map((inv) => {
-              const isOverdue =
-                inv.status !== "paid" &&
-                inv.status !== "void" &&
-                new Date(inv.dueDate) < new Date();
+      <div className="space-y-3 p-4 sm:hidden">
+        {invoices.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">No invoices yet.</div>
+        ) : (
+          invoices.map((inv) => {
+            const isOverdue =
+              inv.status !== "paid" &&
+              inv.status !== "void" &&
+              new Date(inv.dueDate) < new Date();
 
-              return (
-                <TableRow
-                  key={inv.id}
-                  id={`invoice-row-${inv.id}`}
-                  onClick={() => openInvoice(inv.id)}
-                  className={cn(
-                    "cursor-pointer border-border/60 hover:bg-muted/20",
-                    loading === inv.id && "opacity-50",
-                    highlightedInvoiceId === inv.id && "bg-primary/5 ring-1 ring-primary/20"
-                  )}
-                >
-                  <TableCell className="pl-5 font-mono text-sm font-medium text-foreground">{inv.invoiceNo}</TableCell>
-                  <TableCell>
-                    <div className="text-sm font-medium text-foreground">{inv.customerName}</div>
-                    {inv.jobOrderId && (
-                      <div className="text-[11px] text-muted-foreground">From job order</div>
-                    )}
+            return (
+              <button
+                key={inv.id}
+                type="button"
+                onClick={() => openInvoice(inv.id)}
+                className={cn(
+                  "w-full rounded-[24px] border border-border/70 bg-white p-4 text-left shadow-[0_18px_36px_-30px_rgba(15,23,42,0.25)]",
+                  loading === inv.id && "opacity-50",
+                  highlightedInvoiceId === inv.id && "border-primary/25 ring-2 ring-primary/10"
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-sm font-semibold text-foreground">{inv.invoiceNo}</p>
+                    <p className="mt-1 text-sm font-medium text-foreground">{inv.customerName}</p>
                     {inv.customerEmail && (
-                      <div className="text-xs text-muted-foreground">{inv.customerEmail}</div>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">{inv.customerEmail}</p>
                     )}
-                  </TableCell>
-                  <TableCell className={isOverdue ? "text-red-600" : "text-muted-foreground"}>
-                    <span className="text-sm">{format(new Date(inv.dueDate), "MMM d, yyyy")}</span>
-                    {isOverdue && <span className="ml-1 text-xs">(overdue)</span>}
-                  </TableCell>
-                  <TableCell className="text-right text-sm font-medium text-foreground">
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold text-foreground">
                     {currencySymbol}{Number(inv.total).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
-                  </TableCell>
-                  <TableCell>
-                    <span className={cn(
-                      "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
-                      STATUS_PILL[inv.status] ?? "bg-zinc-100 text-zinc-500 border-zinc-200"
-                    )}>
-                      {inv.status}
+                  </p>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <span className={cn(
+                    "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
+                    STATUS_PILL[inv.status] ?? "bg-zinc-100 text-zinc-500 border-zinc-200"
+                  )}>
+                    {inv.status}
+                  </span>
+                  {inv.jobOrderId && (
+                    <span className="inline-flex items-center rounded-full border border-border/70 bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      Job order
                     </span>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {inv.paidAt ? format(new Date(inv.paidAt), "MMM d, yyyy") : <span className="text-muted-foreground/50">—</span>}
-                  </TableCell>
-                  <TableCell className="pr-4">
-                    {inv.status !== "void" && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" />}
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {inv.status === "draft" && (
-                            <DropdownMenuItem
-                              onClick={() => handleAction(inv.id, sendInvoice, "Invoice marked as sent")}
-                            >
-                              <Send className="mr-2 h-4 w-4" /> Mark as Sent
-                            </DropdownMenuItem>
-                          )}
-                          {inv.status !== "paid" && (
-                            <DropdownMenuItem
-                              onClick={() => handleAction(inv.id, markInvoicePaid, "Invoice marked as paid")}
-                            >
-                              <CheckCircle className="mr-2 h-4 w-4" /> Mark as Paid
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleAction(inv.id, voidInvoice, "Invoice voided")}
-                          >
-                            <XCircle className="mr-2 h-4 w-4" /> Void
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                  )}
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">Due</p>
+                    <p className={cn("mt-1 font-medium", isOverdue ? "text-red-600" : "text-foreground")}>
+                      {format(new Date(inv.dueDate), "MMM d, yyyy")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">Paid</p>
+                    <p className="mt-1 font-medium text-foreground">
+                      {inv.paidAt ? format(new Date(inv.paidAt), "MMM d, yyyy") : "Not yet"}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto sm:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border/60 hover:bg-transparent">
+              <TableHead className="pl-5 text-xs uppercase tracking-[0.22em] text-muted-foreground">Invoice</TableHead>
+              <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Customer</TableHead>
+              <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Due</TableHead>
+              <TableHead className="text-right text-xs uppercase tracking-[0.22em] text-muted-foreground">Total</TableHead>
+              <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Status</TableHead>
+              <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Paid</TableHead>
+              <TableHead className="w-12 pr-4" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {invoices.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="py-12 text-center text-sm text-muted-foreground">
+                  No invoices yet.
+                </TableCell>
+              </TableRow>
+            ) : (
+              invoices.map((inv) => {
+                const isOverdue =
+                  inv.status !== "paid" &&
+                  inv.status !== "void" &&
+                  new Date(inv.dueDate) < new Date();
+
+                return (
+                  <TableRow
+                    key={inv.id}
+                    id={`invoice-row-${inv.id}`}
+                    onClick={() => openInvoice(inv.id)}
+                    className={cn(
+                      "cursor-pointer border-border/60 hover:bg-muted/20",
+                      loading === inv.id && "opacity-50",
+                      highlightedInvoiceId === inv.id && "bg-primary/5 ring-1 ring-primary/20"
                     )}
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          )}
-        </TableBody>
-      </Table>
+                  >
+                    <TableCell className="pl-5 font-mono text-sm font-medium text-foreground">{inv.invoiceNo}</TableCell>
+                    <TableCell>
+                      <div className="text-sm font-medium text-foreground">{inv.customerName}</div>
+                      {inv.jobOrderId && (
+                        <div className="text-[11px] text-muted-foreground">From job order</div>
+                      )}
+                      {inv.customerEmail && (
+                        <div className="text-xs text-muted-foreground">{inv.customerEmail}</div>
+                      )}
+                    </TableCell>
+                    <TableCell className={isOverdue ? "text-red-600" : "text-muted-foreground"}>
+                      <span className="text-sm">{format(new Date(inv.dueDate), "MMM d, yyyy")}</span>
+                      {isOverdue && <span className="ml-1 text-xs">(overdue)</span>}
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-medium text-foreground">
+                      {currencySymbol}{Number(inv.total).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
+                    </TableCell>
+                    <TableCell>
+                      <span className={cn(
+                        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
+                        STATUS_PILL[inv.status] ?? "bg-zinc-100 text-zinc-500 border-zinc-200"
+                      )}>
+                        {inv.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {inv.paidAt ? format(new Date(inv.paidAt), "MMM d, yyyy") : <span className="text-muted-foreground/50">—</span>}
+                    </TableCell>
+                    <TableCell className="pr-4">
+                      {inv.status !== "void" && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" />}
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {inv.status === "draft" && (
+                              <DropdownMenuItem
+                                onClick={() => handleAction(inv.id, sendInvoice, "Invoice marked as sent")}
+                              >
+                                <Send className="mr-2 h-4 w-4" /> Mark as Sent
+                              </DropdownMenuItem>
+                            )}
+                            {inv.status !== "paid" && (
+                              <DropdownMenuItem
+                                onClick={() => handleAction(inv.id, markInvoicePaid, "Invoice marked as paid")}
+                              >
+                                <CheckCircle className="mr-2 h-4 w-4" /> Mark as Paid
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => handleAction(inv.id, voidInvoice, "Invoice voided")}
+                            >
+                              <XCircle className="mr-2 h-4 w-4" /> Void
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
       <Sheet open={Boolean(selectedInvoice)} onOpenChange={(open) => { if (!open) closeInvoice(); }}>
         <SheetContent side="right" className="w-full sm:max-w-xl">
           {selectedInvoice && (

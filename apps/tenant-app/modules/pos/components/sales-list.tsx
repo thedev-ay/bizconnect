@@ -218,15 +218,15 @@ export function SalesList({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <Input
             placeholder="Search reference..."
             value={search}
             onChange={(e) => updateLedgerQuery({ search: e.target.value || null }, true)}
-            className="h-10 w-full sm:w-56 text-sm"
+            className="h-10 w-full text-sm sm:w-56"
           />
           <Select value={paymentFilter} onValueChange={(value) => updateLedgerQuery({ payment: value }, true)}>
-            <SelectTrigger className="h-10 w-full sm:w-36 text-sm">
+            <SelectTrigger className="h-10 w-full text-sm sm:w-36">
               <SelectValue>
                 {paymentFilter === "all" ? "Payment" : (PAYMENT_LABEL[paymentFilter] ?? paymentFilter)}
               </SelectValue>
@@ -240,7 +240,7 @@ export function SalesList({
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={(value) => updateLedgerQuery({ status: value }, true)}>
-            <SelectTrigger className="h-10 w-full sm:w-36 text-sm">
+            <SelectTrigger className="h-10 w-full text-sm sm:w-36">
               <SelectValue>
                 {statusFilter === "all" ? "Status" : statusFilter === "completed" ? "Completed" : "Voided"}
               </SelectValue>
@@ -253,7 +253,7 @@ export function SalesList({
           </Select>
           {mounted && (sources.length > 1 || sourceFilter !== "all") && (
             <Select value={sourceFilter} onValueChange={(value) => updateLedgerQuery({ source: value }, true)}>
-              <SelectTrigger className="h-10 w-full sm:w-36 text-sm">
+              <SelectTrigger className="h-10 w-full text-sm sm:w-36">
                 <SelectValue>
                   {sourceFilter === "all" ? "Source" : (SOURCE_BADGE[sourceFilter]?.label ?? sourceFilter)}
                 </SelectValue>
@@ -271,95 +271,155 @@ export function SalesList({
         </div>
       </div>
 
-      <Table className="min-w-[760px]">
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="pl-5 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Reference</TableHead>
-            <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Source</TableHead>
-            <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Date</TableHead>
-            <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Items</TableHead>
-            <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Payment</TableHead>
-            <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Status</TableHead>
-            <TableHead className="pr-5 text-right text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Total</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sales.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7} className="py-16 text-center text-sm text-muted-foreground">
-                No transactions found
-              </TableCell>
-            </TableRow>
-          ) : (
-            sales.map((sale) => (
-              <TableRow
+      <div className="sm:hidden">
+        {sales.length === 0 ? (
+          <div className="px-4 py-12 text-center text-sm text-muted-foreground">No transactions found</div>
+        ) : (
+          <div className="space-y-3 px-4 py-4">
+            {sales.map((sale) => (
+              <button
                 key={sale.id}
-                id={`sale-row-${sale.id}`}
-                className={cn(
-                  "cursor-pointer bg-transparent transition-colors hover:bg-primary/5",
-                  sale.status === "voided" && "opacity-60",
-                  selectedSaleId === sale.id && "bg-primary/8 ring-1 ring-inset ring-primary/20"
-                )}
+                type="button"
                 onClick={() => openSale(sale.id)}
+                className={cn(
+                  "w-full rounded-[24px] border border-border/70 bg-white p-4 text-left shadow-[0_18px_36px_-30px_rgba(15,23,42,0.25)] transition-all",
+                  sale.status === "voided" && "opacity-70",
+                  selectedSaleId === sale.id && "border-primary/30 ring-2 ring-primary/10"
+                )}
               >
-                <TableCell className="pl-5">
-                  <div className="space-y-0.5">
-                    <span className="font-mono text-sm font-semibold text-foreground">
-                      {sale.referenceNo}
-                    </span>
-                    {sale.servedByName ? (
-                      <p className="text-xs text-muted-foreground">Served by {sale.servedByName}</p>
-                    ) : null}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-sm font-semibold text-foreground">{sale.referenceNo}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {format(new Date(sale.createdAt), "MMM d, yyyy · h:mm a")}
+                    </p>
                   </div>
-                </TableCell>
-                <TableCell>
+                  <p className="shrink-0 text-sm font-semibold text-foreground">{fmt(sale.total)}</p>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
                   <StatusBadge tone={SOURCE_BADGE[sale.source]?.tone ?? "neutral"}>
                     {SOURCE_BADGE[sale.source]?.label ?? sale.source}
                   </StatusBadge>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {format(new Date(sale.createdAt), "MMM d, yyyy · h:mm a")}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  <div>{sale.items.length} item{sale.items.length !== 1 ? "s" : ""}</div>
-                  {sale.returns.length > 0 && (
-                    <div className="mt-0.5 text-xs text-muted-foreground">
-                      {sale.returns.length} return{sale.returns.length !== 1 ? "s" : ""}
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {PAYMENT_LABEL[sale.paymentMethod] ?? sale.paymentMethod}
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <StatusBadge tone={STATUS_PILL[sale.status] ?? "neutral"} className="capitalize">
-                      {sale.status}
+                  <StatusBadge tone={STATUS_PILL[sale.status] ?? "neutral"} className="capitalize">
+                    {sale.status}
+                  </StatusBadge>
+                  {sale.returns[0] && (
+                    <StatusBadge tone={RETURN_STATUS_PILL[sale.returns[0].status] ?? "neutral"} className="capitalize">
+                      Return {sale.returns[0].status}
                     </StatusBadge>
-                    {sale.returns[0] && (
-                      <StatusBadge
-                        tone={RETURN_STATUS_PILL[sale.returns[0].status] ?? "neutral"}
-                        className="capitalize"
-                      >
-                        Return {sale.returns[0].status}
-                      </StatusBadge>
-                    )}
+                  )}
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">Payment</p>
+                    <p className="mt-1 font-medium text-foreground">{PAYMENT_LABEL[sale.paymentMethod] ?? sale.paymentMethod}</p>
                   </div>
-                </TableCell>
-                <TableCell className="pr-5 text-right text-sm font-semibold tabular-nums text-foreground">
-                  {fmt(sale.total)}
+                  <div>
+                    <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">Items</p>
+                    <p className="mt-1 font-medium text-foreground">
+                      {sale.items.length} item{sale.items.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto sm:block">
+        <Table className="min-w-[760px]">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="pl-5 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Reference</TableHead>
+              <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Source</TableHead>
+              <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Date</TableHead>
+              <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Items</TableHead>
+              <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Payment</TableHead>
+              <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Status</TableHead>
+              <TableHead className="pr-5 text-right text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Total</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sales.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="py-16 text-center text-sm text-muted-foreground">
+                  No transactions found
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              sales.map((sale) => (
+                <TableRow
+                  key={sale.id}
+                  id={`sale-row-${sale.id}`}
+                  className={cn(
+                    "cursor-pointer bg-transparent transition-colors hover:bg-primary/5",
+                    sale.status === "voided" && "opacity-60",
+                    selectedSaleId === sale.id && "bg-primary/8 ring-1 ring-inset ring-primary/20"
+                  )}
+                  onClick={() => openSale(sale.id)}
+                >
+                  <TableCell className="pl-5">
+                    <div className="space-y-0.5">
+                      <span className="font-mono text-sm font-semibold text-foreground">
+                        {sale.referenceNo}
+                      </span>
+                      {sale.servedByName ? (
+                        <p className="text-xs text-muted-foreground">Served by {sale.servedByName}</p>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge tone={SOURCE_BADGE[sale.source]?.tone ?? "neutral"}>
+                      {SOURCE_BADGE[sale.source]?.label ?? sale.source}
+                    </StatusBadge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {format(new Date(sale.createdAt), "MMM d, yyyy · h:mm a")}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    <div>{sale.items.length} item{sale.items.length !== 1 ? "s" : ""}</div>
+                    {sale.returns.length > 0 && (
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {sale.returns.length} return{sale.returns.length !== 1 ? "s" : ""}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {PAYMENT_LABEL[sale.paymentMethod] ?? sale.paymentMethod}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge tone={STATUS_PILL[sale.status] ?? "neutral"} className="capitalize">
+                        {sale.status}
+                      </StatusBadge>
+                      {sale.returns[0] && (
+                        <StatusBadge
+                          tone={RETURN_STATUS_PILL[sale.returns[0].status] ?? "neutral"}
+                          className="capitalize"
+                        >
+                          Return {sale.returns[0].status}
+                        </StatusBadge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="pr-5 text-right text-sm font-semibold tabular-nums text-foreground">
+                    {fmt(sale.total)}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-white/35 px-4 py-3 sm:px-5">
+      <div className="flex flex-col gap-3 border-t border-border/70 bg-white/35 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <p className="text-sm text-muted-foreground">
           Page {pagination.page} of {pagination.totalPages}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           <Button
             variant="outline"
             size="sm"

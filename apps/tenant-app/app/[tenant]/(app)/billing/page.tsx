@@ -90,13 +90,13 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
         }
       />
 
-      <ContentPanel className="space-y-4 p-5">
-          <div className="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-4">
+      <ContentPanel className="space-y-4 p-4 sm:p-5">
+          <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="eyebrow-label text-primary">Billing</p>
               <h2 className="text-base font-semibold text-slate-950">Ready to invoice</h2>
             </div>
-            <div className="text-right text-sm text-slate-500">
+            <div className="text-sm text-slate-500 sm:text-right">
               {readyToInvoice.length} ready
             </div>
           </div>
@@ -118,7 +118,7 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
                       const result = await createInvoiceForJobOrder(tenantSlug, tenant.id, jobOrder.id);
                       redirect(`/${tenantSlug}/billing?invoiceId=${result.invoiceId}`);
                     }}
-                    className="flex items-center justify-between gap-4 rounded-[24px] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_14px_32px_-28px_rgba(15,23,42,0.22)]"
+                    className="flex flex-col gap-3 rounded-[24px] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_14px_32px_-28px_rgba(15,23,42,0.22)] sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div>
                       <p className="font-mono text-xs text-muted-foreground">{jobOrder.jobNo}</p>
@@ -127,8 +127,8 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
                         {jobOrder.items.length} line item{jobOrder.items.length !== 1 ? "s" : ""}
                       </p>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
+                    <div className="flex items-center justify-between gap-4 sm:justify-end">
+                      <div className="text-left sm:text-right">
                         <p className="text-sm font-semibold text-slate-950">
                           {tenant.currencySymbol}{totalValue.toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
                         </p>

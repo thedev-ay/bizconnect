@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useOnlineStatus } from "@/lib/use-online-status";
@@ -100,6 +100,15 @@ export function AppointmentCalendar({
   const calendarRef = useRef<FullCalendar>(null);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isPhone, setIsPhone] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 639px)");
+    const sync = () => setIsPhone(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   const events = appointments.map((appt) => ({
     id: appt.id,
@@ -144,11 +153,11 @@ export function AppointmentCalendar({
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-          initialView="timeGridWeek"
+          initialView={isPhone ? "listWeek" : "timeGridWeek"}
           headerToolbar={{
-            left: "prev,next today",
+            left: isPhone ? "prev,next" : "prev,next today",
             center: "title",
-            right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+            right: isPhone ? "listWeek,timeGridDay,dayGridMonth" : "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
           }}
           buttonText={{
             today: "Today",
@@ -202,14 +211,14 @@ export function AppointmentCalendar({
       </div>
 
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-md border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
+        <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-lg flex-col overflow-hidden rounded-[26px] border border-border/70 bg-popover/98 p-4 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)] sm:p-5">
           <DialogHeader>
             <p className="eyebrow-label">Appointment</p>
             <DialogTitle className="text-base font-semibold text-foreground">{selected?.serviceName ?? selected?.customerName}</DialogTitle>
             <DialogDescription>{selected?.customerName}</DialogDescription>
           </DialogHeader>
           {selected && (
-            <div className="space-y-4">
+            <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
               <div>
                 <StatusPill status={selected.status} />
               </div>

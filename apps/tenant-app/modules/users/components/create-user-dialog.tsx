@@ -72,7 +72,7 @@ export function CreateUserDialog({ tenantSlug, tenantId, activeModuleSlugs }: Cr
         <Plus className="mr-2 h-4 w-4" />
         New
       </DialogTrigger>
-      <DialogContent className="flex max-h-[90vh] min-w-[min(92vw,56rem)] w-[min(95vw,64rem)] max-w-none flex-col overflow-hidden border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
+      <DialogContent className="flex max-h-[94dvh] w-[calc(100%-1rem)] max-w-[64rem] flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)] sm:w-[min(95vw,64rem)] sm:p-5">
         <DialogHeader>
           <p className="eyebrow-label text-primary">New User</p>
         </DialogHeader>

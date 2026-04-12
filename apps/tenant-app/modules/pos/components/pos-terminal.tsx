@@ -402,7 +402,7 @@ export function POSTerminal({
 
   return (
     <>
-      <div className="grid h-full gap-3 overflow-hidden 2xl:grid-cols-[minmax(0,1fr)_410px]">
+      <div className="flex min-h-full flex-col gap-3 overflow-visible 2xl:grid 2xl:h-full 2xl:grid-cols-[minmax(0,1fr)_410px] 2xl:overflow-hidden">
 
         {/* ── Left: browser ── */}
         <div className="flex min-h-0 flex-col gap-3 rounded-[calc(var(--radius)+8px)] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.88)_0%,rgba(248,250,252,0.9)_100%)] p-3 shadow-[0_24px_50px_-34px_rgba(15,23,42,0.3)]">
@@ -413,7 +413,7 @@ export function POSTerminal({
                 {activeTab === "products" ? "Catalog" : "Service Menu"}
               </h2>
             </div>
-            <div className="grid grid-cols-3 gap-2 rounded-[calc(var(--radius)+2px)] border border-primary/10 bg-primary/[0.035] p-2 text-xs text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
+            <div className="grid grid-cols-3 gap-2 rounded-[calc(var(--radius)+2px)] border border-primary/10 bg-primary/[0.035] p-2 text-xs text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] sm:min-w-[260px]">
               <div className="rounded-xl bg-white/80 px-3 py-2">
                 <p className="text-[0.68rem] uppercase tracking-[0.16em] text-primary/70">Shown</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
@@ -500,7 +500,7 @@ export function POSTerminal({
 
           {/* Product grid */}
           {activeTab === "products" && (
-            <div className="grid flex-1 grid-cols-2 content-start gap-3 overflow-y-auto pr-1 md:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 content-start gap-3 overflow-visible pr-1 min-[440px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:flex-1 2xl:overflow-y-auto">
               {filteredProducts.map((product) => (
                 <button
                   key={product.id}
@@ -543,7 +543,7 @@ export function POSTerminal({
 
           {/* Service grid */}
           {activeTab === "services" && (
-            <div className="grid flex-1 grid-cols-2 content-start gap-3 overflow-y-auto pr-1 md:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 content-start gap-3 overflow-visible pr-1 min-[440px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:flex-1 2xl:overflow-y-auto">
               {filteredServices.map((service) => (
                 <button
                   key={service.id}
@@ -579,7 +579,7 @@ export function POSTerminal({
         </div>
 
         {/* ── Right: cart & checkout ── */}
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-[calc(var(--radius)+10px)] border border-primary/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(236,253,250,0.96)_54%,rgba(220,252,247,0.88)_100%)] shadow-[0_30px_70px_-34px_rgba(13,148,136,0.32)] 2xl:sticky 2xl:top-0 2xl:h-full">
+        <div className="flex flex-col overflow-visible rounded-[calc(var(--radius)+10px)] border border-primary/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(236,253,250,0.96)_54%,rgba(220,252,247,0.88)_100%)] shadow-[0_30px_70px_-34px_rgba(13,148,136,0.32)] 2xl:min-h-0 2xl:overflow-hidden 2xl:sticky 2xl:top-0 2xl:h-full">
 
           {/* Cart header */}
           <div className="flex shrink-0 items-center justify-between border-b border-primary/10 px-5 py-5">
@@ -602,9 +602,9 @@ export function POSTerminal({
           </div>
 
           {/* Cart items */}
-          <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="overflow-visible 2xl:min-h-0 2xl:flex-1 2xl:overflow-y-auto">
             {cart.length === 0 ? (
-              <div className="flex h-full items-center justify-center px-8">
+              <div className="flex min-h-[16rem] items-center justify-center px-8 2xl:h-full">
                 <div className="max-w-xs text-center">
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[2rem] bg-white/80 text-primary shadow-[0_22px_40px_-26px_rgba(13,148,136,0.45)] ring-1 ring-primary/10">
                     <ShoppingCart className="h-7 w-7" />

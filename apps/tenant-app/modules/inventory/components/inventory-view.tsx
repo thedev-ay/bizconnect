@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Clock3 } from "lucide-react";
 import { InventoryList } from "./inventory-list";
 import { LowStockPanel } from "./low-stock-panel";
 import { RecentActivityPanel } from "./recent-activity-panel";
@@ -10,6 +11,9 @@ import type { InventoryItem } from "../types";
 import { db } from "@/lib/local-db";
 import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
 import { DashboardStatCards, type DashboardStatCardData } from "@/components/dashboard/stat-cards";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { DataSurfaceLoading } from "@/components/ui/data-surface-loading";
 
 interface InventoryViewProps {
   tenantSlug: string;
@@ -32,6 +36,8 @@ interface InventoryData {
 }
 
 export function InventoryView({ tenantSlug, tenantId, currencySymbol, currencyLocale }: InventoryViewProps) {
+  const [watchlistOpen, setWatchlistOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
   const { data, isPending } = useQuery<InventoryData>({
     queryKey: ["inventory", tenantSlug],
     queryFn: async () => {
@@ -116,7 +122,7 @@ export function InventoryView({ tenantSlug, tenantId, currencySymbol, currencyLo
       color: "green",
     },
     {
-      label: "Retail value",
+      label: "Retail",
       rawValue: retailValue,
       isCurrency: true,
       currencySymbol,
@@ -147,7 +153,7 @@ export function InventoryView({ tenantSlug, tenantId, currencySymbol, currencyLo
         className="py-4 sm:py-5"
       />
 
-      <DashboardStatCards cards={stats} />
+      <DashboardStatCards cards={stats} mobileCols={2} />
 
       {lowStockCount > 0 && (
         <div className="flex items-center gap-2.5 rounded-2xl border border-amber-200/70 bg-amber-50/85 px-4 py-3 text-sm text-amber-900 shadow-[0_12px_32px_-24px_rgba(217,119,6,0.4)]">
@@ -158,22 +164,76 @@ export function InventoryView({ tenantSlug, tenantId, currencySymbol, currencyLo
         </div>
       )}
 
+      <div className="grid grid-cols-2 gap-3 sm:hidden">
+        <Button
+          className="justify-start rounded-full px-4"
+          onClick={() => setWatchlistOpen(true)}
+        >
+          <AlertTriangle className="mr-2 h-4 w-4" />
+          Low Stocks
+        </Button>
+        <Button
+          className="justify-start rounded-full px-4"
+          onClick={() => setActivityOpen(true)}
+        >
+          <Clock3 className="mr-2 h-4 w-4" />
+          Recent Activity
+        </Button>
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.85fr)]">
         <ContentPanel className="overflow-hidden p-0">
-          <InventoryList
-            items={items}
-            tenantSlug={tenantSlug}
-            tenantId={tenantId}
-            currencySymbol={currencySymbol}
-            currencyLocale={currencyLocale}
-          />
+          {isPending ? (
+            <div className="p-4 sm:p-5">
+              <DataSurfaceLoading label="Loading inventory" variant="table" rows={6} className="min-h-[420px]" />
+            </div>
+          ) : (
+            <InventoryList
+              items={items}
+              tenantSlug={tenantSlug}
+              tenantId={tenantId}
+              currencySymbol={currencySymbol}
+              currencyLocale={currencyLocale}
+            />
+          )}
         </ContentPanel>
 
-        <div className="grid content-start gap-4">
-          <LowStockPanel items={lowStock} />
-          <RecentActivityPanel adjustments={recentAdjustments} />
+        <div className="hidden content-start gap-4 sm:grid">
+          {isPending ? (
+            <>
+              <DataSurfaceLoading label="Loading watchlist" variant="panel" rows={3} className="min-h-[220px]" />
+              <DataSurfaceLoading label="Loading activity" variant="panel" rows={4} className="min-h-[260px]" />
+            </>
+          ) : (
+            <>
+              <LowStockPanel items={lowStock} />
+              <RecentActivityPanel adjustments={recentAdjustments} />
+            </>
+          )}
         </div>
       </div>
+
+      <Sheet open={watchlistOpen} onOpenChange={setWatchlistOpen}>
+        <SheetContent side="bottom" className="max-h-[88dvh] overflow-hidden rounded-t-[28px] p-0 sm:hidden">
+          <SheetHeader className="border-b border-border/60 px-4 py-4">
+            <SheetTitle>Watchlist</SheetTitle>
+          </SheetHeader>
+          <div className="overflow-y-auto p-4">
+            <LowStockPanel items={lowStock} embedded />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={activityOpen} onOpenChange={setActivityOpen}>
+        <SheetContent side="bottom" className="max-h-[88dvh] overflow-hidden rounded-t-[28px] p-0 sm:hidden">
+          <SheetHeader className="border-b border-border/60 px-4 py-4">
+            <SheetTitle>Recent Activity</SheetTitle>
+          </SheetHeader>
+          <div className="overflow-y-auto p-4">
+            <RecentActivityPanel adjustments={recentAdjustments} embedded />
+          </div>
+        </SheetContent>
+      </Sheet>
     </PageShell>
   );
 }

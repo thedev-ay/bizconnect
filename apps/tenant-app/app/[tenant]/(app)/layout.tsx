@@ -26,9 +26,9 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
     <Providers>
       <div className="flex h-screen flex-col overflow-hidden bg-transparent">
         <OfflineBanner />
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
           <Sidebar tenant={tenant} modules={session.user.moduleObjects} />
-          <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
+          <main className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
             {children}
           </main>
         </div>

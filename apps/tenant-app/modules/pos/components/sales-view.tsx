@@ -7,6 +7,7 @@ import { ShoppingBag, TrendingUp, XCircle, Banknote } from "lucide-react";
 import { SalesList } from "./sales-list";
 import type { LocalSale } from "@/lib/local-db";
 import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { DataSurfaceLoading } from "@/components/ui/data-surface-loading";
 
 interface SalesViewProps {
   tenantSlug: string;
@@ -103,7 +104,7 @@ export function SalesView({
         className="px-5 py-4 sm:px-6 sm:py-5"
       />
 
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card>
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
@@ -164,17 +165,23 @@ export function SalesView({
       </div>
 
       <ContentPanel className="overflow-hidden p-0">
-        <SalesList
-          sales={sales}
-          tenantSlug={tenantSlug}
-          tenantId={tenantId}
-          tenantName={tenantName}
-          currencySymbol={currencySymbol}
-          currencyLocale={currencyLocale}
-          highlightedSaleId={highlightedSaleId}
-          pagination={pagination}
-          summary={summary}
-        />
+        {isPending ? (
+          <div className="p-4 sm:p-5">
+            <DataSurfaceLoading label="Loading transactions" variant="table" rows={6} className="min-h-[420px]" />
+          </div>
+        ) : (
+          <SalesList
+            sales={sales}
+            tenantSlug={tenantSlug}
+            tenantId={tenantId}
+            tenantName={tenantName}
+            currencySymbol={currencySymbol}
+            currencyLocale={currencyLocale}
+            highlightedSaleId={highlightedSaleId}
+            pagination={pagination}
+            summary={summary}
+          />
+        )}
       </ContentPanel>
     </PageShell>
   );

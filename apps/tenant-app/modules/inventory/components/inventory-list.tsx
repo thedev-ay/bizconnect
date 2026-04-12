@@ -90,7 +90,7 @@ export function InventoryList({ items, tenantSlug, tenantId, currencySymbol, cur
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border/50 px-4 py-4 sm:px-5">
         <div>
           <p className="eyebrow-label">Inventory</p>
           <h2 className="mt-1 text-lg font-semibold text-foreground">Items</h2>
@@ -100,103 +100,188 @@ export function InventoryList({ items, tenantSlug, tenantId, currencySymbol, cur
         </div>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow className="border-border/50 hover:bg-transparent">
-            <TableHead className="pl-5 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Item</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">SKU</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Category</TableHead>
-            <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Stock</TableHead>
-            <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Price</TableHead>
-            <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Value</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {slice.map((item) => {
-            const isLow = item.quantity <= item.reorderAt;
-            const isDeleting = deletingId === item.id;
-            return (
-              <TableRow
-                key={item.id}
-                className={cn("border-border/40 transition-colors hover:bg-muted/20", isDeleting && "opacity-50")}
-              >
-                <TableCell className="pl-5">
+      <div className="space-y-3 p-4 sm:hidden">
+        {slice.map((item) => {
+          const isLow = item.quantity <= item.reorderAt;
+          const isDeleting = deletingId === item.id;
+          return (
+            <div
+              key={item.id}
+              className={cn("rounded-[24px] border border-border/70 bg-white p-4 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.26)]", isDeleting && "opacity-50")}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     {isLow && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{item.name}</p>
-                      {item.description && (
-                        <p className="max-w-48 truncate text-xs text-muted-foreground">{item.description}</p>
-                      )}
-                    </div>
+                    <p className="text-sm font-medium text-foreground">{item.name}</p>
                   </div>
-                </TableCell>
-                <TableCell>
-                  {item.sku ? (
-                    <code className="rounded-full bg-muted px-2 py-1 font-mono text-[11px] text-foreground/75">
-                      {item.sku}
-                    </code>
-                  ) : (
-                    <span className="text-muted-foreground/50">—</span>
+                  {item.description && (
+                    <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
                   )}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {item.category?.name ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Tag className="h-3.5 w-3.5 text-primary/70" />
-                      {item.category.name}
-                    </span>
-                  ) : <span className="text-muted-foreground/50">—</span>}
-                </TableCell>
-                <TableCell className="text-right">
-                  <span className={cn(
-                    "text-sm font-semibold tabular-nums",
-                    isLow ? "text-amber-700" : "text-foreground"
-                  )}>
-                    {item.quantity}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right text-sm font-medium text-foreground">
-                  {currencySymbol}{Number(item.unitPrice).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
-                </TableCell>
-                <TableCell className="text-right text-sm text-muted-foreground">
-                  {currencySymbol}{(Number(item.unitCost) * item.quantity).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
-                </TableCell>
-                <TableCell className="pr-4">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger render={
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" />
-                    }>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditingItem(item)}>
-                        <Pencil className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setAdjustingItem(item)}>
-                        <ArrowUpDown className="mr-2 h-4 w-4" /> Adjust Stock
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleViewHistory(item)}>
-                        <History className="mr-2 h-4 w-4" /> View History
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => handleDelete(item)}
-                      >
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger render={
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" />
+                  }>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setEditingItem(item)}>
+                      <Pencil className="mr-2 h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setAdjustingItem(item)}>
+                      <ArrowUpDown className="mr-2 h-4 w-4" /> Adjust Stock
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleViewHistory(item)}>
+                      <History className="mr-2 h-4 w-4" /> View History
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => handleDelete(item)}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
 
-      <div className="px-5 pb-4">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {item.sku ? (
+                  <code className="rounded-full bg-muted px-2 py-1 font-mono text-[11px] text-foreground/75">
+                    {item.sku}
+                  </code>
+                ) : null}
+                {item.category?.name ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                    <Tag className="h-3.5 w-3.5 text-primary/70" />
+                    {item.category.name}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">Stock</p>
+                  <p className={cn("mt-1 font-semibold tabular-nums", isLow ? "text-amber-700" : "text-foreground")}>{item.quantity}</p>
+                </div>
+                <div>
+                  <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">Price</p>
+                  <p className="mt-1 font-semibold text-foreground">
+                    {currencySymbol}{Number(item.unitPrice).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">Value</p>
+                  <p className="mt-1 font-semibold text-foreground">
+                    {currencySymbol}{(Number(item.unitCost) * item.quantity).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden sm:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border/50 hover:bg-transparent">
+              <TableHead className="pl-5 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Item</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">SKU</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Category</TableHead>
+              <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Stock</TableHead>
+              <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Price</TableHead>
+              <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Value</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {slice.map((item) => {
+              const isLow = item.quantity <= item.reorderAt;
+              const isDeleting = deletingId === item.id;
+              return (
+                <TableRow
+                  key={item.id}
+                  className={cn("border-border/40 transition-colors hover:bg-muted/20", isDeleting && "opacity-50")}
+                >
+                  <TableCell className="pl-5">
+                    <div className="flex items-center gap-2">
+                      {isLow && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{item.name}</p>
+                        {item.description && (
+                          <p className="max-w-48 truncate text-xs text-muted-foreground">{item.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {item.sku ? (
+                      <code className="rounded-full bg-muted px-2 py-1 font-mono text-[11px] text-foreground/75">
+                        {item.sku}
+                      </code>
+                    ) : (
+                      <span className="text-muted-foreground/50">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {item.category?.name ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5 text-primary/70" />
+                        {item.category.name}
+                      </span>
+                    ) : <span className="text-muted-foreground/50">—</span>}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span className={cn(
+                      "text-sm font-semibold tabular-nums",
+                      isLow ? "text-amber-700" : "text-foreground"
+                    )}>
+                      {item.quantity}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right text-sm font-medium text-foreground">
+                    {currencySymbol}{Number(item.unitPrice).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
+                  </TableCell>
+                  <TableCell className="text-right text-sm text-muted-foreground">
+                    {currencySymbol}{(Number(item.unitCost) * item.quantity).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
+                  </TableCell>
+                  <TableCell className="pr-4">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger render={
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" />
+                      }>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditingItem(item)}>
+                          <Pencil className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setAdjustingItem(item)}>
+                          <ArrowUpDown className="mr-2 h-4 w-4" /> Adjust Stock
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewHistory(item)}>
+                          <History className="mr-2 h-4 w-4" /> View History
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => handleDelete(item)}
+                        >
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="px-4 pb-4 sm:px-5">
         <Paginator
           page={page}
           totalPages={totalPages}

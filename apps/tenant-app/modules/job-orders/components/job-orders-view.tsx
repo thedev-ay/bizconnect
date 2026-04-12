@@ -5,6 +5,7 @@ import { JobOrderBoard, CreateJobOrderDialog, WorkflowStageEditor } from "@/modu
 import type { JobOrder, WorkflowStage } from "../types";
 import { db } from "@/lib/local-db";
 import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { DataSurfaceLoading } from "@/components/ui/data-surface-loading";
 
 interface JobOrdersViewProps {
   tenantSlug: string;
@@ -99,20 +100,24 @@ export function JobOrdersView({
         className="py-4 sm:py-5"
       />
 
-      <ContentPanel className="min-h-0 flex-1 overflow-hidden p-5">
-        <JobOrderBoard
-          jobOrders={jobOrders}
-          stages={stages}
-          tenantSlug={tenantSlug}
-          tenantId={tenantId}
-          tenantName={tenantName}
-          currencySymbol={currencySymbol}
-          currencyLocale={currencyLocale}
-          services={services}
-          customers={customers}
-          employees={employees}
-          billingEnabled={billingEnabled}
-        />
+      <ContentPanel className="min-h-0 flex-1 overflow-visible p-3 sm:p-4 lg:overflow-hidden lg:p-5">
+        {isPending ? (
+          <DataSurfaceLoading label="Loading board" variant="kanban" className="min-h-[420px]" />
+        ) : (
+          <JobOrderBoard
+            jobOrders={jobOrders}
+            stages={stages}
+            tenantSlug={tenantSlug}
+            tenantId={tenantId}
+            tenantName={tenantName}
+            currencySymbol={currencySymbol}
+            currencyLocale={currencyLocale}
+            services={services}
+            customers={customers}
+            employees={employees}
+            billingEnabled={billingEnabled}
+          />
+        )}
       </ContentPanel>
     </PageShell>
   );

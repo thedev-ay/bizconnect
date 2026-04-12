@@ -14,7 +14,7 @@ export default async function POSPage({ params }: POSPageProps) {
   const tenant = await getTenant(tenantSlug);
 
   return (
-    <PageShell>
+    <PageShell className="h-auto min-h-full">
       <PageHeader
         eyebrow="Storefront"
         title="Point of Sale"
@@ -28,7 +28,7 @@ export default async function POSPage({ params }: POSPageProps) {
           </Link>
         }
       />
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-visible 2xl:overflow-hidden">
         <POSView
           tenantSlug={tenantSlug}
           tenantId={tenant.id}

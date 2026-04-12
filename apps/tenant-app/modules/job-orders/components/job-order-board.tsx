@@ -107,10 +107,17 @@ export function JobOrderBoard({
   const activeStageCount = stages.filter((s) => s.type === "active").length;
 
   useEffect(() => {
+    if (!stages.length) return;
+    if (activeTab && stages.some((stage) => stage.slug === activeTab)) return;
+    const firstActiveStage = stages.find((stage) => stage.type === "active") ?? stages[0];
+    setActiveTab(firstActiveStage?.slug ?? "");
+  }, [stages, activeTab]);
+
+  useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const observer = new ResizeObserver(([entry]) => {
-      setUseKanban(entry.contentRect.width >= activeStageCount * MIN_COL_WIDTH);
+      setUseKanban(window.innerWidth >= 1024 && entry.contentRect.width >= activeStageCount * MIN_COL_WIDTH);
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -172,10 +179,10 @@ export function JobOrderBoard({
   }
 
   return (
-    <div ref={containerRef} className="flex h-full flex-col gap-3">
-      <div className="flex items-center gap-3 shrink-0 flex-wrap">
+    <div ref={containerRef} className="flex h-full min-h-0 flex-col gap-3">
+      <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         {!useKanban && (
-          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-full border border-border/60 bg-muted/25 p-1">
+          <div className="flex w-full min-w-0 items-center gap-1 overflow-x-auto rounded-[22px] border border-border/60 bg-muted/25 p-1 sm:flex-1 sm:rounded-full">
             {stages.map((stage) => {
               const count = jobOrders.filter((j) => j.status === stage.slug).length;
               const isActive = activeTab === stage.slug;
@@ -206,7 +213,7 @@ export function JobOrderBoard({
           </div>
         )}
 
-        <div className={cn("relative shrink-0", useKanban ? "w-full sm:w-72" : "w-56")}>
+        <div className={cn("relative shrink-0", useKanban ? "w-full sm:w-72" : "w-full sm:w-56")}>
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Name, job no, phone..."
@@ -232,7 +239,7 @@ export function JobOrderBoard({
         </div>
       )}
 
-      {/* Tab board — shown when kanban doesn't fit */}
+      {/* Mobile / narrow widths use selected-stage lists instead of desktop kanban */}
       {!useKanban && <div className="flex-1 min-h-0 overflow-y-auto">
         {visibleCards.length === 0 ? (
           <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-[28px] border border-dashed border-border/70 text-center">

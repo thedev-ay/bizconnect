@@ -281,15 +281,16 @@ export function EditJobOrderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="min-w-xl max-h-[90vh] max-w-3xl overflow-y-auto border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[94dvh] w-[calc(100vw-1rem)] max-w-3xl flex-col overflow-hidden border border-border/70 bg-popover/98 p-0 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)] sm:w-[min(96vw,56rem)]">
+        <DialogHeader className="border-b border-border/60 px-4 pb-4 pt-4 sm:px-5">
           <div className="space-y-1">
             <p className="eyebrow-label">Job Order</p>
             <DialogTitle>Edit</DialogTitle>
             <DialogDescription>{jobOrder.jobNo}</DialogDescription>
           </div>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 space-y-5 overflow-y-auto px-4 py-4 sm:px-5">
           <section className="space-y-4 rounded-[24px] border border-border/60 bg-background/62 p-4">
             <div>
               <p className="eyebrow-label">Customer</p>
@@ -548,8 +549,9 @@ export function EditJobOrderDialog({
             </div>
           )}
           </section>
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="border-t border-border/60 bg-background/95 px-4 py-3 sm:px-5">
             {!isOnline && (
               <p className="mr-auto flex items-center gap-1.5 text-xs text-amber-600">
                 <WifiOff className="h-3.5 w-3.5" /> Offline

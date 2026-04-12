@@ -6,7 +6,7 @@ export function PageShell({
   children,
 }: React.ComponentProps<"section">) {
   return (
-    <section className={cn("app-canvas flex h-full flex-col gap-6", className)}>
+    <section className={cn("app-canvas flex h-full flex-col gap-4 sm:gap-5 lg:gap-6", className)}>
       {children}
     </section>
   );
@@ -28,7 +28,7 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "app-panel flex flex-col gap-5 px-5 py-5 sm:px-6 sm:py-6 lg:flex-row lg:items-end lg:justify-between",
+        "app-panel flex flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6 lg:flex-row lg:items-end lg:justify-between",
         className
       )}
     >
@@ -37,7 +37,7 @@ export function PageHeader({
         <h1 className="page-title">{title}</h1>
         {description ? <p className="page-subtitle">{description}</p> : null}
       </div>
-      {action ? <div className="flex shrink-0 items-center gap-3">{action}</div> : null}
+      {action ? <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">{action}</div> : null}
     </header>
   );
 }
@@ -46,5 +46,5 @@ export function ContentPanel({
   className,
   children,
 }: React.ComponentProps<"div">) {
-  return <div className={cn("app-panel min-h-0", className)}>{children}</div>;
+  return <div className={cn("app-panel min-h-0 overflow-hidden", className)}>{children}</div>;
 }

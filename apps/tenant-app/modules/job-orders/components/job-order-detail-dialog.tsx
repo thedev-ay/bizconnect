@@ -147,8 +147,8 @@ export function JobOrderDetailDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="min-w-2xl border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[94dvh] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden border border-border/70 bg-popover/98 p-0 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)] sm:w-[min(96vw,44rem)]">
+          <DialogHeader className="border-b border-border/60 px-4 pb-4 pt-4 sm:px-5">
             <div className="flex items-center justify-between pr-6">
               <div>
                 <p className="eyebrow-label">Job Order</p>
@@ -167,6 +167,7 @@ export function JobOrderDetailDialog({
             </div>
           </DialogHeader>
 
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
           {/* Inline confirmation */}
           {confirmMode && (
             <div className="space-y-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
@@ -282,10 +283,11 @@ export function JobOrderDetailDialog({
 
             </div>
           )}
+          </div>
 
           {/* Actions */}
           {!confirmMode && (
-            <div className="flex items-center justify-between gap-2 pt-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-background/95 px-4 py-3 sm:px-5">
               <div className="flex gap-2">
                 {jobOrder.completedAt && !jobOrder.invoiceId && (
                   <Button size="sm" variant="outline" onClick={handleCreateInvoice} disabled={loading}>

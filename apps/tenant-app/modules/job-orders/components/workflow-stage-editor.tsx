@@ -261,14 +261,14 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
         Workflow
       </DialogTrigger>
 
-      <DialogContent className="min-w-4xl max-h-[90vh] flex flex-col gap-0 border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
-        <DialogHeader className="pb-4">
+      <DialogContent className="flex max-h-[94dvh] w-[calc(100vw-1rem)] max-w-5xl flex-col gap-0 overflow-hidden border border-border/70 bg-popover/98 p-0 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)] sm:w-[min(96vw,72rem)]">
+        <DialogHeader className="border-b border-border/60 px-4 pb-4 pt-4 sm:px-5">
           <p className="eyebrow-label">Workflow</p>
           <DialogTitle>Stages</DialogTitle>
           <DialogDescription>From intake to claim</DialogDescription>
         </DialogHeader>
 
-        <div className="grid flex-1 gap-5 overflow-y-auto pr-1 lg:grid-cols-[minmax(0,1.25fr)_320px]">
+        <div className="grid flex-1 min-h-0 gap-5 overflow-y-auto px-4 py-4 sm:px-5 lg:grid-cols-[minmax(0,1.25fr)_320px]">
           <div className="space-y-5">
 
           <div className="space-y-3 rounded-[26px] border border-border/60 bg-background/72 p-4">
@@ -391,7 +391,7 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
           </div>
         )}
 
-        <DialogFooter className="pt-4">
+        <DialogFooter className="border-t border-border/60 bg-background/95 px-4 py-3 sm:px-5">
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving || hasErrors}>
             {saving ? "Saving..." : "Save"}
