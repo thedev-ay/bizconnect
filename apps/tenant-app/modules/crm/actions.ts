@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
+import { getActiveBranchId } from "@/lib/branch";
 import { createCustomerSchema, type CreateCustomerInput } from "./schema";
 
 export async function createCustomer(
@@ -12,6 +13,7 @@ export async function createCustomer(
 ) {
   await authorize(tenantSlug, "crm.create");
   const parsed = createCustomerSchema.parse(input);
+  const branchId = await getActiveBranchId();
 
   const tags = parsed.tags
     ? parsed.tags.split(",").map((t) => t.trim()).filter(Boolean)
@@ -20,6 +22,7 @@ export async function createCustomer(
   const customer = await prisma.customer.create({
     data: {
       tenantId,
+      branchId: branchId ?? null,
       name: parsed.name,
       email: parsed.email || null,
       phone: parsed.phone || null,

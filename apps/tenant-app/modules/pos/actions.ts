@@ -2,6 +2,7 @@
 
 import { prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
+import { getActiveBranchId } from "@/lib/branch";
 import { serialize } from "@/lib/serialize";
 import { createSaleSchema, type CreateSaleInput } from "./schema";
 import { nanoid } from "@/lib/utils";
@@ -14,7 +15,10 @@ function generateReferenceNo() {
 }
 
 export async function createSale(tenantSlug: string, tenantId: string, input: CreateSaleInput) {
-  const session = await authorize(tenantSlug, "pos.process_sale");
+  const [session, branchId] = await Promise.all([
+    authorize(tenantSlug, "pos.process_sale"),
+    getActiveBranchId(),
+  ]);
   const parsed = createSaleSchema.parse(input);
 
   const change = parsed.amountPaid - parsed.total;
@@ -53,6 +57,7 @@ export async function createSale(tenantSlug: string, tenantId: string, input: Cr
     const newSale = await tx.sale.create({
       data: {
         tenantId,
+        branchId: branchId ?? null,
         referenceNo: generateReferenceNo(),
         subtotal: parsed.subtotal,
         discount: parsed.discount,

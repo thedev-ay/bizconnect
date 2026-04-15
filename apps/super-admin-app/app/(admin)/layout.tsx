@@ -1,15 +1,12 @@
 import { Sidebar } from "@/components/layout/sidebar";
-import { Topbar } from "@/components/layout/topbar";
 import { Providers } from "@/components/providers";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <Providers>
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex min-h-screen items-stretch bg-transparent">
         <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <main className="flex-1 overflow-y-auto bg-muted/30 p-6">{children}</main>
-        </div>
+        <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8">{children}</main>
       </div>
     </Providers>
   );

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
+import { getActiveBranchId } from "@/lib/branch";
 import { createAppointmentSchema, type CreateAppointmentInput } from "./schema";
 
 export async function createAppointmentService(
@@ -101,6 +102,7 @@ export async function createAppointment(
 ) {
   await authorize(tenantSlug, "appointments.create");
   const parsed = createAppointmentSchema.parse(input);
+  const branchId = await getActiveBranchId();
 
   // Fetch service to get duration and title
   const service = await prisma.service.findUnique({ where: { id: parsed.serviceId } });
@@ -146,6 +148,7 @@ export async function createAppointment(
   const appointment = await prisma.appointment.create({
     data: {
       tenantId,
+      branchId: branchId ?? null,
       title: service.name,
       customerName: parsed.customerName,
       customerEmail: parsed.customerEmail || null,

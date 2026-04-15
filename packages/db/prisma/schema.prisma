@@ -37,8 +37,51 @@ model Tenant {
   loyaltySetting  LoyaltySetting?
   loyaltyCards    LoyaltyCard[]
   workflowStages  WorkflowStage[]
+  branches        Branch[]
 
   @@map("tenants")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BRANCH
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Branch {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  slug      String
+  name      String
+  address   String?
+  phone     String?
+  email     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant      Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employees   Employee[]                 @relation("homeBranch")
+  assignments EmployeeBranchAssignment[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("branches")
+}
+
+model EmployeeBranchAssignment {
+  id         String    @id @default(cuid())
+  employeeId String    @map("employee_id")
+  branchId   String    @map("branch_id")
+  startDate  DateTime  @map("start_date") @db.Date
+  endDate    DateTime? @map("end_date") @db.Date
+  notes      String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([branchId])
+  @@map("employee_branch_assignments")
 }
 
 model BusinessHours {
@@ -197,6 +240,7 @@ model InventoryCategory {
 model InventoryItem {
   id          String    @id @default(cuid())
   tenantId    String    @map("tenant_id")
+  branchId    String?   @map("branch_id")
   categoryId  String?   @map("category_id")
   name        String
   sku         String?
@@ -214,6 +258,7 @@ model InventoryItem {
   adjustments InventoryAdjustment[]
 
   @@index([tenantId])
+  @@index([tenantId, branchId])
   @@index([tenantId, sku])
   @@map("inventory_items")
 }
@@ -221,6 +266,7 @@ model InventoryItem {
 model InventoryAdjustment {
   id              String   @id @default(cuid())
   tenantId        String   @map("tenant_id")
+  branchId        String?  @map("branch_id")
   itemId          String   @map("item_id")
   quantityChange  Int      @map("quantity_change") // positive or negative
   reason          String?  // "manual", "sale_void", "damage", "recount", etc.
@@ -231,6 +277,7 @@ model InventoryAdjustment {
   item InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@index([tenantId, branchId])
   @@index([itemId])
   @@index([createdAt])
   @@map("inventory_adjustments")
@@ -243,6 +290,7 @@ model InventoryAdjustment {
 model Sale {
   id            String   @id @default(cuid())
   tenantId      String   @map("tenant_id")
+  branchId      String?  @map("branch_id")
   referenceNo   String   @map("reference_no")
   source        String   @default("pos") // "pos" | "job-order" | "appointment"
   subtotal      Decimal  @db.Decimal(10, 2)
@@ -259,6 +307,7 @@ model Sale {
   returns SaleReturn[]
 
   @@index([tenantId])
+  @@index([tenantId, branchId])
   @@index([tenantId, createdAt])
   @@map("sales")
 }
@@ -285,6 +334,7 @@ model SaleItem {
 model SaleReturn {
   id              String   @id @default(cuid())
   tenantId        String   @map("tenant_id")
+  branchId        String?  @map("branch_id")
   saleId          String   @map("sale_id")
   referenceNo     String   @map("reference_no") // e.g., "RMA-20260403-1234"
   reason          String   // "defective", "wrong_item", "changed_mind", "damaged", "other"
@@ -389,6 +439,7 @@ model ServiceCatalog {
 model Appointment {
   id            String    @id @default(cuid())
   tenantId      String    @map("tenant_id")
+  branchId      String?   @map("branch_id")
   title         String
   customerName  String    @map("customer_name")
   customerEmail String?   @map("customer_email")
@@ -407,6 +458,7 @@ model Appointment {
   service  Service?  @relation(fields: [serviceId], references: [id])
 
   @@index([tenantId])
+  @@index([tenantId, branchId])
   @@index([tenantId, startAt])
   @@map("appointments")
 }
@@ -418,6 +470,7 @@ model Appointment {
 model Invoice {
   id            String    @id @default(cuid())
   tenantId      String    @map("tenant_id")
+  branchId      String?   @map("branch_id")
   customerId    String?   @map("customer_id")
   jobOrderId    String?   @unique @map("job_order_id")
   invoiceNo     String    @map("invoice_no")
@@ -438,6 +491,7 @@ model Invoice {
   items    InvoiceItem[]
 
   @@index([tenantId])
+  @@index([tenantId, branchId])
   @@index([tenantId, status])
   @@index([customerId])
   @@map("invoices")
@@ -463,6 +517,7 @@ model InvoiceItem {
 model Customer {
   id        String   @id @default(cuid())
   tenantId  String   @map("tenant_id")
+  branchId  String?  @map("branch_id")
   name      String
   email     String?
   phone     String?
@@ -476,6 +531,7 @@ model Customer {
   jobOrders JobOrder[]
 
   @@index([tenantId])
+  @@index([tenantId, branchId])
   @@map("customers")
 }
 
@@ -486,6 +542,7 @@ model Customer {
 model JobOrder {
   id           String    @id @default(cuid())
   tenantId     String    @map("tenant_id")
+  branchId     String?   @map("branch_id")
   customerId   String?   @map("customer_id")
   jobNo        String    @map("job_no")
   customerName String    @map("customer_name")
@@ -505,6 +562,7 @@ model JobOrder {
   assignments JobOrderAssignment[]
 
   @@index([tenantId])
+  @@index([tenantId, branchId])
   @@index([tenantId, status])
   @@index([customerId])
   @@map("job_orders")
@@ -543,17 +601,19 @@ model JobOrderAssignment {
 }
 
 model WorkflowStage {
-  id        String @id @default(cuid())
-  tenantId  String @map("tenant_id")
+  id        String  @id @default(cuid())
+  tenantId  String  @map("tenant_id")
+  branchId  String? @map("branch_id")
   name      String
   slug      String
-  sortOrder Int    @map("sort_order")
-  type      String @default("active") // active | completed | cancelled
+  sortOrder Int     @map("sort_order")
+  type      String  @default("active") // active | completed | cancelled
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, slug])
   @@index([tenantId])
+  @@index([tenantId, branchId])
   @@map("workflow_stages")
 }
 
@@ -624,6 +684,7 @@ model LoyaltyRedemption {
 model Employee {
   id             String    @id @default(cuid())
   tenantId       String    @map("tenant_id")
+  homeBranchId   String?   @map("home_branch_id")
   userId         String?   @map("user_id")
   employeeNo     String?   @map("employee_no")
   name           String
@@ -640,6 +701,8 @@ model Employee {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
+  homeBranch          Branch?                    @relation("homeBranch", fields: [homeBranchId], references: [id])
+  branchAssignments   EmployeeBranchAssignment[]
   shifts              Shift[]
   services            StaffService[]
   workingHours        WorkingHours[]
@@ -650,6 +713,7 @@ model Employee {
   jobOrderAssignments JobOrderAssignment[]
 
   @@index([tenantId])
+  @@index([tenantId, homeBranchId])
   @@map("employees")
 }
 
@@ -702,6 +766,7 @@ model WorkingHours {
 model Shift {
   id         String   @id @default(cuid())
   tenantId   String   @map("tenant_id")
+  branchId   String?  @map("branch_id")
   employeeId String   @map("employee_id")
   title      String?
   startAt    DateTime @map("start_at")
@@ -723,6 +788,7 @@ model Shift {
 model Attendance {
   id         String    @id @default(cuid())
   tenantId   String    @map("tenant_id")
+  branchId   String?   @map("branch_id")
   employeeId String    @map("employee_id")
   date       DateTime  @db.Date
   clockIn    DateTime? @map("clock_in")
@@ -740,6 +806,7 @@ model Attendance {
 model LeaveRequest {
   id         String    @id @default(cuid())
   tenantId   String    @map("tenant_id")
+  branchId   String?   @map("branch_id")
   employeeId String    @map("employee_id")
   type       String
   startDate  DateTime  @db.Date @map("start_date")
@@ -757,6 +824,7 @@ model LeaveRequest {
 model PayrollRecord {
   id          String   @id @default(cuid())
   tenantId    String   @map("tenant_id")
+  branchId    String?  @map("branch_id")
   employeeId  String   @map("employee_id")
   periodStart DateTime @db.Date @map("period_start")
   periodEnd   DateTime @db.Date @map("period_end")

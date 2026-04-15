@@ -10,7 +10,7 @@ const loginSchema = z.object({
   tenantSlug: z.string(),
 });
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   session: { strategy: "jwt" },
   cookies: {
     sessionToken: { name: "tenant.session-token" },
@@ -65,6 +65,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;
 
+        const firstBranch = await prisma.branch.findFirst({
+          where: { tenantId: user.tenant.id, isActive: true },
+          orderBy: { createdAt: "asc" },
+          select: { id: true },
+        });
+
         return {
           id: user.id,
           email: user.email,
@@ -76,12 +82,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           permissions: (user.permissions as Record<string, boolean>) ?? {},
           modules: user.tenant.tenantModules.map((tm) => tm.module.slug),
           moduleObjects: user.tenant.tenantModules.map((tm) => tm.module),
+          currentBranchId: firstBranch?.id ?? null,
         };
       },
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
+      if (trigger === "update" && session?.currentBranchId !== undefined) {
+        token.currentBranchId = session.currentBranchId;
+      }
       if (user) {
         const u = user as {
           tenantSlug: string;
@@ -91,6 +101,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           permissions: Record<string, boolean>;
           modules: string[];
           moduleObjects: { slug: string; name: string; icon: string | null; sortOrder: number; isCore: boolean }[];
+          currentBranchId: string | null;
         };
         token.tenantSlug = u.tenantSlug;
         token.tenantId = u.tenantId;
@@ -99,6 +110,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.permissions = u.permissions;
         token.modules = u.modules;
         token.moduleObjects = u.moduleObjects;
+        token.currentBranchId = u.currentBranchId;
       }
       return token;
     },
@@ -111,6 +123,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.permissions = (token.permissions as Record<string, boolean>) ?? {};
         session.user.modules = (token.modules as string[]) ?? [];
         session.user.moduleObjects = (token.moduleObjects as { slug: string; name: string; icon: string | null; sortOrder: number; isCore: boolean }[]) ?? [];
+        session.user.currentBranchId = (token.currentBranchId as string | null) ?? null;
       }
       return session;
     },

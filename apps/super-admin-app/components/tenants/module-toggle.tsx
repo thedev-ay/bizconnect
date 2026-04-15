@@ -58,7 +58,7 @@ export function ModuleToggle({
   }
 
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex-1">
         <div className="flex items-center gap-2">
           <span className="font-medium">{moduleName}</span>
@@ -81,12 +81,15 @@ export function ModuleToggle({
           </p>
         )}
       </div>
-      <Switch
-        checked={isEnabled}
-        onCheckedChange={handleToggle}
-        disabled={isCore || loading}
-        aria-label={`Toggle ${moduleName}`}
-      />
+      <div className="flex items-center justify-between rounded-full border border-border/70 bg-muted/45 px-3 py-2 sm:min-w-[88px] sm:justify-center sm:bg-transparent sm:p-0">
+        <span className="text-xs font-medium text-muted-foreground sm:hidden">Access</span>
+        <Switch
+          checked={isEnabled}
+          onCheckedChange={handleToggle}
+          disabled={isCore || loading}
+          aria-label={`Toggle ${moduleName}`}
+        />
+      </div>
     </div>
   );
 }

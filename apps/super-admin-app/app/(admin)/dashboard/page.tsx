@@ -51,28 +51,31 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Platform Overview</h1>
-        <p className="text-muted-foreground">Welcome to the BizConnect admin panel.</p>
+    <div className="space-y-5">
+      <div className="admin-surface px-6 py-5">
+        <p className="admin-eyebrow">Platform</p>
+        <h1 className="admin-page-title mt-2">Overview</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Tenants, users, and module usage.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
           return (
-            <Card key={card.title}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {card.title}
+              <Card key={card.title}>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-primary/70">
+                    {card.title}
                 </CardTitle>
-                <Icon className={`h-4 w-4 ${card.color}`} />
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-muted/55">
+                  <Icon className={`h-4 w-4 ${card.color}`} />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{card.value}</div>
-                <p className="text-xs text-muted-foreground">{card.sub}</p>
-              </CardContent>
-            </Card>
+                <CardContent>
+                  <div className="text-3xl font-semibold tracking-[-0.05em]">{card.value}</div>
+                  <p className="mt-1 text-sm text-muted-foreground">{card.sub}</p>
+                </CardContent>
+              </Card>
           );
         })}
       </div>

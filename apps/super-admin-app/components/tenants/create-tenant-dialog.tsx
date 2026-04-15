@@ -136,12 +136,12 @@ export function CreateTenantDialog() {
         New Tenant
       </DialogTrigger>
       <DialogContent className="grid max-h-[92vh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden sm:max-w-5xl lg:max-w-6xl">
-        <DialogHeader>
-          <DialogTitle>Create New Tenant</DialogTitle>
+        <DialogHeader className="-mx-4 -mt-4 border-b border-border/60 px-4 py-4 sm:-mx-5 sm:px-5">
+          <DialogTitle>New Tenant</DialogTitle>
           <DialogDescription>
             Step {step} of 2. {step === 1
-              ? "Set up the business and choose a launch preset."
-              : "Create the first owner account and review the setup."}
+              ? "Business setup and launch preset."
+              : "Owner account and review."}
           </DialogDescription>
         </DialogHeader>
 
@@ -172,7 +172,7 @@ export function CreateTenantDialog() {
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Country</Label>
-                      <Select value={country} onValueChange={(value) => setValue("country", value)}>
+                      <Select value={country} onValueChange={(value) => value && setValue("country", value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a country">
                             {selectedCountry?.label ?? "Select a country"}
@@ -191,7 +191,10 @@ export function CreateTenantDialog() {
 
                     <div className="space-y-2">
                       <Label>Plan</Label>
-                      <Select value={plan} onValueChange={(value) => setValue("plan", value as CreateTenantForm["plan"])}>
+                      <Select
+                        value={plan}
+                        onValueChange={(value) => value && setValue("plan", value as CreateTenantForm["plan"])}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select a plan">
                             {selectedPlan?.label ?? "Select a plan"}
@@ -214,19 +217,19 @@ export function CreateTenantDialog() {
                       <button
                         type="button"
                         onClick={() => setValue("preset", "service-shop")}
-                        className={`rounded-lg border p-4 text-left transition-colors ${
+                        className={`rounded-[24px] border p-4 text-left transition-colors ${
                           preset === "service-shop"
-                            ? "border-zinc-900 bg-zinc-900 text-white"
-                            : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400"
+                            ? "border-primary bg-primary text-primary-foreground shadow-[0_18px_40px_-30px_hsl(var(--primary)/0.65)]"
+                            : "border-border/70 bg-background text-foreground hover:border-primary/35"
                         }`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className={`rounded-lg p-2 ${preset === "service-shop" ? "bg-white/10 text-white" : "bg-zinc-100 text-zinc-700"}`}>
+                          <div className={`rounded-2xl p-2 ${preset === "service-shop" ? "bg-white/12 text-white" : "bg-primary/10 text-primary"}`}>
                             <BriefcaseBusiness className="h-4 w-4" />
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm font-semibold">Service Shop</p>
-                            <p className={`text-xs ${preset === "service-shop" ? "text-zinc-200" : "text-zinc-500"}`}>
+                            <p className={`text-xs ${preset === "service-shop" ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
                               CRM, services, job orders, billing, and reports.
                             </p>
                           </div>
@@ -236,19 +239,19 @@ export function CreateTenantDialog() {
                       <button
                         type="button"
                         onClick={() => setValue("preset", "retail")}
-                        className={`rounded-lg border p-4 text-left transition-colors ${
+                        className={`rounded-[24px] border p-4 text-left transition-colors ${
                           preset === "retail"
-                            ? "border-zinc-900 bg-zinc-900 text-white"
-                            : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400"
+                            ? "border-primary bg-primary text-primary-foreground shadow-[0_18px_40px_-30px_hsl(var(--primary)/0.65)]"
+                            : "border-border/70 bg-background text-foreground hover:border-primary/35"
                         }`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className={`rounded-lg p-2 ${preset === "retail" ? "bg-white/10 text-white" : "bg-zinc-100 text-zinc-700"}`}>
+                          <div className={`rounded-2xl p-2 ${preset === "retail" ? "bg-white/12 text-white" : "bg-primary/10 text-primary"}`}>
                             <ShoppingBag className="h-4 w-4" />
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm font-semibold">Retail</p>
-                            <p className={`text-xs ${preset === "retail" ? "text-zinc-200" : "text-zinc-500"}`}>
+                            <p className={`text-xs ${preset === "retail" ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
                               Inventory, POS, promotions, and reports, with optional billing.
                             </p>
                           </div>
@@ -257,25 +260,25 @@ export function CreateTenantDialog() {
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-5">
+                  <div className="rounded-[24px] border border-border/70 bg-muted/35 p-5">
                     {preset === "service-shop" ? (
                       <>
                         <div className="flex items-start gap-3">
-                          <div className="mt-0.5 rounded-lg bg-zinc-900 p-2 text-white">
+                          <div className="mt-0.5 rounded-2xl bg-primary p-2 text-primary-foreground">
                             <BriefcaseBusiness className="h-4 w-4" />
                           </div>
                           <div className="space-y-1">
-                            <p className="text-sm font-semibold text-zinc-900">Service shop preset</p>
-                            <p className="text-xs text-zinc-500">
+                            <p className="text-sm font-semibold text-foreground">Service shop preset</p>
+                            <p className="text-xs text-muted-foreground">
                               Includes CRM, services, job orders, billing, reports, and a ready-to-use workflow.
                             </p>
                           </div>
                         </div>
 
-                        <div className="mt-4 flex items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2">
+                        <div className="mt-4 flex items-center justify-between rounded-2xl border border-border/70 bg-background px-3 py-2">
                           <div>
-                            <p className="text-sm font-medium text-zinc-900">Add inventory</p>
-                            <p className="text-xs text-zinc-500">
+                            <p className="text-sm font-medium text-foreground">Add inventory</p>
+                            <p className="text-xs text-muted-foreground">
                               Enable parts and material tracking for repair workflows.
                             </p>
                           </div>
@@ -288,21 +291,21 @@ export function CreateTenantDialog() {
                     ) : (
                       <>
                         <div className="flex items-start gap-3">
-                          <div className="mt-0.5 rounded-lg bg-zinc-900 p-2 text-white">
+                          <div className="mt-0.5 rounded-2xl bg-primary p-2 text-primary-foreground">
                             <ShoppingBag className="h-4 w-4" />
                           </div>
                           <div className="space-y-1">
-                            <p className="text-sm font-semibold text-zinc-900">Retail preset</p>
-                            <p className="text-xs text-zinc-500">
+                            <p className="text-sm font-semibold text-foreground">Retail preset</p>
+                            <p className="text-xs text-muted-foreground">
                               Includes inventory, POS, promotions, reports, starter products, and an opening-week promo.
                             </p>
                           </div>
                         </div>
 
-                        <div className="mt-4 flex items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2">
+                        <div className="mt-4 flex items-center justify-between rounded-2xl border border-border/70 bg-background px-3 py-2">
                           <div>
-                            <p className="text-sm font-medium text-zinc-900">Add billing</p>
-                            <p className="text-xs text-zinc-500">
+                            <p className="text-sm font-medium text-foreground">Add billing</p>
+                            <p className="text-xs text-muted-foreground">
                               Enable formal invoices for charge accounts and pay-later sales.
                             </p>
                           </div>
@@ -312,10 +315,10 @@ export function CreateTenantDialog() {
                           />
                         </div>
 
-                        <div className="mt-3 flex items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2">
+                        <div className="mt-3 flex items-center justify-between rounded-2xl border border-border/70 bg-background px-3 py-2">
                           <div>
-                            <p className="text-sm font-medium text-zinc-900">Add loyalty</p>
-                            <p className="text-xs text-zinc-500">
+                            <p className="text-sm font-medium text-foreground">Add loyalty</p>
+                            <p className="text-xs text-muted-foreground">
                               Enable loyalty cards and starter rewards for repeat customers.
                             </p>
                           </div>
@@ -329,22 +332,22 @@ export function CreateTenantDialog() {
                   </div>
                 </div>
 
-                <div className="space-y-5 rounded-lg border border-zinc-200 p-5">
-                  <p className="text-sm font-semibold text-zinc-900">What this will create</p>
-                  <ul className="space-y-2 text-sm text-zinc-600">
-                    <li>Business: <span className="font-medium text-zinc-900">{watch("name") || "Your business"}</span></li>
-                    <li>URL slug: <span className="font-mono text-zinc-900">{watch("slug") || "slug"}</span></li>
-                    <li>Preset: <span className="font-medium text-zinc-900">{preset === "service-shop" ? "Service Shop" : "Retail"}</span></li>
-                    <li>Plan: <span className="font-medium text-zinc-900">{selectedPlan?.label ?? "Starter"}</span></li>
+                <div className="space-y-5 rounded-[24px] border border-border/70 p-5">
+                  <p className="text-sm font-semibold text-foreground">What this creates</p>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li>Business: <span className="font-medium text-foreground">{watch("name") || "Your business"}</span></li>
+                    <li>URL slug: <span className="font-mono text-foreground">{watch("slug") || "slug"}</span></li>
+                    <li>Preset: <span className="font-medium text-foreground">{preset === "service-shop" ? "Service Shop" : "Retail"}</span></li>
+                    <li>Plan: <span className="font-medium text-foreground">{selectedPlan?.label ?? "Starter"}</span></li>
                   </ul>
                 </div>
               </div>
             ) : (
               <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-                <div className="space-y-5 rounded-lg border border-zinc-200 p-5">
+                <div className="space-y-5 rounded-[24px] border border-border/70 p-5">
                   <div>
-                    <p className="text-sm font-semibold text-zinc-900">Initial tenant owner</p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-sm font-semibold text-foreground">Initial tenant owner</p>
+                    <p className="text-xs text-muted-foreground">
                       This account can sign in right away and finish setup inside the tenant app.
                     </p>
                   </div>
@@ -374,33 +377,33 @@ export function CreateTenantDialog() {
                   </div>
                 </div>
 
-                <div className="space-y-5 rounded-lg border border-zinc-200 bg-zinc-50 p-5">
+                <div className="space-y-5 rounded-[24px] border border-border/70 bg-muted/35 p-5">
                   <div>
-                    <p className="text-sm font-semibold text-zinc-900">Review setup</p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-sm font-semibold text-foreground">Review setup</p>
+                    <p className="text-xs text-muted-foreground">
                       Double-check the business setup before creating the tenant.
                     </p>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="rounded-md border border-zinc-200 bg-white p-3">
-                      <p className="text-xs uppercase tracking-wide text-zinc-400">Business</p>
-                      <p className="mt-1 text-sm font-semibold text-zinc-900">{watch("name") || "Your business"}</p>
-                      <p className="mt-1 text-xs text-zinc-500">app.bizconnect.app/{watch("slug") || "slug"}</p>
+                    <div className="rounded-2xl border border-border/70 bg-background p-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Business</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">{watch("name") || "Your business"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">app.bizconnect.app/{watch("slug") || "slug"}</p>
                     </div>
 
-                    <div className="rounded-md border border-zinc-200 bg-white p-3">
-                      <p className="text-xs uppercase tracking-wide text-zinc-400">Preset</p>
-                      <p className="mt-1 text-sm font-semibold text-zinc-900">
+                    <div className="rounded-2xl border border-border/70 bg-background p-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Preset</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">
                         {preset === "service-shop" ? "Service Shop" : "Retail"}
                       </p>
-                      <p className="mt-1 text-xs text-zinc-500">{selectedPlan?.label ?? "Starter"} plan</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{selectedPlan?.label ?? "Starter"} plan</p>
                     </div>
                   </div>
 
-                  <div className="rounded-md border border-zinc-200 bg-white p-3">
-                    <p className="text-xs uppercase tracking-wide text-zinc-400">Modules & options</p>
-                    <div className="mt-2 space-y-2 text-sm text-zinc-600">
+                  <div className="rounded-2xl border border-border/70 bg-background p-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Modules & options</p>
+                    <div className="mt-2 space-y-2 text-sm text-muted-foreground">
                       {preset === "service-shop" ? (
                         <>
                           <p>Includes CRM, services, job orders, billing, reports, and users.</p>
@@ -416,17 +419,17 @@ export function CreateTenantDialog() {
                     </div>
                   </div>
 
-                  <div className="rounded-md border border-zinc-200 bg-white p-3">
-                    <p className="text-xs uppercase tracking-wide text-zinc-400">Owner account</p>
-                    <p className="mt-1 text-sm font-semibold text-zinc-900">{watch("adminName") || "Owner name"}</p>
-                    <p className="mt-1 text-xs text-zinc-500">{watch("adminEmail") || "owner@example.com"}</p>
+                  <div className="rounded-2xl border border-border/70 bg-background p-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Owner account</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{watch("adminName") || "Owner name"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{watch("adminEmail") || "owner@example.com"}</p>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="-mx-4 -mb-4 mt-4 sm:-mx-5">
             {step === 1 ? (
               <>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>

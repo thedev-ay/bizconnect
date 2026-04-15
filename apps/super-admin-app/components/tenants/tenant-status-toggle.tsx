@@ -49,8 +49,8 @@ export function TenantStatusToggle({ tenantId, isActive }: TenantStatusTogglePro
       <DialogTrigger render={<Button variant={isActive ? "destructive" : "default"} size="sm" />}>
         {isActive ? "Suspend Tenant" : "Reactivate Tenant"}
       </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader className="-mx-4 -mt-4 border-b border-border/60 px-4 py-4 sm:-mx-5 sm:px-5">
           <DialogTitle>{isActive ? "Suspend Tenant?" : "Reactivate Tenant?"}</DialogTitle>
           <DialogDescription>
             {isActive

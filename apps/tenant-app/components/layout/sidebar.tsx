@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ChevronDown, LogOut, Menu, MoreHorizontal } from "lucide-react";
 import { isPrivilegedRole, canViewModule } from "@/lib/permissions";
 import { PendingSalesBadge } from "./pending-sales-badge";
+import { BranchSwitcher } from "@/modules/branches";
 import * as Icons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -33,9 +34,17 @@ type SidebarModule = {
   isCore: boolean;
 };
 
+type SidebarBranch = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 interface SidebarProps {
   tenant: { slug: string; name: string };
   modules: SidebarModule[];
+  branches: SidebarBranch[];
+  currentBranchId: string | null;
 }
 
 const MODULE_GROUPS: { label: string; slugs: string[] }[] = [
@@ -49,7 +58,7 @@ const MODULE_GROUPS: { label: string; slugs: string[] }[] = [
   },
 ];
 
-export function Sidebar({ tenant, modules }: SidebarProps) {
+export function Sidebar({ tenant, modules, branches, currentBranchId }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -220,7 +229,6 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
     sortOrder: 5,
     isCore: false,
   };
-
   const moduleBySlug = new Map([
     ["dashboard", dashboard],
     ["settings", settings],
@@ -272,7 +280,7 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
   function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
     return (
       <>
-        <div className="border-b border-white/10 px-4 py-4">
+        <div className="border-b border-white/10 px-4 py-4 space-y-2.5">
           <div className="flex items-center gap-3 rounded-[calc(var(--radius)+2px)] border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/95 to-cyan-200 shadow-[0_12px_24px_-14px_rgba(56,189,248,0.75)]">
               <Icons.Zap className="h-4.5 w-4.5 text-slate-950" />
@@ -284,6 +292,13 @@ export function Sidebar({ tenant, modules }: SidebarProps) {
               <span className="block truncate text-sm font-semibold text-white">{tenant.name}</span>
             </div>
           </div>
+          {branches.length > 1 && (
+            <BranchSwitcher
+              tenantSlug={tenant.slug}
+              branches={branches}
+              currentBranchId={currentBranchId}
+            />
+          )}
         </div>
 
         <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">

@@ -1,9 +1,21 @@
 import Dexie, { type Table } from "dexie";
 
+// ── Branches ───────────────────────────────────────────────────────────────
+export interface LocalBranch {
+  id: string;
+  tenantId: string;
+  slug: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
 // ── Inventory ──────────────────────────────────────────────────────────────
 export interface LocalInventoryItem {
   id: string;
   tenantId: string;
+  branchId: string | null;
   name: string;
   sku: string | null;
   description: string | null;
@@ -20,6 +32,7 @@ export interface LocalInventoryItem {
 export interface LocalInventoryAdjustment {
   id: string;
   tenantId: string;
+  branchId: string | null;
   itemId: string;
   quantityChange: number;
   reason: string;
@@ -43,6 +56,7 @@ export interface LocalPOSPromotion {
 export interface LocalPOSProduct {
   id: string;
   tenantId: string;
+  branchId?: string | null;
   name: string;
   unitPrice: number;
   quantity: number;
@@ -151,6 +165,7 @@ class BizConnectDB extends Dexie {
   appointmentsSnapshots!: Table<LocalAppointmentsSnapshot>;
   syncMeta!: Table<SyncRecord>;
   pendingSales!: Table<PendingSale>;
+  branches!: Table<LocalBranch>;
 
   constructor() {
     super("bizconnect");
@@ -168,6 +183,11 @@ class BizConnectDB extends Dexie {
     this.version(3).stores({
       jobOrdersSnapshots: "key, tenantId",
       appointmentsSnapshots: "key, tenantId",
+    });
+    this.version(4).stores({
+      branches: "id, tenantId",
+      inventoryItems: "id, tenantId, branchId, [tenantId+branchId]",
+      inventoryAdjustments: "id, tenantId, itemId, branchId",
     });
   }
 }

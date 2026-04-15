@@ -1,5 +1,4 @@
 import { prisma } from "@bizconnect/db";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -9,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Lock } from "lucide-react";
+import { Lock, Tag } from "lucide-react";
 import * as Icons from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -28,16 +27,15 @@ export default async function ModulesPage() {
   const modules = await getModules();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Platform Modules</h1>
-        <p className="text-muted-foreground">
-          All available modules. Enable them per-tenant from the tenant management page.
-        </p>
+    <div className="space-y-5">
+      <div className="admin-surface px-6 py-5">
+        <p className="admin-eyebrow">Platform</p>
+        <h1 className="admin-page-title mt-2">Modules</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Inventory of platform capabilities.</p>
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="border-b border-border/60 py-4">
           <CardTitle className="text-base">{modules.length} Modules Available</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -57,26 +55,29 @@ export default async function ModulesPage() {
                   ? ((Icons as Record<string, unknown>)[mod.icon] as LucideIcon)
                   : null;
                 return (
-                  <TableRow key={mod.id}>
-                    <TableCell>
+                  <TableRow key={mod.id} className="hover:bg-muted/28">
+                    <TableCell className="pl-5">
                       <div className="flex items-center gap-2 font-medium">
                         {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
                         {mod.name}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{mod.slug}</code>
+                      <code className="rounded-full bg-muted px-2 py-1 font-mono text-[11px] text-foreground/75">
+                        {mod.slug}
+                      </code>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
                       {mod.isCore ? (
-                        <Badge variant="outline" className="gap-1 text-xs">
+                        <span className="inline-flex items-center gap-1.5">
                           <Lock className="h-2.5 w-2.5" />
                           Core
-                        </Badge>
+                        </span>
                       ) : (
-                        <Badge variant="secondary" className="text-xs">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Tag className="h-3.5 w-3.5 text-primary/70" />
                           Optional
-                        </Badge>
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">

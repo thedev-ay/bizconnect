@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
+import { getActiveBranchId } from "@/lib/branch";
 import { createEmployeeSchema, type CreateEmployeeInput } from "./schema";
 
 // ── Employees ────────────────────────────────────────────────────────────────
@@ -10,12 +11,14 @@ import { createEmployeeSchema, type CreateEmployeeInput } from "./schema";
 export async function createEmployee(tenantSlug: string, tenantId: string, input: CreateEmployeeInput) {
   await authorize(tenantSlug, "hr.view");
   const parsed = createEmployeeSchema.parse(input);
+  const branchId = await getActiveBranchId();
   const count = await prisma.employee.count({ where: { tenantId } });
   const employeeNo = parsed.employeeNo || `EMP-${String(count + 1).padStart(4, "0")}`;
 
   const employee = await prisma.employee.create({
     data: {
       tenantId,
+      homeBranchId: branchId ?? null,
       name: parsed.name,
       email: parsed.email || null,
       phone: parsed.phone || null,
@@ -48,20 +51,22 @@ export async function reactivateEmployee(tenantSlug: string, tenantId: string, e
 
 export async function clockIn(tenantSlug: string, tenantId: string, employeeId: string, date: string) {
   await authorize(tenantSlug, "hr.attendance");
+  const branchId = await getActiveBranchId();
   await prisma.attendance.upsert({
     where: { employeeId_date: { employeeId, date: new Date(date) } },
     update: { clockIn: new Date() },
-    create: { tenantId, employeeId, date: new Date(date), clockIn: new Date() },
+    create: { tenantId, branchId: branchId ?? null, employeeId, date: new Date(date), clockIn: new Date() },
   });
   revalidatePath(`/${tenantSlug}/hr`);
 }
 
 export async function clockOut(tenantSlug: string, tenantId: string, employeeId: string, date: string) {
   await authorize(tenantSlug, "hr.attendance");
+  const branchId = await getActiveBranchId();
   await prisma.attendance.upsert({
     where: { employeeId_date: { employeeId, date: new Date(date) } },
     update: { clockOut: new Date() },
-    create: { tenantId, employeeId, date: new Date(date), clockOut: new Date() },
+    create: { tenantId, branchId: branchId ?? null, employeeId, date: new Date(date), clockOut: new Date() },
   });
   revalidatePath(`/${tenantSlug}/hr`);
 }
@@ -76,11 +81,13 @@ export async function logAttendance(
   notes?: string
 ) {
   await authorize(tenantSlug, "hr.attendance");
+  const branchId = await getActiveBranchId();
   await prisma.attendance.upsert({
     where: { employeeId_date: { employeeId, date: new Date(date) } },
     update: { clockIn: new Date(clockIn), clockOut: clockOut ? new Date(clockOut) : null, notes: notes || null },
     create: {
       tenantId,
+      branchId: branchId ?? null,
       employeeId,
       date: new Date(date),
       clockIn: new Date(clockIn),
@@ -99,9 +106,11 @@ export async function createLeaveRequest(
   input: { employeeId: string; type: string; startDate: string; endDate?: string; reason?: string }
 ) {
   await authorize(tenantSlug, "hr.leave");
+  const branchId = await getActiveBranchId();
   await prisma.leaveRequest.create({
     data: {
       tenantId,
+      branchId: branchId ?? null,
       type: input.type,
       startDate: new Date(input.startDate),
       endDate: input.endDate ? new Date(input.endDate) : null,
@@ -150,6 +159,7 @@ export async function generatePayroll(
   notes?: string
 ) {
   await authorize(tenantSlug, "hr.payroll");
+  const branchId = await getActiveBranchId();
 
   const employee = await prisma.employee.findUnique({
     where: { id: employeeId, tenantId },
@@ -181,6 +191,7 @@ export async function generatePayroll(
   await prisma.payrollRecord.create({
     data: {
       tenantId,
+      branchId: branchId ?? null,
       employeeId,
       periodStart: new Date(periodStart),
       periodEnd: new Date(periodEnd),

@@ -318,7 +318,6 @@ export function CreateJobOrderDialog({
           <section className="space-y-3 rounded-[24px] border border-border/60 bg-background/62 p-4">
             <div>
               <p className="eyebrow-label">Charges</p>
-              <p className="text-sm font-semibold text-foreground">Charges</p>
             </div>
             {services.length > 0 ? (
               <div className="space-y-2">
@@ -329,7 +328,6 @@ export function CreateJobOrderDialog({
                   onSelect={addService}
                   placeholder="Search services or type a custom charge..."
                   emptyMessage="No matching services found."
-                  helperText="Select an existing service, or type a custom charge for a one-off item."
                   renderOption={(option) => {
                     const service = services.find((entry) => entry.id === option.value);
                     return (
@@ -449,7 +447,6 @@ export function CreateJobOrderDialog({
           <section className="space-y-4 rounded-[24px] border border-border/60 bg-background/62 p-4">
             <div>
               <p className="eyebrow-label">Handling</p>
-              <h3 className="mt-1 text-sm font-semibold text-foreground">Priority and staff</h3>
             </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -510,7 +507,7 @@ export function CreateJobOrderDialog({
           </section>
           </div>
 
-          <DialogFooter className="border-t border-border/60 bg-background/95 px-4 py-3 sm:px-5">
+          <DialogFooter className="mx-0 mb-0 rounded-b-[inherit] border-t border-border/60 bg-background/95 px-4 py-3 sm:px-5">
             {!isOnline && (
               <p className="mr-auto flex items-center gap-1.5 text-xs text-amber-700">
                 <WifiOff className="h-3.5 w-3.5" /> Offline

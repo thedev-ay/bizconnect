@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
+import { getActiveBranchId } from "@/lib/branch";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = prisma as any;
@@ -10,7 +11,11 @@ export async function GET(
   { params }: { params: Promise<{ tenant: string }> }
 ) {
   const { tenant: tenantSlug } = await params;
-  const session = await authorize(tenantSlug);
+
+  const [session, branchId] = await Promise.all([
+    authorize(tenantSlug),
+    getActiveBranchId(),
+  ]);
 
   const tenant = await prisma.tenant.findUnique({
     where: { slug: tenantSlug },
@@ -21,11 +26,16 @@ export async function GET(
   const tenantId = tenant.id;
   const hrEnabled = session.user.modules.includes("hr");
   const crmEnabled = session.user.modules.includes("crm");
+  const branchFilter = branchId ? { branchId } : {};
+  const employeeBranchFilter = branchId
+    ? { OR: [{ homeBranchId: branchId }, { branchAssignments: { some: { branchId, endDate: null } } }] }
+    : {};
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let rawOrders: any[] = [];
   try {
     rawOrders = await prisma.jobOrder.findMany({
-      where: { tenantId },
+      where: { tenantId, ...branchFilter },
       select: {
         id: true, customerId: true, jobNo: true, customerName: true,
         contactNo: true, notes: true, status: true, priority: true,
@@ -38,7 +48,7 @@ export async function GET(
     });
   } catch {
     rawOrders = await prisma.jobOrder.findMany({
-      where: { tenantId },
+      where: { tenantId, ...branchFilter },
       select: {
         id: true, jobNo: true, customerName: true, contactNo: true,
         notes: true, status: true, priority: true, dueDate: true,
@@ -56,19 +66,19 @@ export async function GET(
       orderBy: [{ category: "asc" }, { name: "asc" }],
     }),
     db.workflowStage.findMany({
-      where: { tenantId },
+      where: { tenantId, ...branchFilter },
       orderBy: { sortOrder: "asc" },
     }),
     crmEnabled
       ? prisma.customer.findMany({
-          where: { tenantId },
+          where: { tenantId, ...branchFilter },
           select: { id: true, name: true, phone: true },
           orderBy: { name: "asc" },
         })
       : [],
     hrEnabled
       ? prisma.employee.findMany({
-          where: { tenantId, isActive: true },
+          where: { tenantId, isActive: true, ...employeeBranchFilter },
           select: { id: true, name: true },
           orderBy: { name: "asc" },
         })
@@ -76,6 +86,7 @@ export async function GET(
   ]);
 
   return NextResponse.json({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     jobOrders: rawOrders.map((jo: any) => ({
       id: jo.id,
       jobNo: jo.jobNo,
@@ -85,6 +96,7 @@ export async function GET(
       notes: jo.notes ?? null,
       status: jo.status,
       priority: jo.priority,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       assignedStaff: (jo.assignments ?? []).map((a: any) => ({ employeeId: a.employeeId, name: a.employeeName })),
       dueDate: jo.dueDate?.toISOString() ?? null,
       completedAt: jo.completedAt?.toISOString() ?? null,
@@ -92,6 +104,7 @@ export async function GET(
       createdAt: jo.createdAt.toISOString(),
       invoiceId: jo.invoice?.id ?? null,
       invoiceStatus: jo.invoice?.status ?? null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       items: jo.items.map((i: any) => ({
         id: i.id, name: i.name, quantity: i.quantity,
         weight: i.weight?.toString() ?? null,
@@ -99,17 +112,21 @@ export async function GET(
         total: i.total.toString(),
       })),
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     stages: rawStages.map((s: any) => ({
       id: s.id, name: s.name, slug: s.slug,
       sortOrder: s.sortOrder, type: s.type,
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     services: rawServices.map((s: any) => ({
       id: s.id, name: s.name,
       pricingType: s.pricingType,
       price: Number(s.price),
       category: s.category ?? null,
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     customers: rawCustomers.map((c: any) => ({ id: c.id, name: c.name, phone: c.phone })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     employees: rawEmployees.map((e: any) => ({ id: e.id, name: e.name })),
   });
 }

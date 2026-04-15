@@ -36,11 +36,12 @@ export default async function TenantDetailPage({ params }: TenantDetailPageProps
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="admin-surface flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{tenant.name}</h1>
+          <p className="admin-eyebrow">Tenant</p>
+          <h1 className="admin-page-title mt-2">{tenant.name}</h1>
           <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-            <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{tenant.slug}</code>
+            <code className="rounded-full border border-border/70 bg-muted px-2.5 py-1 text-xs">{tenant.slug}</code>
             <span>·</span>
             <span className="capitalize">{tenant.plan} plan</span>
             <span>·</span>
@@ -54,21 +55,21 @@ export default async function TenantDetailPage({ params }: TenantDetailPageProps
         <Card>
           <CardHeader className="flex flex-row items-center gap-2 pb-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Users</CardTitle>
+            <CardTitle className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-primary/70">Users</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{tenant._count.users}</div>
+            <div className="text-3xl font-semibold tracking-[-0.05em]">{tenant._count.users}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center gap-2 pb-2">
             <Puzzle className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-primary/70">
               Active Modules
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-3xl font-semibold tracking-[-0.05em]">
               {tenant.tenantModules.filter((tm) => tm.isEnabled).length}
             </div>
           </CardContent>
@@ -76,7 +77,7 @@ export default async function TenantDetailPage({ params }: TenantDetailPageProps
         <Card>
           <CardHeader className="flex flex-row items-center gap-2 pb-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Status</CardTitle>
+            <CardTitle className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-primary/70">Status</CardTitle>
           </CardHeader>
           <CardContent>
             <Badge variant={tenant.isActive ? "default" : "secondary"} className="text-sm">
@@ -87,12 +88,9 @@ export default async function TenantDetailPage({ params }: TenantDetailPageProps
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="border-b border-border/60">
           <CardTitle>Module Access</CardTitle>
-          <CardDescription>
-            Toggle which modules this tenant can access. Changes take effect immediately — no
-            deployment required.
-          </CardDescription>
+          <CardDescription>Enable tenant access.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {allModules.map((module) => {
@@ -110,7 +108,7 @@ export default async function TenantDetailPage({ params }: TenantDetailPageProps
                   isEnabled={isEnabled}
                   enabledAt={tenantModule?.enabledAt ?? null}
                 />
-                <Separator className="mt-4" />
+                <Separator className="mt-4 last:hidden" />
               </div>
             );
           })}

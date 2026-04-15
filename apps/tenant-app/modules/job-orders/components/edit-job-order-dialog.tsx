@@ -551,7 +551,7 @@ export function EditJobOrderDialog({
           </section>
           </div>
 
-          <DialogFooter className="border-t border-border/60 bg-background/95 px-4 py-3 sm:px-5">
+          <DialogFooter className="mx-0 mb-0 rounded-b-[inherit] border-t border-border/60 bg-background/95 px-4 py-3 sm:px-5">
             {!isOnline && (
               <p className="mr-auto flex items-center gap-1.5 text-xs text-amber-600">
                 <WifiOff className="h-3.5 w-3.5" /> Offline

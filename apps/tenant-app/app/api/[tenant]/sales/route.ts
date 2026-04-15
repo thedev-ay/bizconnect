@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
+import { getActiveBranchId } from "@/lib/branch";
 import type { Prisma } from "@bizconnect/db";
 
 export async function GET(
@@ -8,7 +9,10 @@ export async function GET(
   { params }: { params: Promise<{ tenant: string }> }
 ) {
   const { tenant: tenantSlug } = await params;
-  const session = await authorize(tenantSlug);
+  const [session, branchId] = await Promise.all([
+    authorize(tenantSlug),
+    getActiveBranchId(),
+  ]);
   const { searchParams } = new URL(req.url);
 
   const SOURCE_BY_MODULE: Record<string, string> = {
@@ -36,6 +40,7 @@ export async function GET(
 
   const saleWhere: Prisma.SaleWhereInput = {
     tenantId: tenant.id,
+    ...(branchId ? { branchId } : {}),
     source: { in: enabledSources },
     ...(search
       ? {

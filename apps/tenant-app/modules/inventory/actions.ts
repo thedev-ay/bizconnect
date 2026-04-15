@@ -2,16 +2,19 @@
 
 import { prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
+import { getActiveBranchId } from "@/lib/branch";
 import { createItemSchema, updateItemSchema } from "./schema";
 import type { CreateItemInput, UpdateItemInput } from "./schema";
 
 export async function createItem(tenantSlug: string, tenantId: string, input: CreateItemInput) {
   await authorize(tenantSlug, "inventory.create");
   const parsed = createItemSchema.parse(input);
+  const branchId = await getActiveBranchId();
 
   await prisma.inventoryItem.create({
     data: {
       tenantId,
+      branchId: branchId ?? null,
       ...parsed,
     },
   });
@@ -41,6 +44,7 @@ export async function adjustStock(
   userId?: string
 ) {
   await authorize(tenantSlug, "inventory.edit");
+  const branchId = await getActiveBranchId();
 
   await prisma.$transaction(async (tx) => {
     await tx.inventoryItem.update({
@@ -51,6 +55,7 @@ export async function adjustStock(
     await tx.inventoryAdjustment.create({
       data: {
         tenantId,
+        branchId: branchId ?? null,
         itemId,
         quantityChange: delta,
         reason: reason || "manual",

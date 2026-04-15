@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
+import { getActiveBranchId } from "@/lib/branch";
 import { serialize } from "@/lib/serialize";
 import { createInvoiceSchema, type CreateInvoiceInput } from "./schema";
 
@@ -25,6 +26,7 @@ export async function createInvoice(
 ) {
   await authorize(tenantSlug, "billing.create");
   const parsed = createInvoiceSchema.parse(input);
+  const branchId = await getActiveBranchId();
   const customer = parsed.customerId
     ? await prisma.customer.findFirst({
         where: { id: parsed.customerId, tenantId },
@@ -55,6 +57,7 @@ export async function createInvoice(
     invoice = await prisma.invoice.create({
       data: {
         tenantId,
+        branchId: branchId ?? null,
         customerId: customer?.id ?? null,
         jobOrderId: parsed.jobOrderId || null,
         invoiceNo: generateInvoiceNo(),
@@ -83,6 +86,7 @@ export async function createInvoice(
     invoice = await prisma.invoice.create({
       data: {
         tenantId,
+        branchId: branchId ?? null,
         invoiceNo: generateInvoiceNo(),
         customerName: customer?.name ?? parsed.customerName,
         customerEmail: customer?.email ?? parsed.customerEmail ?? null,

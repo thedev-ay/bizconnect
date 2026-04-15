@@ -1,25 +1,25 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
+import { getActiveBranchId } from "@/lib/branch";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ tenant: string }> }
 ) {
   const { tenant: tenantSlug } = await params;
-  await authorize(tenantSlug);
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug: tenantSlug },
-    select: { id: true },
-  });
-  if (!tenant) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const [session, branchId] = await Promise.all([
+    authorize(tenantSlug),
+    getActiveBranchId(),
+  ]);
 
-  const tenantId = tenant.id;
+  const tenantId = session.user.tenantId;
+  const branchFilter = branchId ? { branchId } : {};
 
   const [appointments, services, staff, businessHours] = await Promise.all([
     prisma.appointment.findMany({
-      where: { tenantId },
+      where: { tenantId, ...branchFilter },
       include: {
         employee: { select: { name: true } },
         service: { select: { name: true } },
@@ -31,7 +31,18 @@ export async function GET(
       orderBy: { name: "asc" },
     }),
     prisma.employee.findMany({
-      where: { tenantId, isActive: true },
+      where: {
+        tenantId,
+        isActive: true,
+        ...(branchId
+          ? {
+              OR: [
+                { homeBranchId: branchId },
+                { branchAssignments: { some: { branchId, endDate: null } } },
+              ],
+            }
+          : {}),
+      },
       orderBy: { name: "asc" },
       include: { services: { select: { serviceId: true } } },
     }),

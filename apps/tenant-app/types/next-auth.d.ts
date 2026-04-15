@@ -18,6 +18,7 @@ declare module "next-auth" {
       permissions: Record<string, boolean>;
       modules: string[];
       moduleObjects: SessionModule[];
+      currentBranchId: string | null;
     } & DefaultSession["user"];
   }
 }
@@ -31,5 +32,6 @@ declare module "next-auth/jwt" {
     permissions: Record<string, boolean>;
     modules: string[];
     moduleObjects: SessionModule[];
+    currentBranchId: string | null;
   }
 }

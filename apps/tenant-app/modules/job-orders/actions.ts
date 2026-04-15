@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma, prisma } from "@bizconnect/db";
 import { authorize } from "@/lib/authorize";
+import { getActiveBranchId } from "@/lib/branch";
 import { createJobOrderSchema, type CreateJobOrderInput } from "./schema";
 import { toast } from "sonner";
 
@@ -26,6 +27,7 @@ export async function createJobOrder(
 ) {
   await authorize(tenantSlug, "job-orders.create");
   const parsed = createJobOrderSchema.parse(input);
+  const branchId = await getActiveBranchId();
   const customer = parsed.customerId
     ? await prisma.customer.findFirst({
         where: { id: parsed.customerId, tenantId },
@@ -59,6 +61,7 @@ export async function createJobOrder(
     const created = await prisma.jobOrder.create({
       data: {
         tenantId,
+        branchId: branchId ?? null,
         customerId: customer?.id ?? null,
         jobNo: generateJobNo(),
         customerName: customer?.name ?? parsed.customerName,
@@ -77,6 +80,7 @@ export async function createJobOrder(
     const created = await prisma.jobOrder.create({
       data: {
         tenantId,
+        branchId: branchId ?? null,
         jobNo: generateJobNo(),
         customerName: customer?.name ?? parsed.customerName,
         contactNo: customer?.phone ?? parsed.contactNo ?? null,
