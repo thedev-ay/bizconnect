@@ -19,6 +19,14 @@ function generateJobNo() {
   return `${prefix}-${rand}`;
 }
 
+function normalizeCustomerName(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function normalizeCustomerPhone(value: string | null | undefined) {
+  return (value ?? "").trim();
+}
+
 export async function createJobOrder(
   tenantSlug: string,
   tenantId: string,
@@ -28,8 +36,9 @@ export async function createJobOrder(
   const session = await authorize(tenantSlug, "job-orders.create");
   const parsed = createJobOrderSchema.parse(input);
   const assetsEnabled = session.user.modules.includes("assets");
+  const crmEnabled = session.user.modules.includes("crm");
   const branchId = await getActiveBranchId();
-  const customer = parsed.customerId
+  let customer = parsed.customerId
     ? await prisma.customer.findFirst({
         where: { id: parsed.customerId, tenantId },
         select: { id: true, name: true, phone: true },
@@ -38,6 +47,42 @@ export async function createJobOrder(
 
   if (parsed.customerId && !customer) {
     throw new Error("Customer not found");
+  }
+
+  if (!customer && crmEnabled) {
+    if (parsed.customerResolution === "use_existing") {
+      if (!parsed.matchedCustomerId) {
+        throw new Error("Select an existing customer or choose create new.");
+      }
+
+      const matchedCustomer = await prisma.customer.findFirst({
+        where: { id: parsed.matchedCustomerId, tenantId },
+        select: { id: true, name: true, phone: true, branchId: true },
+      });
+
+      if (!matchedCustomer) {
+        throw new Error("Matched customer no longer exists.");
+      }
+
+      const nameMatches = normalizeCustomerName(matchedCustomer.name) === normalizeCustomerName(parsed.customerName);
+      const phoneMatches = normalizeCustomerPhone(matchedCustomer.phone) === normalizeCustomerPhone(parsed.contactNo);
+
+      if (!nameMatches || !phoneMatches) {
+        throw new Error("Matched customer details changed. Review the customer before saving.");
+      }
+
+      customer = matchedCustomer;
+    } else {
+      customer = await prisma.customer.create({
+        data: {
+          tenantId,
+          branchId: branchId ?? null,
+          name: parsed.customerName.trim(),
+          phone: parsed.contactNo?.trim() || null,
+        },
+        select: { id: true, name: true, phone: true },
+      });
+    }
   }
 
   if (parsed.assetId && !assetsEnabled) {
@@ -128,6 +173,7 @@ export async function createJobOrder(
     });
   }
 
+  revalidatePath(`/${tenantSlug}/crm`);
   revalidatePath(`/${tenantSlug}/job-orders`);
 }
 

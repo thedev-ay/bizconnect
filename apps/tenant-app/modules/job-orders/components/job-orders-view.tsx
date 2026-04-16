@@ -18,6 +18,7 @@ interface JobOrdersViewProps {
 }
 
 interface JobOrdersData {
+  crmEnabled: boolean;
   assetsEnabled: boolean;
   jobOrders: JobOrder[];
   stages: WorkflowStage[];
@@ -64,6 +65,7 @@ export function JobOrdersView({
   const stages = data?.stages ?? [];
   const services = data?.services ?? [];
   const customers = data?.customers ?? [];
+  const crmEnabled = data?.crmEnabled ?? false;
   const assetsEnabled = data?.assetsEnabled ?? false;
   const assets = data?.assets ?? [];
   const employees = data?.employees ?? [];
@@ -91,6 +93,7 @@ export function JobOrdersView({
               tenantSlug={tenantSlug}
               tenantId={tenantId}
               services={services}
+              crmEnabled={crmEnabled}
               customers={customers}
               assetsEnabled={assetsEnabled}
               assets={assets}

@@ -74,6 +74,10 @@ interface EmployeeOption {
   name: string;
 }
 
+function formatCustomerOptionLabel(customer: CustomerOption) {
+  return `${customer.name} (${customer.id})`;
+}
+
 interface EditJobOrderDialogProps {
   jobOrder: JobOrder;
   tenantSlug: string;
@@ -105,7 +109,9 @@ export function EditJobOrderDialog({
 }: EditJobOrderDialogProps) {
   const queryClient = useQueryClient();
   const isOnline = useOnlineStatus();
+  const [customerSearch, setCustomerSearch] = useState("");
   const [serviceSearch, setServiceSearch] = useState("");
+  const [customerComboboxOpen, setCustomerComboboxOpen] = useState(false);
   const [serviceComboboxOpen, setServiceComboboxOpen] = useState(false);
   const [pendingCustomFocusId, setPendingCustomFocusId] = useState<string | null>(null);
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>(() =>
@@ -137,6 +143,9 @@ export function EditJobOrderDialog({
   useEffect(() => {
     if (open) {
       setItems(buildItems());
+      const initialCustomer = customers.find((customer) => customer.id === (jobOrder.customerId ?? ""));
+      setCustomerSearch(initialCustomer ? formatCustomerOptionLabel(initialCustomer) : "");
+      setCustomerComboboxOpen(false);
       setServiceSearch("");
       setServiceComboboxOpen(false);
       setPendingCustomFocusId(null);
@@ -147,6 +156,14 @@ export function EditJobOrderDialog({
   useEffect(() => {
     setAssetOptions(assets);
   }, [assets]);
+
+  useEffect(() => {
+    if (!selectedCustomer) return;
+    const nextValue = selectedCustomer ? formatCustomerOptionLabel(selectedCustomer) : "";
+    if (customerSearch !== nextValue) {
+      setCustomerSearch(nextValue);
+    }
+  }, [selectedCustomer, customerSearch]);
 
   useEffect(() => {
     if (!pendingCustomFocusId) return;
@@ -268,6 +285,13 @@ export function EditJobOrderDialog({
   const normalizedCustomerId = selectedCustomerId ?? "";
   const selectedAssetId = watch("assetId") ?? "";
   const selectedCustomer = customers.find((customer) => customer.id === normalizedCustomerId);
+  const selectedCustomerLabel = selectedCustomer ? formatCustomerOptionLabel(selectedCustomer) : "";
+  const customerComboboxOptions: ComboboxOption[] = customers.map((customer) => ({
+    value: customer.id,
+    label: formatCustomerOptionLabel(customer),
+    description: customer.phone ?? undefined,
+    searchText: `${customer.name} ${customer.id} ${customer.phone ?? ""}`,
+  }));
   const customerAssets = assetOptions.filter((asset) => asset.customerId === normalizedCustomerId && asset.status !== "archived");
   const selectedAsset = customerAssets.find((asset) => asset.id === selectedAssetId);
 
@@ -321,6 +345,7 @@ export function EditJobOrderDialog({
     setValue("assetId", "");
     setValue("customerName", customer?.name ?? "");
     setValue("contactNo", customer?.phone ?? "");
+    setCustomerSearch(customer ? formatCustomerOptionLabel(customer) : "");
   }
 
   return (
@@ -344,20 +369,36 @@ export function EditJobOrderDialog({
             {customers.length > 0 && (
               <div className="space-y-2 sm:col-span-2">
                 <Label>Customer</Label>
-                <Select value={normalizedCustomerId} onValueChange={handleCustomerChange}>
-                  <SelectTrigger>
-                    {selectedCustomer
-                      ? `${selectedCustomer.name}${selectedCustomer.phone ? ` · ${selectedCustomer.phone}` : ""}`
-                      : <SelectValue placeholder="Select a customer from CRM" />}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name}{customer.phone ? ` · ${customer.phone}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Combobox
+                  options={customerComboboxOptions}
+                  value={customerSearch}
+                  selectedValue={normalizedCustomerId || undefined}
+                  open={customerComboboxOpen}
+                  onOpenChange={setCustomerComboboxOpen}
+                  onValueChange={(value) => {
+                    setCustomerSearch(value);
+                    if (normalizedCustomerId && value !== selectedCustomerLabel) {
+                      handleCustomerChange(null);
+                    }
+                  }}
+                  onSelect={(option) => {
+                    handleCustomerChange(option.value);
+                    setCustomerComboboxOpen(false);
+                  }}
+                  placeholder="Search a customer from CRM"
+                  emptyMessage="No matching customers found."
+                  renderOption={(option) => {
+                    const customer = customers.find((entry) => entry.id === option.value);
+                    return (
+                      <>
+                        <span className="font-medium text-foreground">{option.label}</span>
+                        {customer?.phone ? (
+                          <span className="text-xs text-muted-foreground">{customer.phone}</span>
+                        ) : null}
+                      </>
+                    );
+                  }}
+                />
               </div>
             )}
             <div className="space-y-2">

@@ -107,6 +107,7 @@ export async function GET(
   ]);
 
   return NextResponse.json({
+    crmEnabled,
     assetsEnabled,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     jobOrders: rawOrders.map((jo: any) => ({
