@@ -224,6 +224,21 @@ export function JobOrderDetailDialog({
                   {jobOrder.contactNo && (
                     <p className="text-sm text-muted-foreground">{jobOrder.contactNo}</p>
                   )}
+                  {jobOrder.asset && (
+                    <div className="mt-2 rounded-xl border border-border/60 bg-background/80 px-3 py-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Asset</p>
+                      <p className="mt-1 text-sm font-medium text-foreground">
+                        {jobOrder.asset.name}
+                        {jobOrder.asset.identifier ? ` · ${jobOrder.asset.identifier}` : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {jobOrder.asset.assetType}
+                        {jobOrder.asset.brand || jobOrder.asset.model
+                          ? ` · ${[jobOrder.asset.brand, jobOrder.asset.model].filter(Boolean).join(" ")}`
+                          : ""}
+                      </p>
+                    </div>
+                  )}
                   {jobOrder.notes && (
                     <p className="mt-1 text-xs text-muted-foreground">{jobOrder.notes}</p>
                   )}

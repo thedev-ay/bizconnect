@@ -57,8 +57,16 @@ export async function getReportsSummary(
 
   const hasPos = modules.has("pos");
   const hasBilling = modules.has("billing");
+  const hasAssets = modules.has("assets");
 
-  const [sales, invoices, saleItems, saleReturns] = await Promise.all([
+  const workflowStagesPromise = hasAssets && modules.has("job-orders")
+    ? prisma.workflowStage.findMany({
+        where: { tenantId },
+        select: { slug: true, type: true },
+      })
+    : Promise.resolve([]);
+
+  const [sales, invoices, saleItems, saleReturns, assets, workflowStages] = await Promise.all([
     hasPos
       ? prisma.sale.findMany({
           where: { tenantId, createdAt: { gte: from, lte: toEnd } },
@@ -89,6 +97,24 @@ export async function getReportsSummary(
           select: { status: true, refundAmount: true },
         })
       : Promise.resolve([]),
+    hasAssets
+      ? (prisma as any).asset.findMany({
+          where: { tenantId },
+          select: {
+            id: true,
+            createdAt: true,
+            jobOrders: {
+              select: {
+                id: true,
+                status: true,
+                createdAt: true,
+                completedAt: true,
+              },
+            },
+          },
+        }).catch(() => [])
+      : Promise.resolve([]),
+    workflowStagesPromise,
   ]);
 
   // Bucket revenue by granularity
@@ -149,6 +175,17 @@ export async function getReportsSummary(
   const totalRefunded = refundedReturns.reduce((sum, r) => sum + Number(r.refundAmount ?? 0), 0);
   const refundCount = refundedReturns.length;
   const pendingReturnCount = saleReturns.filter((r) => r.status === "pending").length;
+  const activeStageSlugs = new Set(workflowStages.filter((stage) => stage.type === "active").map((stage) => stage.slug));
+  const totalAssets = assets.length;
+  const assetsWithOpenJobs = assets.filter((asset: any) =>
+    asset.jobOrders.some((job: any) => activeStageSlugs.size === 0 ? !job.completedAt : activeStageSlugs.has(job.status))
+  ).length;
+  const recentServicedAssets = assets.filter((asset: any) =>
+    asset.jobOrders.some((job: any) => {
+      const createdAt = new Date(job.createdAt);
+      return createdAt >= from && createdAt <= toEnd;
+    })
+  ).length;
 
   return {
     totalRevenue: totalSales + invoices.filter((i) => i.status === "paid").reduce((sum, i) => sum + Number(i.total), 0),
@@ -158,6 +195,9 @@ export async function getReportsSummary(
     totalRefunded,
     refundCount,
     pendingReturnCount,
+    totalAssets,
+    assetsWithOpenJobs,
+    recentServicedAssets,
     revenueByMonth: [...bucketMap.values()],
     topItems,
     paymentMethods,

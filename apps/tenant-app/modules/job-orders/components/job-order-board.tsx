@@ -32,6 +32,17 @@ interface CustomerOption {
   phone: string | null;
 }
 
+interface AssetOption {
+  id: string;
+  customerId: string;
+  name: string;
+  assetType: string;
+  identifier: string | null;
+  brand: string | null;
+  model: string | null;
+  status: string;
+}
+
 interface EmployeeOption {
   id: string;
   name: string;
@@ -47,6 +58,8 @@ interface JobOrderBoardProps {
   currencyLocale: string;
   services: ServiceOption[];
   customers: CustomerOption[];
+  assetsEnabled: boolean;
+  assets: AssetOption[];
   employees: EmployeeOption[];
   billingEnabled: boolean;
 }
@@ -89,6 +102,8 @@ export function JobOrderBoard({
   currencyLocale,
   services,
   customers,
+  assetsEnabled,
+  assets,
   employees,
   billingEnabled,
 }: JobOrderBoardProps) {
@@ -129,7 +144,9 @@ export function JobOrderBoard({
     return (
       jo.customerName.toLowerCase().includes(q) ||
       jo.jobNo.toLowerCase().includes(q) ||
-      (jo.contactNo?.toLowerCase().includes(q) ?? false)
+      (jo.contactNo?.toLowerCase().includes(q) ?? false) ||
+      (assetsEnabled && (jo.asset?.name.toLowerCase().includes(q) ?? false)) ||
+      (assetsEnabled && (jo.asset?.identifier?.toLowerCase().includes(q) ?? false))
     );
   }
 
@@ -276,6 +293,11 @@ export function JobOrderBoard({
                 >
                   <span className="shrink-0 font-mono text-xs font-semibold text-muted-foreground">{jo.jobNo}</span>
                   <span className="flex-1 truncate text-sm font-medium text-foreground">{jo.customerName}</span>
+                  {jo.asset ? (
+                    <span className="hidden max-w-44 truncate text-xs text-muted-foreground md:block">
+                      {jo.asset.name}{jo.asset.identifier ? ` · ${jo.asset.identifier}` : ""}
+                    </span>
+                  ) : null}
                   {isCompletedTab && (() => {
                     const badge = getBillingBadge(jo);
                     return (
@@ -349,6 +371,11 @@ export function JobOrderBoard({
 
                 <div>
                   <p className="text-sm font-bold leading-tight text-foreground">{jo.customerName}</p>
+                  {jo.asset ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {jo.asset.name}{jo.asset.identifier ? ` · ${jo.asset.identifier}` : ""}
+                    </p>
+                  ) : null}
                   {jo.invoiceStatus && (
                     <span
                       className={cn(
@@ -451,6 +478,8 @@ export function JobOrderBoard({
           tenantId={tenantId}
           services={services}
           customers={customers}
+          assetsEnabled={assetsEnabled}
+          assets={assets}
           employees={employees}
           currencySymbol={currencySymbol}
           currencyLocale={currencyLocale}

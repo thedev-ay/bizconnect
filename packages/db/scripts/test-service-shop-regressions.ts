@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { getCurrencyConfig, prisma } from "../src";
 
-const REQUIRED_MODULES = ["users", "crm", "services", "job-orders", "billing", "reports"] as const;
+const REQUIRED_MODULES = ["users", "crm", "assets", "services", "job-orders", "billing", "reports"] as const;
 
 async function testLocaleMapping() {
   const nl = getCurrencyConfig("nl");

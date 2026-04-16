@@ -40,11 +40,20 @@ export interface JobOrder {
   id: string;
   jobNo: string;
   customerId: string | null;
+  assetId: string | null;
   customerName: string;
   contactNo: string | null;
   notes: string | null;
   status: string;
   priority: string;
+  asset: {
+    id: string;
+    name: string;
+    assetType: string;
+    identifier: string | null;
+    brand: string | null;
+    model: string | null;
+  } | null;
   assignedStaff: { employeeId: string; name: string }[];
   dueDate: Date | null;
   completedAt: Date | null;

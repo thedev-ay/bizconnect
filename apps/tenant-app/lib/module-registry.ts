@@ -14,6 +14,7 @@ export type ModuleSlug =
   | "reports"
   | "job-orders"
   | "crm"
+  | "assets"
   | "loyalty";
 
 export interface ActiveModule {
@@ -96,6 +97,7 @@ export const ROUTE_SEGMENT_TO_MODULE: Record<string, ModuleSlug> = {
   reports: "reports",
   "job-orders": "job-orders",
   crm: "crm",
+  assets: "assets",
   promotions: "promotions",
   services: "services",
   loyalty: "loyalty",

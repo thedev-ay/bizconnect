@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -30,6 +31,7 @@ interface AddCustomerDialogProps {
 export function AddCustomerDialog({ tenantSlug, tenantId }: AddCustomerDialogProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const {
     register,
@@ -43,6 +45,7 @@ export function AddCustomerDialog({ tenantSlug, tenantId }: AddCustomerDialogPro
   async function onSubmit(data: CreateCustomerInput) {
     try {
       await createCustomer(tenantSlug, tenantId, data);
+      await queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] });
       toast.success("Customer added");
       setOpen(false);
       reset();

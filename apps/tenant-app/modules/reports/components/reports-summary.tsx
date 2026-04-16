@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { TrendingUp, ShoppingCart, FileText, CheckCircle, RotateCcw, Clock3 } from "lucide-react";
+import { TrendingUp, ShoppingCart, FileText, CheckCircle, RotateCcw, Clock3, CarFront, Wrench, History } from "lucide-react";
 import type { ReportsSummary } from "../types";
 
 function AnimatedCurrency({ value, symbol, locale, className }: {
@@ -26,7 +26,7 @@ function AnimatedCount({ value, className }: { value: number; className?: string
 }
 
 const STATS: {
-  key: keyof Pick<ReportsSummary, "totalRevenue" | "totalSales" | "totalInvoiced" | "paidInvoices" | "totalRefunded" | "pendingReturnCount">;
+  key: keyof Pick<ReportsSummary, "totalRevenue" | "totalSales" | "totalInvoiced" | "paidInvoices" | "totalRefunded" | "pendingReturnCount" | "totalAssets" | "assetsWithOpenJobs" | "recentServicedAssets">;
   label: string;
   icon: React.ElementType;
   color: string;
@@ -39,14 +39,18 @@ const STATS: {
   { key: "paidInvoices",       label: "Paid Invoices",    icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50", isCurrency: false },
   { key: "totalRefunded",      label: "Refunded",         icon: RotateCcw,   color: "text-amber-600",   bg: "bg-amber-50",   isCurrency: true  },
   { key: "pendingReturnCount", label: "Pending Returns",  icon: Clock3,      color: "text-slate-500",   bg: "bg-slate-100",  isCurrency: false },
+  { key: "totalAssets",        label: "Assets",           icon: CarFront,    color: "text-indigo-600",  bg: "bg-indigo-50",  isCurrency: false },
+  { key: "assetsWithOpenJobs", label: "Assets In Service",icon: Wrench,      color: "text-rose-600",    bg: "bg-rose-50",    isCurrency: false },
+  { key: "recentServicedAssets", label: "Recent Assets",  icon: History,     color: "text-cyan-700",    bg: "bg-cyan-50",    isCurrency: false },
 ];
 
 interface Props {
-  summary: Pick<ReportsSummary, "totalRevenue" | "totalSales" | "totalInvoiced" | "paidInvoices" | "totalRefunded" | "pendingReturnCount">;
+  summary: Pick<ReportsSummary, "totalRevenue" | "totalSales" | "totalInvoiced" | "paidInvoices" | "totalRefunded" | "pendingReturnCount" | "totalAssets" | "assetsWithOpenJobs" | "recentServicedAssets">;
   currencySymbol: string;
   currencyLocale: string;
   hasPos: boolean;
   hasBilling: boolean;
+  hasAssets: boolean;
 }
 
 const MODULE_GATE: Partial<Record<typeof STATS[number]["key"], "pos" | "billing">> = {
@@ -57,11 +61,12 @@ const MODULE_GATE: Partial<Record<typeof STATS[number]["key"], "pos" | "billing"
   paidInvoices:       "billing",
 };
 
-export function ReportsSummaryCards({ summary, currencySymbol, currencyLocale, hasPos, hasBilling }: Props) {
+export function ReportsSummaryCards({ summary, currencySymbol, currencyLocale, hasPos, hasBilling, hasAssets }: Props) {
   const visibleStats = STATS.filter(({ key }) => {
     const gate = MODULE_GATE[key];
     if (gate === "pos" && !hasPos) return false;
     if (gate === "billing" && !hasBilling) return false;
+    if ((key === "totalAssets" || key === "assetsWithOpenJobs" || key === "recentServicedAssets") && !hasAssets) return false;
     if (key === "totalRevenue" && !hasPos && !hasBilling) return false;
     return true;
   });

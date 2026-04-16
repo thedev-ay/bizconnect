@@ -10,6 +10,7 @@ export const jobOrderItemSchema = z.object({
 
 export const createJobOrderSchema = z.object({
   customerId: z.string().optional(),
+  assetId: z.string().optional(),
   customerName: z.string().min(1, "Customer name is required"),
   contactNo: z.string().optional(),
   notes: z.string().optional(),

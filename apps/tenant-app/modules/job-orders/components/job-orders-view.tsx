@@ -18,10 +18,12 @@ interface JobOrdersViewProps {
 }
 
 interface JobOrdersData {
+  assetsEnabled: boolean;
   jobOrders: JobOrder[];
   stages: WorkflowStage[];
   services: { id: string; name: string; pricingType: "per_piece" | "per_kilo" | "flat"; price: number; category: string | null }[];
   customers: { id: string; name: string; phone: string | null }[];
+  assets: { id: string; customerId: string; name: string; assetType: string; identifier: string | null; brand: string | null; model: string | null; status: string }[];
   employees: { id: string; name: string }[];
 }
 
@@ -62,6 +64,8 @@ export function JobOrdersView({
   const stages = data?.stages ?? [];
   const services = data?.services ?? [];
   const customers = data?.customers ?? [];
+  const assetsEnabled = data?.assetsEnabled ?? false;
+  const assets = data?.assets ?? [];
   const employees = data?.employees ?? [];
 
   const activeStages = stages.filter((s) => s.type === "active");
@@ -88,6 +92,8 @@ export function JobOrdersView({
               tenantId={tenantId}
               services={services}
               customers={customers}
+              assetsEnabled={assetsEnabled}
+              assets={assets}
               employees={employees}
               currencySymbol={currencySymbol}
               currencyLocale={currencyLocale}
@@ -114,6 +120,8 @@ export function JobOrdersView({
             currencyLocale={currencyLocale}
             services={services}
             customers={customers}
+            assetsEnabled={assetsEnabled}
+            assets={assets}
             employees={employees}
             billingEnabled={billingEnabled}
           />

@@ -26,6 +26,9 @@ export interface ReportsSummary {
   totalRefunded: number;
   refundCount: number;
   pendingReturnCount: number;
+  totalAssets: number;
+  assetsWithOpenJobs: number;
+  recentServicedAssets: number;
   revenueByMonth: RevenueDataPoint[];
   topItems: TopItem[];
   paymentMethods: PaymentMethodBreakdown[];

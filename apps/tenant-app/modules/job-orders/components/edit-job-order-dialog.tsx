@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { createJobOrderSchema, type CreateJobOrderInput } from "../schema";
 import { updateJobOrder } from "../actions";
 import type { JobOrder } from "../types";
+import { AssetDialog } from "@/modules/assets/components/asset-dialog";
 
 interface ServiceOption {
   id: string;
@@ -44,6 +45,17 @@ interface CustomerOption {
   id: string;
   name: string;
   phone: string | null;
+}
+
+interface AssetOption {
+  id: string;
+  customerId: string;
+  name: string;
+  assetType: string;
+  identifier: string | null;
+  brand: string | null;
+  model: string | null;
+  status: string;
 }
 
 interface LineItem {
@@ -68,6 +80,8 @@ interface EditJobOrderDialogProps {
   tenantId: string;
   services: ServiceOption[];
   customers: CustomerOption[];
+  assetsEnabled: boolean;
+  assets: AssetOption[];
   employees: EmployeeOption[];
   currencySymbol: string;
   currencyLocale: string;
@@ -81,6 +95,8 @@ export function EditJobOrderDialog({
   tenantId,
   services,
   customers,
+  assetsEnabled,
+  assets,
   employees,
   currencySymbol,
   currencyLocale,
@@ -90,9 +106,12 @@ export function EditJobOrderDialog({
   const queryClient = useQueryClient();
   const isOnline = useOnlineStatus();
   const [serviceSearch, setServiceSearch] = useState("");
+  const [serviceComboboxOpen, setServiceComboboxOpen] = useState(false);
+  const [pendingCustomFocusId, setPendingCustomFocusId] = useState<string | null>(null);
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>(() =>
     jobOrder.assignedStaff.map((s) => s.employeeId)
   );
+  const customChargeNameRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Initialise line items from existing job order items
   function buildItems(): LineItem[] {
@@ -113,20 +132,37 @@ export function EditJobOrderDialog({
   }
 
   const [items, setItems] = useState<LineItem[]>(buildItems);
+  const [assetOptions, setAssetOptions] = useState<AssetOption[]>(assets);
 
   useEffect(() => {
     if (open) {
       setItems(buildItems());
       setServiceSearch("");
+      setServiceComboboxOpen(false);
+      setPendingCustomFocusId(null);
       setSelectedStaffIds(jobOrder.assignedStaff.map((s) => s.employeeId));
     }
   }, [open]);
+
+  useEffect(() => {
+    setAssetOptions(assets);
+  }, [assets]);
+
+  useEffect(() => {
+    if (!pendingCustomFocusId) return;
+    const input = customChargeNameRefs.current[pendingCustomFocusId];
+    if (!input) return;
+    input.focus();
+    input.select();
+    setPendingCustomFocusId(null);
+  }, [items, pendingCustomFocusId]);
 
   const { register, handleSubmit, control, reset, watch, setValue, formState: { errors, isSubmitting } } =
     useForm<CreateJobOrderInput>({
       resolver: zodResolver(createJobOrderSchema as any),
       defaultValues: {
         customerId: jobOrder.customerId ?? "",
+        assetId: jobOrder.assetId ?? "",
         customerName: jobOrder.customerName,
         contactNo: jobOrder.contactNo ?? "",
         notes: jobOrder.notes ?? "",
@@ -139,6 +175,7 @@ export function EditJobOrderDialog({
     if (open) {
       reset({
         customerId: jobOrder.customerId ?? "",
+        assetId: jobOrder.assetId ?? "",
         customerName: jobOrder.customerName,
         contactNo: jobOrder.contactNo ?? "",
         notes: jobOrder.notes ?? "",
@@ -172,10 +209,11 @@ export function EditJobOrderDialog({
   }
 
   function addCustomCharge(name = "") {
+    const id = crypto.randomUUID();
     setItems((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id,
         name,
         quantity: 1,
         unitPrice: 0,
@@ -185,6 +223,8 @@ export function EditJobOrderDialog({
       },
     ]);
     setServiceSearch("");
+    setServiceComboboxOpen(false);
+    setPendingCustomFocusId(id);
   }
 
   function updateWeight(index: number, kg: number) {
@@ -226,7 +266,10 @@ export function EditJobOrderDialog({
   const invalidCustomCharges = items.filter((i) => i.isCustom && (!i.name.trim() || i.unitPrice <= 0));
   const selectedCustomerId = watch("customerId");
   const normalizedCustomerId = selectedCustomerId ?? "";
+  const selectedAssetId = watch("assetId") ?? "";
   const selectedCustomer = customers.find((customer) => customer.id === normalizedCustomerId);
+  const customerAssets = assetOptions.filter((asset) => asset.customerId === normalizedCustomerId && asset.status !== "archived");
+  const selectedAsset = customerAssets.find((asset) => asset.id === selectedAssetId);
 
   const normalizedServiceSearch = serviceSearch.trim().toLowerCase();
   const exactServiceMatch = normalizedServiceSearch
@@ -275,6 +318,7 @@ export function EditJobOrderDialog({
   function handleCustomerChange(customerId: string | null) {
     const customer = customers.find((entry) => entry.id === customerId);
     setValue("customerId", customerId ?? "");
+    setValue("assetId", "");
     setValue("customerName", customer?.name ?? "");
     setValue("contactNo", customer?.phone ?? "");
   }
@@ -333,6 +377,55 @@ export function EditJobOrderDialog({
                 readOnly={Boolean(selectedCustomerId)}
               />
             </div>
+            {assetsEnabled ? (
+              <div className="space-y-2 sm:col-span-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label>Asset <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                  {selectedCustomer ? (
+                    <AssetDialog
+                      tenantSlug={tenantSlug}
+                      tenantId={tenantId}
+                      customers={[selectedCustomer]}
+                      branches={[]}
+                      initialCustomerId={selectedCustomer.id}
+                      lockCustomer
+                      triggerLabel="Quick Add"
+                      onSaved={(asset) => {
+                        setAssetOptions((prev) => {
+                          const next = prev.filter((entry) => entry.id !== asset.id);
+                          return [...next, asset];
+                        });
+                        setValue("assetId", asset.id);
+                      }}
+                    />
+                  ) : null}
+                </div>
+                <Select
+                  value={selectedAssetId || "none"}
+                  onValueChange={(value) => setValue("assetId", !value || value === "none" ? "" : value)}
+                  disabled={!normalizedCustomerId}
+                >
+                  <SelectTrigger>
+                    {selectedAsset
+                      ? `${selectedAsset.name}${selectedAsset.identifier ? ` · ${selectedAsset.identifier}` : ""}`
+                      : <SelectValue placeholder={!normalizedCustomerId ? "Select a customer first" : customerAssets.length === 0 ? "No assets yet. Use Quick Add." : "Select an asset"} />}
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No asset</SelectItem>
+                    {customerAssets.map((asset) => (
+                      <SelectItem key={asset.id} value={asset.id}>
+                        {asset.name}{asset.identifier ? ` · ${asset.identifier}` : ""}{asset.assetType ? ` · ${asset.assetType}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedAsset ? (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedAsset.assetType}{selectedAsset.brand || selectedAsset.model ? ` · ${[selectedAsset.brand, selectedAsset.model].filter((value): value is string => Boolean(value)).join(" ")}` : ""}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="space-y-2 sm:col-span-2">
               <Label>Notes <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Input
@@ -356,6 +449,8 @@ export function EditJobOrderDialog({
                   options={serviceComboboxOptions}
                   value={serviceSearch}
                   onValueChange={setServiceSearch}
+                  open={serviceComboboxOpen}
+                  onOpenChange={setServiceComboboxOpen}
                   onSelect={addService}
                   placeholder="Search services or type a custom charge..."
                   emptyMessage="No matching services found."
@@ -405,6 +500,9 @@ export function EditJobOrderDialog({
                     <div className="min-w-0">
                       {item.isCustom ? (
                         <Input
+                          ref={(node) => {
+                            customChargeNameRefs.current[item.id] = node;
+                          }}
                           value={item.name}
                           onChange={(e) => updateName(idx, e.target.value)}
                           placeholder="Custom charge"

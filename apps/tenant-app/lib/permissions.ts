@@ -35,6 +35,15 @@ export const PERMISSIONS = {
       delete: "Delete contacts",
     },
   },
+  assets: {
+    label: "Assets",
+    actions: {
+      view: "View assets",
+      create: "Add assets",
+      edit: "Edit assets",
+      delete: "Delete assets",
+    },
+  },
   billing: {
     label: "Billing",
     actions: {

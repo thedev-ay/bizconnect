@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 function isMissingLinkedCustomerColumn(error: unknown) {
   const message = error instanceof Error ? error.message : "";
-  return message.includes("customer_id") || message.includes("job_order_id");
+  return message.includes("customer_id") || message.includes("job_order_id") || message.includes("asset_id");
 }
 
 function generateJobNo() {
@@ -25,8 +25,9 @@ export async function createJobOrder(
   input: CreateJobOrderInput,
   firstStageSlug = "received"
 ) {
-  await authorize(tenantSlug, "job-orders.create");
+  const session = await authorize(tenantSlug, "job-orders.create");
   const parsed = createJobOrderSchema.parse(input);
+  const assetsEnabled = session.user.modules.includes("assets");
   const branchId = await getActiveBranchId();
   const customer = parsed.customerId
     ? await prisma.customer.findFirst({
@@ -37,6 +38,27 @@ export async function createJobOrder(
 
   if (parsed.customerId && !customer) {
     throw new Error("Customer not found");
+  }
+
+  if (parsed.assetId && !assetsEnabled) {
+    throw new Error("Assets module is not enabled for this tenant");
+  }
+
+  const asset = parsed.assetId
+    ? await db.asset.findFirst({
+        where: { id: parsed.assetId, tenantId },
+        select: { id: true, customerId: true },
+      })
+    : null;
+
+  if (parsed.assetId && !asset) {
+    throw new Error("Asset not found");
+  }
+  if (asset && customer && asset.customerId !== customer.id) {
+    throw new Error("Selected asset does not belong to the selected customer");
+  }
+  if (asset && !customer) {
+    throw new Error("Select a customer before attaching an asset");
   }
 
   const assignedEmployees = parsed.assignedStaffIds.length > 0
@@ -63,6 +85,7 @@ export async function createJobOrder(
         tenantId,
         branchId: branchId ?? null,
         customerId: customer?.id ?? null,
+        assetId: asset?.id ?? null,
         jobNo: generateJobNo(),
         customerName: customer?.name ?? parsed.customerName,
         contactNo: customer?.phone ?? parsed.contactNo ?? null,
@@ -81,6 +104,7 @@ export async function createJobOrder(
       data: {
         tenantId,
         branchId: branchId ?? null,
+        assetId: asset?.id ?? null,
         jobNo: generateJobNo(),
         customerName: customer?.name ?? parsed.customerName,
         contactNo: customer?.phone ?? parsed.contactNo ?? null,
@@ -135,8 +159,9 @@ export async function updateJobOrder(
   jobOrderId: string,
   input: CreateJobOrderInput
 ) {
-  await authorize(tenantSlug, "job-orders.edit");
+  const session = await authorize(tenantSlug, "job-orders.edit");
   const parsed = createJobOrderSchema.parse(input);
+  const assetsEnabled = session.user.modules.includes("assets");
   const customer = parsed.customerId
     ? await prisma.customer.findFirst({
         where: { id: parsed.customerId, tenantId },
@@ -148,6 +173,27 @@ export async function updateJobOrder(
     throw new Error("Customer not found");
   }
 
+  if (parsed.assetId && !assetsEnabled) {
+    throw new Error("Assets module is not enabled for this tenant");
+  }
+
+  const asset = parsed.assetId
+    ? await db.asset.findFirst({
+        where: { id: parsed.assetId, tenantId },
+        select: { id: true, customerId: true },
+      })
+    : null;
+
+  if (parsed.assetId && !asset) {
+    throw new Error("Asset not found");
+  }
+  if (asset && customer && asset.customerId !== customer.id) {
+    throw new Error("Selected asset does not belong to the selected customer");
+  }
+  if (asset && !customer) {
+    throw new Error("Select a customer before attaching an asset");
+  }
+
   const assignedEmployees = parsed.assignedStaffIds.length > 0
     ? await prisma.employee.findMany({
         where: { id: { in: parsed.assignedStaffIds }, tenantId },
@@ -157,10 +203,11 @@ export async function updateJobOrder(
 
   try {
     await prisma.$transaction(async (tx) => {
-      await tx.jobOrder.update({
+      await (tx as any).jobOrder.update({
         where: { id: jobOrderId, tenantId },
         data: {
           customerId: customer?.id ?? null,
+          assetId: asset?.id ?? null,
           customerName: customer?.name ?? parsed.customerName,
           contactNo: customer?.phone ?? parsed.contactNo ?? null,
           notes: parsed.notes || null,
@@ -186,10 +233,11 @@ export async function updateJobOrder(
     if (!isMissingLinkedCustomerColumn(error)) throw error;
 
     await prisma.$transaction(async (tx) => {
-      await tx.jobOrder.update({
+      await (tx as any).jobOrder.update({
         where: { id: jobOrderId, tenantId },
         data: {
           customerName: customer?.name ?? parsed.customerName,
+          assetId: asset?.id ?? null,
           contactNo: customer?.phone ?? parsed.contactNo ?? null,
           notes: parsed.notes || null,
           priority: parsed.priority,
@@ -411,4 +459,3 @@ export async function deleteWorkflowStage(tenantSlug: string, tenantId: string, 
   await db.workflowStage.delete({ where: { id: stageId, tenantId } });
   revalidatePath(`/${tenantSlug}/job-orders`);
 }
-

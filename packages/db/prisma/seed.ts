@@ -15,6 +15,7 @@ const MODULES = [
   { slug: "reports", name: "Reports & Analytics", description: "Revenue, inventory, and performance reports", icon: "BarChart2", isCore: false, sortOrder: 6 },
   { slug: "job-orders", name: "Job Orders", description: "Track service jobs, assignments, and status", icon: "ClipboardList", isCore: false, sortOrder: 7 },
   { slug: "crm", name: "CRM", description: "Customer records, history, and communications", icon: "UserCheck", isCore: false, sortOrder: 8 },
+  { slug: "assets", name: "Assets", description: "Track customer-linked serviceable assets and history", icon: "CarFront", isCore: false, sortOrder: 9 },
 ];
 
 async function main() {

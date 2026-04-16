@@ -44,6 +44,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const moduleSet = new Set<string>(session.user.modules);
   const hasPos = moduleSet.has("pos");
   const hasBilling = moduleSet.has("billing");
+  const hasAssets = moduleSet.has("assets");
 
   const section =
     (rawSection === "sales" && !hasPos) ||
@@ -75,6 +76,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             currencyLocale={tenant.currencyLocale}
             hasPos={hasPos}
             hasBilling={hasBilling}
+            hasAssets={hasAssets}
           />
           {(hasPos || hasBilling) && (
             <FadeIn delay={0.15}>
@@ -169,6 +171,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                 currencyLocale={tenant.currencyLocale}
                 hasPos={false}
                 hasBilling={true}
+                hasAssets={hasAssets}
               />
             </div>
           )}

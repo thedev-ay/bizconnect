@@ -1,6 +1,6 @@
 import { prisma } from "../src";
 
-const SERVICE_SHOP_MODULES = ["users", "crm", "services", "job-orders", "billing", "reports"] as const;
+const SERVICE_SHOP_MODULES = ["users", "crm", "assets", "services", "job-orders", "billing", "reports"] as const;
 const STARTER_SERVICES = [
   {
     name: "Diagnostic Fee",
@@ -80,6 +80,7 @@ async function main() {
     const enabledSlugs = new Set(tenant.tenantModules.map((tm) => tm.module.slug));
     const looksLikeServiceShop =
       enabledSlugs.has("crm") &&
+      enabledSlugs.has("assets") &&
       enabledSlugs.has("job-orders") &&
       enabledSlugs.has("billing") &&
       enabledSlugs.has("reports");

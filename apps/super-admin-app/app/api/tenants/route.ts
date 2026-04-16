@@ -18,7 +18,7 @@ const createTenantSchema = z.object({
   includeLoyalty: z.boolean().default(false),
 });
 
-const SERVICE_SHOP_MODULES = ["users", "crm", "services", "job-orders", "billing", "reports"] as const;
+const SERVICE_SHOP_MODULES = ["users", "crm", "assets", "services", "job-orders", "billing", "reports"] as const;
 const RETAIL_MODULES = ["users", "inventory", "pos", "promotions", "reports"] as const;
 const SERVICE_SHOP_WORKFLOW = [
   { name: "Received", slug: "received", color: "blue", sortOrder: 0, type: "active" as const },

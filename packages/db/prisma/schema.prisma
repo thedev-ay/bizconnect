@@ -38,6 +38,7 @@ model Tenant {
   loyaltyCards    LoyaltyCard[]
   workflowStages  WorkflowStage[]
   branches        Branch[]
+  assets          Asset[]
 
   @@map("tenants")
 }
@@ -61,6 +62,7 @@ model Branch {
   tenant      Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employees   Employee[]                 @relation("homeBranch")
   assignments EmployeeBranchAssignment[]
+  assets      Asset[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -529,10 +531,39 @@ model Customer {
 
   invoices  Invoice[]
   jobOrders JobOrder[]
+  assets    Asset[]
 
   @@index([tenantId])
   @@index([tenantId, branchId])
   @@map("customers")
+}
+
+model Asset {
+  id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  branchId   String?  @map("branch_id")
+  customerId String   @map("customer_id")
+  name       String
+  assetType  String   @map("asset_type")
+  brand      String?
+  model      String?
+  identifier String?
+  serialNo   String?  @map("serial_no")
+  status     String   @default("active")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  branch    Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  customer  Customer  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobOrders JobOrder[]
+
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@index([tenantId, customerId])
+  @@index([tenantId, status])
+  @@map("assets")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -544,6 +575,7 @@ model JobOrder {
   tenantId     String    @map("tenant_id")
   branchId     String?   @map("branch_id")
   customerId   String?   @map("customer_id")
+  assetId      String?   @map("asset_id")
   jobNo        String    @map("job_no")
   customerName String    @map("customer_name")
   contactNo    String?   @map("contact_no")
@@ -557,6 +589,7 @@ model JobOrder {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  asset       Asset?    @relation(fields: [assetId], references: [id], onDelete: SetNull)
   invoice     Invoice?
   items       JobOrderItem[]
   assignments JobOrderAssignment[]
@@ -565,6 +598,7 @@ model JobOrder {
   @@index([tenantId, branchId])
   @@index([tenantId, status])
   @@index([customerId])
+  @@index([assetId])
   @@map("job_orders")
 }
 

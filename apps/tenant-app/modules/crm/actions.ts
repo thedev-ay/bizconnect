@@ -33,6 +33,7 @@ export async function createCustomer(
   });
 
   revalidatePath(`/${tenantSlug}/crm`);
+  revalidatePath(`/${tenantSlug}/job-orders`);
   return customer;
 }
 
@@ -62,6 +63,7 @@ export async function updateCustomer(
   });
 
   revalidatePath(`/${tenantSlug}/crm`);
+  revalidatePath(`/${tenantSlug}/job-orders`);
   return customer;
 }
 
@@ -72,7 +74,20 @@ export async function deleteCustomer(
 ) {
   await authorize(tenantSlug, "crm.delete");
 
+  const linkedAssets = await (prisma as any).asset.count({
+    where: { tenantId, customerId },
+  }).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("assets")) return 0;
+    throw error;
+  });
+
+  if (linkedAssets > 0) {
+    throw new Error("This customer has linked assets. Reassign or archive them before deleting the customer.");
+  }
+
   await prisma.customer.delete({ where: { id: customerId, tenantId } });
 
   revalidatePath(`/${tenantSlug}/crm`);
+  revalidatePath(`/${tenantSlug}/job-orders`);
 }

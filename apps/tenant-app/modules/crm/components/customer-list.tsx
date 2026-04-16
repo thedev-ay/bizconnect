@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type KeyboardEvent, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -30,7 +30,11 @@ interface CustomerListProps {
   customers: Customer[];
   tenantSlug: string;
   tenantId: string;
+  dateLocale: string;
   jobOrderCounts: Record<string, number>;
+  assetsEnabled: boolean;
+  assetsByCustomer: Partial<Record<string, Array<{ id: string; customerId: string; name: string; assetType: string; identifier: string | null; brand: string | null; model: string | null; serialNo: string | null; status: string }>>>;
+  branches: Array<{ id: string; name: string }>;
 }
 
 const TAG_STYLES: Record<string, string> = {
@@ -48,16 +52,50 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }: CustomerListProps) {
+function formatCustomerDate(value: string | Date, locale: string) {
+  return new Intl.DateTimeFormat(locale || "en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
+function isInteractiveTarget(target: EventTarget | null, container: HTMLElement) {
+  if (!(target instanceof HTMLElement)) return false;
+  const interactiveAncestor = target.closest("a, button, [role='button'], [role='menuitem']");
+  return Boolean(interactiveAncestor && interactiveAncestor !== container);
+}
+
+export function CustomerList({ customers, tenantSlug, tenantId, dateLocale, jobOrderCounts, assetsEnabled, assetsByCustomer, branches }: CustomerListProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState<string | null>(null);
   const [editing, setEditing] = useState<Customer | null>(null);
+
+  function handleOpenCustomer(customer: Customer) {
+    if (loading === customer.id) return;
+    setEditing(customer);
+  }
+
+  function handleCustomerClick(event: MouseEvent<HTMLElement>, customer: Customer) {
+    if (isInteractiveTarget(event.target, event.currentTarget)) return;
+    handleOpenCustomer(customer);
+  }
+
+  function handleCustomerKeyDown(event: KeyboardEvent<HTMLElement>, customer: Customer) {
+    if (isInteractiveTarget(event.target, event.currentTarget)) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleOpenCustomer(customer);
+  }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this customer? This cannot be undone.")) return;
     setLoading(id);
     try {
       await deleteCustomer(tenantSlug, tenantId, id);
+      await queryClient.invalidateQueries({ queryKey: ["job-orders", tenantSlug] });
       toast.success("Customer deleted");
       router.refresh();
     } catch {
@@ -76,7 +114,11 @@ export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }
           customers.map((customer) => (
             <div
               key={customer.id}
-              className={cn("rounded-[24px] border border-border/70 bg-white p-4 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.26)]", loading === customer.id && "opacity-50")}
+              role="button"
+              tabIndex={0}
+              onClick={(event) => handleCustomerClick(event, customer)}
+              onKeyDown={(event) => handleCustomerKeyDown(event, customer)}
+              className={cn("rounded-[24px] border border-border/70 bg-white p-4 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.26)] outline-none transition hover:border-primary/25 hover:shadow-[0_20px_36px_-28px_rgba(15,23,42,0.32)] focus-visible:ring-2 focus-visible:ring-primary/30", loading === customer.id && "opacity-50")}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -93,7 +135,7 @@ export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }
                     <MoreHorizontal className="h-4 w-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setEditing(customer)}>
+                    <DropdownMenuItem onClick={() => handleOpenCustomer(customer)}>
                       <Pencil className="mr-2 h-4 w-4" /> Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem
@@ -114,7 +156,7 @@ export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }
                     New job
                   </Link>
                 </div>
-                <span className="text-xs text-muted-foreground">{format(new Date(customer.createdAt), "MMM d, yyyy")}</span>
+                <span className="text-xs text-muted-foreground">{formatCustomerDate(customer.createdAt, dateLocale)}</span>
               </div>
               <div className="mt-3 flex flex-wrap gap-1">
                 {customer.tags.length > 0
@@ -160,7 +202,11 @@ export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }
               customers.map((customer) => (
                 <TableRow
                   key={customer.id}
-                  className={cn("border-border/60 hover:bg-muted/30", loading === customer.id && "opacity-50")}
+                  role="button"
+                  tabIndex={0}
+                  onClick={(event) => handleCustomerClick(event, customer)}
+                  onKeyDown={(event) => handleCustomerKeyDown(event, customer)}
+                  className={cn("cursor-pointer border-border/60 outline-none hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/25", loading === customer.id && "opacity-50")}
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -215,7 +261,7 @@ export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(customer.createdAt), "MMM d, yyyy")}
+                    {formatCustomerDate(customer.createdAt, dateLocale)}
                   </TableCell>
                   <TableCell className="pr-4">
                     <DropdownMenu>
@@ -223,7 +269,7 @@ export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }
                         <MoreHorizontal className="h-4 w-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditing(customer)}>
+                        <DropdownMenuItem onClick={() => handleOpenCustomer(customer)}>
                           <Pencil className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -247,6 +293,9 @@ export function CustomerList({ customers, tenantSlug, tenantId, jobOrderCounts }
           customer={editing}
           tenantSlug={tenantSlug}
           tenantId={tenantId}
+          assetsEnabled={assetsEnabled}
+          assets={assetsByCustomer[editing.id] ?? []}
+          branches={branches}
           open={!!editing}
           onOpenChange={(o) => { if (!o) setEditing(null); }}
         />

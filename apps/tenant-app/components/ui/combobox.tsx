@@ -17,6 +17,8 @@ interface ComboboxProps {
   value: string;
   onValueChange: (value: string) => void;
   onSelect: (option: ComboboxOption) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   selectedValue?: string;
   placeholder?: string;
   disabled?: boolean;
@@ -24,6 +26,7 @@ interface ComboboxProps {
   helperText?: React.ReactNode;
   className?: string;
   inputClassName?: string;
+  inputRef?: React.Ref<HTMLInputElement>;
   renderOption?: (option: ComboboxOption, state: { active: boolean; selected: boolean }) => React.ReactNode;
   footer?: React.ReactNode;
 }
@@ -33,6 +36,8 @@ export function Combobox({
   value,
   onValueChange,
   onSelect,
+  open: openProp,
+  onOpenChange,
   selectedValue,
   placeholder,
   disabled,
@@ -40,13 +45,22 @@ export function Combobox({
   helperText,
   className,
   inputClassName,
+  inputRef,
   renderOption,
   footer,
 }: ComboboxProps) {
   const listId = React.useId();
   const rootRef = React.useRef<HTMLDivElement | null>(null);
-  const [open, setOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(-1);
+  const open = openProp ?? uncontrolledOpen;
+
+  function setOpen(next: boolean) {
+    if (openProp === undefined) {
+      setUncontrolledOpen(next);
+    }
+    onOpenChange?.(next);
+  }
 
   const query = value.trim().toLowerCase();
   const filteredOptions = query
@@ -117,6 +131,7 @@ export function Combobox({
     <div ref={rootRef} className={cn("space-y-2", className)}>
       <div className="relative">
         <Input
+          ref={inputRef}
           role="combobox"
           aria-expanded={open}
           aria-controls={listId}
