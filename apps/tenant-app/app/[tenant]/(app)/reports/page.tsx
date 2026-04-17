@@ -171,7 +171,6 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                 currencyLocale={tenant.currencyLocale}
                 hasPos={false}
                 hasBilling={true}
-                hasAssets={hasAssets}
               />
             </div>
           )}
