@@ -14,7 +14,7 @@ interface BillingPageProps {
 }
 
 async function getInvoices(tenantId: string) {
-  const [invoices, customers, readyToInvoice] = await Promise.all([
+  const [invoices, customers, completedStages] = await Promise.all([
     prisma.invoice.findMany({
       where: { tenantId },
       include: { items: true },
@@ -25,9 +25,19 @@ async function getInvoices(tenantId: string) {
       select: { id: true, name: true, email: true },
       orderBy: { name: "asc" },
     }),
-    prisma.jobOrder.findMany({
+    prisma.workflowStage.findMany({
+      where: { tenantId, type: "completed" },
+      select: { slug: true },
+    }),
+  ]);
+
+  const completedStageSlugs = completedStages.map((stage) => stage.slug);
+  const readyToInvoice = completedStageSlugs.length === 0
+    ? []
+    : await prisma.jobOrder.findMany({
       where: {
         tenantId,
+        status: { in: completedStageSlugs },
         completedAt: { not: null },
         invoice: null,
       },
@@ -36,8 +46,7 @@ async function getInvoices(tenantId: string) {
       },
       orderBy: { completedAt: "desc" },
       take: 5,
-    }),
-  ]);
+    });
 
   const total = invoices.reduce((sum, i) => sum + Number(i.total), 0);
   const paid = invoices.filter((i) => i.status === "paid");

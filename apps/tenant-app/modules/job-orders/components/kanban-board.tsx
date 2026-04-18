@@ -165,6 +165,14 @@ function KanbanCard({ jobOrder: jo, stages, onSelect, onEdit, onAdvance, advanci
           )}
           <p className="text-xs text-muted-foreground">{format(new Date(jo.createdAt), "MMM d, h:mm a")}</p>
         </div>
+        {jo.items.length > 0 && (
+          <p className="shrink-0 text-xs font-semibold tabular-nums text-foreground">
+            {(() => {
+              const total = jo.items.reduce((sum, i) => sum + Number(i.total), 0);
+              return total > 0 ? total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null;
+            })()}
+          </p>
+        )}
       </div>
 
       {/* Advance button — hidden during drag overlay */}
@@ -204,34 +212,44 @@ interface KanbanColumnProps {
 function KanbanColumn({ stage, cards, stages, onSelect, onEdit, onAdvance, advancing, isOver }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({ id: stage.slug });
 
-  const laneTheme = stage.type === "completed"
-    ? {
-        header: "bg-emerald-600 text-white border-emerald-700",
-        body: isOver ? "bg-background border-emerald-300" : "bg-background border-border/70",
-        badge: "bg-white/18 text-white",
-      }
-    : stage.type === "cancelled"
-    ? {
-        header: "bg-red-600 text-white border-red-700",
-        body: isOver ? "bg-background border-red-300" : "bg-background border-border/70",
-        badge: "bg-white/18 text-white",
-      }
-    : {
-        header: "bg-teal-600 text-white border-teal-700",
-        body: isOver ? "bg-background border-teal-300" : "bg-background border-border/70",
-        badge: "bg-white/18 text-white",
-      };
+  const dotColor =
+    stage.type === "completed"
+      ? "bg-emerald-500"
+      : stage.type === "cancelled"
+      ? "bg-red-500"
+      : "bg-primary";
+
+  const badgeColor =
+    stage.type === "completed"
+      ? "bg-emerald-50 text-emerald-700"
+      : stage.type === "cancelled"
+      ? "bg-red-50 text-red-700"
+      : "bg-primary/8 text-primary";
+
+  const dropBorder =
+    stage.type === "completed"
+      ? "border-emerald-300"
+      : stage.type === "cancelled"
+      ? "border-red-300"
+      : "border-primary/40";
+
+  const railBorder =
+    stage.type === "completed"
+      ? "border-t-emerald-500"
+      : stage.type === "cancelled"
+      ? "border-t-red-400"
+      : "border-t-primary";
 
   return (
     <div className="flex flex-col min-w-0 flex-1 min-w-[220px]">
-      <div className={cn(
-        "flex items-center justify-between rounded-t-[24px] border border-b-0 px-3 py-3",
-        laneTheme.header
-      )}>
-        <div className="min-w-0">
-          <p className="truncate text-xs font-bold">{stage.name}</p>
+      <div className={cn("flex items-center justify-between rounded-t-[24px] border border-b-0 border-t-[3px] border-border/70 bg-card px-3 py-2.5", railBorder)}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={cn("h-2 w-2 shrink-0 rounded-full", dotColor)} />
+          <p className="truncate text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {stage.name}
+          </p>
         </div>
-        <span className={cn("ml-1 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums", laneTheme.badge)}>
+        <span className={cn("ml-1 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums", badgeColor)}>
           {cards.length}
         </span>
       </div>
@@ -240,7 +258,8 @@ function KanbanColumn({ stage, cards, stages, onSelect, onEdit, onAdvance, advan
         ref={setNodeRef}
         className={cn(
           "min-h-[120px] flex-1 space-y-2 rounded-b-[24px] border border-t-0 p-2.5 transition-colors",
-          laneTheme.body
+          isOver ? dropBorder : "border-border/70",
+          "bg-background"
         )}
       >
         {cards.length === 0 && !isOver && (

@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { CheckCircle, XCircle, AlertTriangle, Clock } from "lucide-react";
+import { CheckCircle, XCircle, AlertTriangle, Clock, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { approveReturn, rejectReturn } from "../actions";
 
@@ -315,23 +315,40 @@ export function ReturnApprovalView({
 
       {/* Confirmation Dialog */}
       <Dialog open={!!confirmMode} onOpenChange={() => setConfirmMode(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <div className="flex items-center gap-2">
-              {confirmMode?.type === "approve" ? (
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
-              ) : (
-                <XCircle className="h-5 w-5 text-red-600" />
-              )}
-              <DialogTitle>
-                {confirmMode?.type === "approve"
-                  ? "Approve Return?"
-                  : "Reject Return?"}
-              </DialogTitle>
+        <DialogContent
+          showCloseButton={false}
+          className="flex max-w-sm flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+        >
+          <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="eyebrow-label">Returns / Confirm</p>
+                <div className="mt-1 flex items-center gap-2">
+                  {confirmMode?.type === "approve" ? (
+                    <CheckCircle className="h-5 w-5 text-emerald-600" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  )}
+                  <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
+                    {confirmMode?.type === "approve"
+                      ? "Approve return?"
+                      : "Reject return?"}
+                  </DialogTitle>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                onClick={() => setConfirmMode(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </DialogHeader>
 
-          <div className="space-y-3">
+          <div className="space-y-3 px-6 py-5">
             <div
               className={cn(
                 "rounded-lg border p-3",
@@ -356,11 +373,12 @@ export function ReturnApprovalView({
             <p className="text-xs text-zinc-500">This action cannot be undone.</p>
           </div>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4 sm:justify-end">
             <Button
               variant="outline"
               onClick={() => setConfirmMode(null)}
               disabled={processing}
+              className="rounded-full"
             >
               Cancel
             </Button>
@@ -372,6 +390,7 @@ export function ReturnApprovalView({
                   : handleRejectReturn
               }
               disabled={processing}
+              className="rounded-full"
             >
               {processing
                 ? "Processing..."

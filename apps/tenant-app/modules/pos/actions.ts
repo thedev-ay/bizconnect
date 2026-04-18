@@ -196,7 +196,7 @@ export async function createReturn(
   reason: string,
   notes?: string
 ) {
-  const session = await authorize(tenantSlug, "pos.process_sale");
+  await authorize(tenantSlug, "pos.process_return");
 
   const sale = await prisma.sale.findUnique({
     where: { id: saleId, tenantId },
@@ -265,9 +265,8 @@ export async function approveReturn(
   tenantSlug: string,
   tenantId: string,
   returnId: string,
-  restockQuantities?: Record<string, number>
 ) {
-  const session = await authorize(tenantSlug, "pos.void");
+  const session = await authorize(tenantSlug, "pos.approve_return");
 
   const saleReturn = await prisma.saleReturn.findUnique({
     where: { id: returnId },
@@ -316,8 +315,8 @@ export async function approveReturn(
   );
 }
 
-export async function rejectReturn(tenantSlug: string, tenantId: string, returnId: string) {
-  await authorize(tenantSlug, "pos.void");
+export async function rejectReturn(tenantSlug: string, _tenantId: string, returnId: string) {
+  await authorize(tenantSlug, "pos.approve_return");
 
   const saleReturn = await prisma.saleReturn.findUnique({
     where: { id: returnId },
@@ -335,11 +334,11 @@ export async function rejectReturn(tenantSlug: string, tenantId: string, returnI
 
 export async function processRefund(
   tenantSlug: string,
-  tenantId: string,
+  _tenantId: string,
   returnId: string,
   refundMethod: string
 ) {
-  const session = await authorize(tenantSlug, "pos.void");
+  await authorize(tenantSlug, "pos.approve_return");
 
   const saleReturn = await prisma.saleReturn.findUnique({
     where: { id: returnId },

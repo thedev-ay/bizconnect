@@ -23,7 +23,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { XCircle, Printer, AlertTriangle, RotateCcw, CheckCircle2, Ban, Wallet } from "lucide-react";
+import { XCircle, Printer, AlertTriangle, RotateCcw, CheckCircle2, Ban, Wallet, X } from "lucide-react";
 import { approveReturn, processRefund, rejectReturn, voidSale } from "../actions";
 import { ReceiptPrintDialog } from "@/components/receipt";
 import { ReturnDialog } from "./return-dialog";
@@ -405,15 +405,34 @@ export function SaleDetailDialog({
 
     {/* Void Confirmation Dialog */}
     <Dialog open={voidConfirmOpen} onOpenChange={setVoidConfirmOpen}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
-            <DialogTitle>Void sale?</DialogTitle>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-w-sm flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">Sales / Confirm</p>
+              <div className="mt-1 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
+                  Void sale?
+                </DialogTitle>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => setVoidConfirmOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="space-y-3 px-6 py-5">
           {hasReturnActivity && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
               <p className="text-sm text-amber-900">
@@ -429,11 +448,12 @@ export function SaleDetailDialog({
           <p className="text-xs text-zinc-500">This cannot be undone.</p>
         </div>
 
-        <DialogFooter className="flex gap-2">
+        <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4 sm:justify-end">
           <Button
             variant="outline"
             onClick={() => setVoidConfirmOpen(false)}
             disabled={voiding}
+            className="rounded-full"
           >
             Cancel
           </Button>
@@ -441,6 +461,7 @@ export function SaleDetailDialog({
             variant="destructive"
             onClick={handleVoid}
             disabled={voiding || hasReturnActivity}
+            className="rounded-full"
           >
             {voiding ? "Voiding..." : "Void"}
           </Button>

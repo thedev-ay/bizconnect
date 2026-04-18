@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -59,14 +59,32 @@ export function NewCardDialog({
     }
   }
 
+  function handleOpenChange(nextOpen: boolean) {
+    onOpenChange(nextOpen);
+    if (!nextOpen) {
+      setName("");
+      setPhone("");
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)]">
-        <DialogHeader>
-          <p className="eyebrow-label text-primary">Loyalty</p>
-          <DialogTitle>New Loyalty Card</DialogTitle>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[90dvh] w-[min(420px,calc(100vw-2rem))] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-5 py-4 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">Loyalty / New</p>
+              <DialogTitle className="mt-1 text-lg font-semibold tracking-tight text-foreground">Create loyalty card</DialogTitle>
+            </div>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" onClick={() => handleOpenChange(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
-        <div className="space-y-4 py-1">
+        <div className="space-y-4 px-5 py-4">
           <div className="space-y-2">
             <Label>Customer Name *</Label>
             <Input
@@ -88,9 +106,9 @@ export function NewCardDialog({
             />
           </div>
         </div>
-        <DialogFooter className="border-t border-slate-200/80 pt-4">
-          <Button variant="outline" className="rounded-full" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button className="rounded-full" onClick={handleCreate} disabled={saving || !name.trim()}>
+        <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-5 py-4">
+          <Button variant="outline" className="rounded-full px-4" onClick={() => handleOpenChange(false)}>Cancel</Button>
+          <Button className="rounded-full px-4" onClick={handleCreate} disabled={saving || !name.trim()}>
             {saving ? "Creating..." : "Create Card"}
           </Button>
         </DialogFooter>

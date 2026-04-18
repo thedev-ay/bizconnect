@@ -19,7 +19,7 @@ export const createJobOrderSchema = z.object({
   priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
   assignedStaffIds: z.array(z.string()).default([]),
   dueDate: z.string().optional(),
-  items: z.array(jobOrderItemSchema).default([]),
+  items: z.array(jobOrderItemSchema).min(1, "Add at least one charge").default([]),
 });
 
 export type CreateJobOrderInput = z.infer<typeof createJobOrderSchema>;

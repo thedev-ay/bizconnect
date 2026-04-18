@@ -6,11 +6,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, AlertCircle, CheckCircle, WifiOff } from "lucide-react";
+import { Plus, AlertCircle, CheckCircle, WifiOff, X } from "lucide-react";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { Button } from "@/components/ui/button";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { CurrencyInputField } from "@/components/ui/currency-input-field";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DialogFormSection } from "@/components/ui/dialog-form-section";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -94,9 +96,6 @@ export function CreateAppointmentDialog({
     (s) => !selectedServiceId || s.serviceIds.includes(selectedServiceId)
   );
   const normalizedServiceQuery = serviceQuery.trim().toLowerCase();
-  const matchingServices = normalizedServiceQuery
-    ? serviceOptions.filter((s) => s.name.toLowerCase().includes(normalizedServiceQuery))
-    : serviceOptions;
   const exactServiceMatch = normalizedServiceQuery
     ? serviceOptions.find((s) => s.name.trim().toLowerCase() === normalizedServiceQuery) ?? null
     : null;
@@ -290,183 +289,214 @@ export function CreateAppointmentDialog({
           <Plus className="mr-2 h-4 w-4" /> New
         </DialogTrigger>
       )}
-      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)]">
-        <DialogHeader>
-          <p className="eyebrow-label text-primary">Appointment</p>
-          <DialogTitle>Book</DialogTitle>
-          <DialogDescription>Service and time</DialogDescription>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[90dvh] w-[min(760px,calc(100vw-2rem))] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">Appointments / New</p>
+              <DialogTitle className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                Book appointment
+              </DialogTitle>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => handleOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Service *</Label>
-            <Combobox
-              options={serviceComboboxOptions}
-              value={serviceQuery}
-              onValueChange={handleServiceQueryChange}
-              onSelect={selectService}
-              selectedValue={selectedServiceId}
-              placeholder="Select or type a service..."
-              emptyMessage="No matching services found."
-              helperText="Pick an existing service or type a new name to create it."
-              footer={canCreateService ? (
-                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Create "{serviceQuery.trim()}"</p>
-                      <p className="text-xs text-muted-foreground">This saves a new service, then selects it for the appointment.</p>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleCreateService}
-                      disabled={creatingService || !newServiceDuration || !newServicePrice}
-                    >
-                      {creatingService ? "Creating..." : "Create"}
-                    </Button>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-6">
+            <DialogFormSection num="01" title="Service">
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-foreground/80">Service *</Label>
+                  <Combobox
+                    options={serviceComboboxOptions}
+                    value={serviceQuery}
+                    onValueChange={handleServiceQueryChange}
+                    onSelect={selectService}
+                    selectedValue={selectedServiceId}
+                    placeholder="Select or type a service..."
+                    emptyMessage="No matching services found."
+                    helperText="Pick an existing service or type a new name to create it."
+                    footer={canCreateService ? (
+                      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Create "{serviceQuery.trim()}"</p>
+                            <p className="text-xs text-muted-foreground">This saves a new service, then selects it for the appointment.</p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleCreateService}
+                            disabled={creatingService || !newServiceDuration || !newServicePrice}
+                          >
+                            {creatingService ? "Creating..." : "Create"}
+                          </Button>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="new-service-duration" className="text-xs font-medium text-foreground/80">
+                              Duration (minutes)
+                            </Label>
+                            <Input
+                              id="new-service-duration"
+                              type="number"
+                              min={1}
+                              value={newServiceDuration}
+                              onChange={(e) => setNewServiceDuration(e.target.value)}
+                            />
+                          </div>
+                          <CurrencyInputField
+                            id="new-service-price"
+                            currencySymbol={currencySymbol}
+                            label="Price"
+                            value={newServicePrice}
+                            onChange={(e) => setNewServicePrice(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  />
+                  {errors.serviceId && <p className="text-xs text-destructive">{errors.serviceId.message}</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-foreground/80">
+                    Staff <span className="font-normal text-muted-foreground">(optional)</span>
+                  </Label>
+                  <Combobox
+                    options={staffComboboxOptions}
+                    value={staffQuery}
+                    onValueChange={handleStaffQueryChange}
+                    onSelect={selectStaff}
+                    selectedValue={selectedEmployeeId}
+                    placeholder={selectedServiceId ? "Select or type a staff name..." : "Select service first"}
+                    disabled={!selectedServiceId}
+                    emptyMessage="No matching staff found. Keep typing to save a custom name."
+                    helperText="Pick a registered staff member, or type a name to store it only on this appointment."
+                  />
+                </div>
+              </div>
+            </DialogFormSection>
+
+            <DialogFormSection num="02" title="Schedule">
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-foreground/80">Date *</Label>
+                    <Input
+                      type="date"
+                      value={selectedDate}
+                      disabled={!selectedServiceId}
+                      onChange={(e) => {
+                        const date = e.target.value;
+                        setSelectedDate(date);
+                        if (date && selectedTime) {
+                          setValue("startAt", `${date}T${selectedTime}`);
+                        }
+                      }}
+                    />
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-service-duration">Duration (minutes)</Label>
-                      <Input
-                        id="new-service-duration"
-                        type="number"
-                        min={1}
-                        value={newServiceDuration}
-                        onChange={(e) => setNewServiceDuration(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-service-price">Price ({currencySymbol})</Label>
-                      <Input
-                        id="new-service-price"
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={newServicePrice}
-                        onChange={(e) => setNewServicePrice(e.target.value)}
-                      />
-                    </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-foreground/80">
+                      Time *
+                      {selectedService && <span className="ml-1 text-xs font-normal text-muted-foreground">(+{selectedService.duration}m)</span>}
+                    </Label>
+                    <Input
+                      type="time"
+                      value={selectedTime}
+                      disabled={!selectedDate}
+                      onChange={(e) => {
+                        const time = e.target.value;
+                        setSelectedTime(time);
+                        if (selectedDate && time) {
+                          setValue("startAt", `${selectedDate}T${time}`);
+                        }
+                      }}
+                    />
+                    {errors.startAt && <p className="text-xs text-destructive">{errors.startAt.message}</p>}
                   </div>
                 </div>
-              ) : null}
-            />
-            {errors.serviceId && <p className="text-sm text-destructive">{errors.serviceId.message}</p>}
-          </div>
 
-          <div className="space-y-2">
-            <Label>Staff <span className="text-muted-foreground font-normal">(optional)</span></Label>
-            <Combobox
-              options={staffComboboxOptions}
-              value={staffQuery}
-              onValueChange={handleStaffQueryChange}
-              onSelect={selectStaff}
-              selectedValue={selectedEmployeeId}
-              placeholder={selectedServiceId ? "Select or type a staff name..." : "Select service first"}
-              disabled={!selectedServiceId}
-              emptyMessage="No matching staff found. Keep typing to save a custom name."
-              helperText="Pick a registered staff member, or type a name to store it only on this appointment."
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Date *</Label>
-              <Input
-                type="date"
-                value={selectedDate}
-                disabled={!selectedServiceId}
-                onChange={(e) => {
-                  const date = e.target.value;
-                  setSelectedDate(date);
-                  if (date && selectedTime) {
-                    setValue("startAt", `${date}T${selectedTime}`);
-                  }
-                }}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>
-                Time *
-                {selectedService && <span className="ml-1 text-xs text-muted-foreground">(+{selectedService.duration}m)</span>}
-              </Label>
-              <Input
-                type="time"
-                value={selectedTime}
-                disabled={!selectedDate}
-                onChange={(e) => {
-                  const time = e.target.value;
-                  setSelectedTime(time);
-                  if (selectedDate && time) {
-                    setValue("startAt", `${selectedDate}T${time}`);
-                  }
-                }}
-              />
-              {errors.startAt && <p className="text-sm text-destructive">{errors.startAt.message}</p>}
-            </div>
-          </div>
-
-          {selectedEmployeeId && selectedDate && (
-            <div className={cn(
-              "rounded-2xl border px-3 py-2.5 text-xs",
-              checkingAvailability && "text-muted-foreground",
-              availability?.isWorkingDay === false && "border-destructive/50 bg-destructive/5 text-destructive",
-              availability?.isWorkingDay === true && "border-green-500/50 bg-green-500/5 text-green-700",
-            )}>
-              {checkingAvailability && "Checking availability…"}
-              {!checkingAvailability && availability && (
-                availability.isWorkingDay ? (
-                  <div className="flex items-start gap-1.5">
-                    <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    <div>
-                      <span>Available {availability.workStart}–{availability.workEnd}</span>
-                      {availability.bookedSlots.length > 0 && (
-                        <div className="mt-0.5 text-amber-700">
-                          Booked: {availability.bookedSlots.map((s) =>
-                            `${new Date(s.start).toLocaleTimeString(currencyLocale, { hour: "2-digit", minute: "2-digit" })}–${new Date(s.end).toLocaleTimeString(currencyLocale, { hour: "2-digit", minute: "2-digit" })}`
-                          ).join(", ")}
+                {selectedEmployeeId && selectedDate && (
+                  <div className={cn(
+                    "rounded-2xl border px-3 py-2.5 text-xs",
+                    checkingAvailability && "text-muted-foreground",
+                    availability?.isWorkingDay === false && "border-destructive/50 bg-destructive/5 text-destructive",
+                    availability?.isWorkingDay === true && "border-green-500/50 bg-green-500/5 text-green-700",
+                  )}>
+                    {checkingAvailability && "Checking availability…"}
+                    {!checkingAvailability && availability && (
+                      availability.isWorkingDay ? (
+                        <div className="flex items-start gap-1.5">
+                          <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <div>
+                            <span>Available {availability.workStart}–{availability.workEnd}</span>
+                            {availability.bookedSlots.length > 0 && (
+                              <div className="mt-0.5 text-amber-700">
+                                Booked: {availability.bookedSlots.map((s) =>
+                                  `${new Date(s.start).toLocaleTimeString(currencyLocale, { hour: "2-digit", minute: "2-digit" })}–${new Date(s.end).toLocaleTimeString(currencyLocale, { hour: "2-digit", minute: "2-digit" })}`
+                                ).join(", ")}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                          Off day
+                        </div>
+                      )
+                    )}
                   </div>
-                ) : (
-                  <div className="flex items-center gap-1.5">
-                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                    Off day
-                  </div>
-                )
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            </DialogFormSection>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2 col-span-2">
-              <Label>Customer *</Label>
-              <Input placeholder="Alex Morgan" {...register("customerName")} />
-              {errors.customerName && <p className="text-sm text-destructive">{errors.customerName.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input placeholder="+31 6 12345678" {...register("customerPhone")} />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input type="email" placeholder="juan@example.com" {...register("customerEmail")} />
-            </div>
+            <DialogFormSection num="03" title="Customer">
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2 space-y-1.5">
+                    <Label className="text-xs font-medium text-foreground/80">Customer *</Label>
+                    <Input placeholder="Alex Morgan" {...register("customerName")} />
+                    {errors.customerName && <p className="text-xs text-destructive">{errors.customerName.message}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-foreground/80">Phone</Label>
+                    <Input placeholder="+31 6 12345678" {...register("customerPhone")} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-foreground/80">Email</Label>
+                    <Input type="email" placeholder="juan@example.com" {...register("customerEmail")} />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-foreground/80">Notes</Label>
+                  <Textarea rows={2} placeholder="Optional" {...register("notes")} />
+                </div>
+              </div>
+            </DialogFormSection>
           </div>
 
-          <div className="space-y-2">
-            <Label>Notes</Label>
-            <Textarea rows={2} placeholder="Optional" {...register("notes")} />
-          </div>
-
-          <DialogFooter className="border-t border-slate-200/80 pt-4">
+          <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4">
             {!isOnline && (
-              <p className="flex items-center gap-1.5 text-xs text-amber-600 mr-auto">
+              <p className="mr-auto flex items-center gap-1.5 text-xs text-amber-600">
                 <WifiOff className="h-3.5 w-3.5" /> You're offline
               </p>
             )}
-            <Button type="button" variant="outline" className="rounded-full" onClick={() => handleOpen(false)}>Cancel</Button>
-            <Button type="submit" className="rounded-full" disabled={isSubmitting || !isOnline}>{isSubmitting ? "Booking..." : "Book"}</Button>
+            <Button type="button" variant="outline" className="rounded-full px-4" onClick={() => handleOpen(false)}>Cancel</Button>
+            <Button type="submit" className="rounded-full px-4" disabled={isSubmitting || !isOnline}>{isSubmitting ? "Booking..." : "Book"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

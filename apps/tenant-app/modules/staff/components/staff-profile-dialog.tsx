@@ -1,19 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Clock3, Settings } from "lucide-react";
+import { Clock3, Settings, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { DialogFormSection } from "@/components/ui/dialog-form-section";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,7 +21,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { updateStaffProfile } from "../actions";
@@ -63,6 +62,26 @@ export function StaffProfileDialog({
     })
   );
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setCommissionRate(staff.commissionRate ?? "");
+    setAccessLevel(staff.accessLevel);
+    setSelectedServices(new Set(staff.services.map((s) => s.serviceId)));
+    setHours(
+      DAYS.map((_, i) => {
+        const existing = staff.workingHours.find((h) => h.dayOfWeek === i);
+        return {
+          enabled: !!existing,
+          startTime: existing?.startTime ?? DEFAULT_HOURS.startTime,
+          endTime: existing?.endTime ?? DEFAULT_HOURS.endTime,
+        };
+      })
+    );
+  }, [open, staff]);
+
   function toggleService(id: string) {
     setSelectedServices((prev) => {
       const next = new Set(prev);
@@ -97,27 +116,39 @@ export function StaffProfileDialog({
       >
         <Settings className="h-4 w-4" />
       </DialogTrigger>
-      <DialogContent className="flex max-h-[90vh] min-w-[min(92vw,64rem)] w-[min(96vw,72rem)] max-w-none flex-col overflow-hidden border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
-        <DialogHeader>
-          <p className="eyebrow-label">HR</p>
-          <DialogTitle>Edit Staff</DialogTitle>
-          <DialogDescription>{staff.name}</DialogDescription>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[90dvh] w-[min(920px,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">HR / Edit</p>
+              <DialogTitle className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                Edit staff
+              </DialogTitle>
+              <p className="mt-1 text-sm text-muted-foreground">{staff.name}</p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => setOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
-          <section className="space-y-4 rounded-[24px] border border-border/60 bg-background/62 p-4">
-            <div>
-              <p className="eyebrow-label">Profile</p>
-              <h3 className="text-sm font-semibold text-foreground">Access</h3>
-            </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6">
+          <DialogFormSection num="01" title="Profile">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Access Level</Label>
+                <Label>Access level</Label>
                 <Select value={accessLevel} onValueChange={(v) => v && setAccessLevel(v)}>
                   <SelectTrigger className="h-11 rounded-2xl">
-                    <SelectValue>
-                      {{ owner: "Owner", manager: "Manager", staff: "Staff", viewer: "Viewer" }[accessLevel] ?? accessLevel}
-                    </SelectValue>
+                    {{ owner: "Owner", manager: "Manager", staff: "Staff", viewer: "Viewer" }[accessLevel] ?? accessLevel}
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="owner">Owner</SelectItem>
@@ -128,7 +159,7 @@ export function StaffProfileDialog({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Commission Rate (%)</Label>
+                <Label>Commission rate (%)</Label>
                 <Input
                   type="number"
                   min={0}
@@ -141,53 +172,52 @@ export function StaffProfileDialog({
                 />
               </div>
             </div>
-          </section>
+          </DialogFormSection>
 
-          <section className="space-y-4 rounded-[24px] border border-border/60 bg-background/62 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="eyebrow-label">Services</p>
-                <h3 className="text-sm font-semibold text-foreground">Qualified Services</h3>
+          <DialogFormSection num="02" title="Services">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Assign the services this staff member can perform.
+                </p>
+                <div className="rounded-full border border-border/70 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground">
+                  {selectedServices.size}
+                </div>
               </div>
-              <div className="rounded-full border border-border/70 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground">
-                {selectedServices.size}
-              </div>
+              {services.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No services added yet.</p>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  {services.map((svc) => (
+                    <label
+                      key={svc.id}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-3 rounded-[20px] border px-3 py-3 text-sm transition-colors",
+                        selectedServices.has(svc.id)
+                          ? "border-primary/25 bg-primary/6"
+                          : "border-border/60 bg-background/80 hover:bg-muted/30"
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedServices.has(svc.id)}
+                        onChange={() => toggleService(svc.id)}
+                        className="h-4 w-4"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-foreground">{svc.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {svc.duration ? `${svc.duration} min` : "No duration set"}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
-            {services.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No services added yet.</p>
-            ) : (
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {services.map((svc) => (
-                  <label
-                    key={svc.id}
-                    className={cn(
-                      "flex cursor-pointer items-center gap-3 rounded-[20px] border px-3 py-3 text-sm transition-colors",
-                      selectedServices.has(svc.id)
-                        ? "border-primary/25 bg-primary/6"
-                        : "border-border/60 bg-background/80 hover:bg-muted/30"
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedServices.has(svc.id)}
-                      onChange={() => toggleService(svc.id)}
-                      className="h-4 w-4"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-foreground">{svc.name}</p>
-                      <p className="text-xs text-muted-foreground">{svc.duration ? `${svc.duration} min` : "No duration set"}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            )}
-          </section>
+          </DialogFormSection>
 
-          <section className="space-y-4 rounded-[24px] border border-border/60 bg-background/62 p-4">
-            <div>
-              <p className="eyebrow-label">Schedule</p>
-              <h3 className="text-sm font-semibold text-foreground">Working Hours</h3>
-            </div>
+          <DialogFormSection num="03" title="Schedule">
             <div className="space-y-2">
               {DAYS.map((day, i) => (
                 <div
@@ -249,10 +279,10 @@ export function StaffProfileDialog({
                 </div>
               ))}
             </div>
-          </section>
+          </DialogFormSection>
         </div>
 
-        <DialogFooter className="-mx-5 -mb-5 mt-4 shrink-0 border-t border-border/60 px-5 py-4">
+        <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4 sm:flex-row sm:justify-end">
           <Button variant="outline" className="rounded-full" onClick={() => setOpen(false)}>
             Cancel
           </Button>

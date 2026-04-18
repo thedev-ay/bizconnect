@@ -5,15 +5,17 @@ import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CurrencyInputField } from "@/components/ui/currency-input-field";
+import { DialogFormSection } from "@/components/ui/dialog-form-section";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,7 +25,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { promotionSchema, type PromotionInput } from "../schema";
@@ -39,6 +40,7 @@ interface ProductOption {
 interface PromotionDialogProps {
   tenantSlug: string;
   tenantId: string;
+  currencySymbol: string;
   products: ProductOption[];
   promotion?: Promotion;
   open: boolean;
@@ -48,6 +50,7 @@ interface PromotionDialogProps {
 export function PromotionDialog({
   tenantSlug,
   tenantId,
+  currencySymbol,
   products,
   promotion,
   open,
@@ -61,7 +64,7 @@ export function PromotionDialog({
   );
   const [productSearch, setProductSearch] = useState("");
 
-  const { register, handleSubmit, watch, setValue, control, reset, formState: { errors, isSubmitting } } =
+  const { register, handleSubmit, watch, setValue, control, formState: { errors, isSubmitting } } =
     useForm<PromotionInput>({
       resolver: zodResolver(promotionSchema as any),
       defaultValues: {
@@ -90,7 +93,7 @@ export function PromotionDialog({
       setSelectedItemIds(promotion?.items.map((i) => i.itemId) ?? []);
       setProductSearch("");
     }
-  }, [open]);
+  }, [open, promotion]);
 
   function toggleDay(day: number) {
     const current = (watch("daysOfWeek") ?? []) as number[];
@@ -127,183 +130,230 @@ export function PromotionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] min-w-[min(92vw,64rem)] w-[min(96vw,72rem)] max-w-none flex-col overflow-hidden border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
-        <DialogHeader>
-          <p className="eyebrow-label">Promotions</p>
-          <DialogTitle>{isEditing ? "Edit" : "New"}</DialogTitle>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[90dvh] w-[min(920px,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">
+                Promotions / {isEditing ? "Edit" : "New"}
+              </p>
+              <DialogTitle className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                {isEditing ? "Edit promotion" : "Add promotion"}
+              </DialogTitle>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
-
-          <div className="grid gap-4 rounded-[24px] border border-border/60 bg-background/62 p-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Name *</Label>
-              <Input placeholder="e.g. Summer Sale" {...register("name")} />
-              {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Description <span className="font-normal text-muted-foreground">(optional)</span></Label>
-              <Textarea rows={2} placeholder="Notes" {...register("description")} />
-            </div>
-          </div>
-
-          <div className="grid gap-4 rounded-[24px] border border-border/60 bg-background/62 p-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Type *</Label>
-              <Controller
-                control={control}
-                name="type"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={(v) => { if (v) field.onChange(v); }}>
-                    <SelectTrigger>
-                      {field.value ? PROMO_TYPE_LABELS[field.value] : <span className="text-muted-foreground">Select...</span>}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PROMO_TYPE_LABELS).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{v}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-
-            {promoType !== "buy_x_get_y" && (
-              <div className="space-y-2">
-                <Label>{valueLabel} *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  max={promoType === "percent_off" || promoType === "day_time" ? 100 : undefined}
-                  {...register("value")}
-                />
-              </div>
-            )}
-
-            {promoType === "buy_x_get_y" && (
-              <>
-                <div className="space-y-2">
-                  <Label>Buy Qty *</Label>
-                  <Input type="number" min={1} {...register("buyQty")} />
+        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6">
+            <DialogFormSection num="01" title="Identity">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Name *</Label>
+                  <Input placeholder="e.g. Summer Sale" {...register("name")} />
+                  {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label>Get Free Qty *</Label>
-                  <Input type="number" min={1} {...register("getQty")} />
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Day/time restrictions */}
-          {promoType === "day_time" && (
-            <div className="space-y-3 rounded-[24px] border border-border/60 bg-background/62 p-4">
-              <p className="eyebrow-label">Schedule</p>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Days</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {DAY_LABELS.map((label, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => toggleDay(i)}
-                      className={cn(
-                        "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                        (daysOfWeek as number[]).includes(i)
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80"
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Description <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                  <Textarea rows={2} placeholder="Notes" {...register("description")} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Start</Label>
-                  <Input type="time" {...register("startTime")} />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">End</Label>
-                  <Input type="time" {...register("endTime")} />
-                </div>
-              </div>
-            </div>
-          )}
+            </DialogFormSection>
 
-          <div className="grid gap-4 rounded-[24px] border border-border/60 bg-background/62 p-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Starts <span className="font-normal text-muted-foreground">(optional)</span></Label>
-              <Input type="date" {...register("startsAt")} />
-            </div>
-            <div className="space-y-2">
-              <Label>Ends <span className="font-normal text-muted-foreground">(optional)</span></Label>
-              <Input type="date" {...register("endsAt")} />
-            </div>
-          </div>
+            <DialogFormSection num="02" title="Offer">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Type *</Label>
+                  <Controller
+                    control={control}
+                    name="type"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={(v) => { if (v) field.onChange(v); }}>
+                        <SelectTrigger>
+                          {field.value ? PROMO_TYPE_LABELS[field.value] : <span className="text-muted-foreground">Select...</span>}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PROMO_TYPE_LABELS).map(([k, v]) => (
+                            <SelectItem key={k} value={k}>{v}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
 
-          <div className="space-y-2 rounded-[24px] border border-border/60 bg-background/62 p-4">
-            <Label>
-              Products <span className="font-normal text-muted-foreground">(optional)</span>
-            </Label>
-            <Input
-              placeholder="Search products..."
-              value={productSearch}
-              onChange={(e) => setProductSearch(e.target.value)}
-              className="h-8 text-sm"
-            />
-            <div className="max-h-48 overflow-y-auto rounded-[20px] border border-border/70 divide-y divide-border/60">
-              {(() => {
-                const filtered = products.filter((p) => {
-                  const q = productSearch.toLowerCase();
-                  return !q || p.name.toLowerCase().includes(q) || p.category?.toLowerCase().includes(q);
-                });
-                if (filtered.length === 0) {
-                  return <p className="px-3 py-3 text-sm text-zinc-400">No products found</p>;
-                }
-                return filtered.map((p) => (
-                  <label
-                    key={p.id}
-                    className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-zinc-50"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedItemIds.includes(p.id)}
-                      onChange={() => toggleItem(p.id)}
-                      className="h-4 w-4 rounded border-zinc-300"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-zinc-800 truncate">{p.name}</p>
-                      {p.category && (
-                        <p className="text-xs text-zinc-400">{p.category}</p>
-                      )}
+                {promoType !== "buy_x_get_y" && (
+                  promoType === "percent_off" || promoType === "day_time" ? (
+                    <div className="space-y-2">
+                      <Label>{valueLabel} *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        max={100}
+                        {...register("value")}
+                      />
                     </div>
-                  </label>
-                ));
-              })()}
-            </div>
-            {selectedItemIds.length > 0 && (
-              <p className="text-xs text-zinc-500">{selectedItemIds.length} product{selectedItemIds.length !== 1 ? "s" : ""} selected</p>
-            )}
+                  ) : (
+                    <CurrencyInputField
+                      currencySymbol={currencySymbol}
+                      label={`${valueLabel} *`}
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      error={errors.value?.message}
+                      {...register("value")}
+                    />
+                  )
+                )}
+
+                {promoType === "buy_x_get_y" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Buy Qty *</Label>
+                      <Input type="number" min={1} {...register("buyQty")} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Get Free Qty *</Label>
+                      <Input type="number" min={1} {...register("getQty")} />
+                    </div>
+                  </>
+                )}
+              </div>
+            </DialogFormSection>
+
+            <DialogFormSection num="03" title="Schedule">
+              <div className="space-y-4">
+                {promoType === "day_time" && (
+                  <div className="space-y-3 rounded-[22px] border border-border/60 bg-muted/30 p-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Days</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {DAY_LABELS.map((label, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => toggleDay(i)}
+                            className={cn(
+                              "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                              (daysOfWeek as number[]).includes(i)
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                            )}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Start</Label>
+                        <Input type="time" {...register("startTime")} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">End</Label>
+                        <Input type="time" {...register("endTime")} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Starts <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                    <Input type="date" {...register("startsAt")} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ends <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                    <Input type="date" {...register("endsAt")} />
+                  </div>
+                </div>
+              </div>
+            </DialogFormSection>
+
+            <DialogFormSection num="04" title="Scope">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>
+                    Products <span className="font-normal text-muted-foreground">(optional)</span>
+                  </Label>
+                  <Input
+                    placeholder="Search products..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="h-10 text-sm"
+                  />
+                  <div className="max-h-48 overflow-y-auto rounded-[20px] border border-border/70 divide-y divide-border/60">
+                    {(() => {
+                      const filtered = products.filter((p) => {
+                        const q = productSearch.toLowerCase();
+                        return !q || p.name.toLowerCase().includes(q) || p.category?.toLowerCase().includes(q);
+                      });
+                      if (filtered.length === 0) {
+                        return <p className="px-3 py-3 text-sm text-muted-foreground">No products found</p>;
+                      }
+                      return filtered.map((p) => (
+                        <label
+                          key={p.id}
+                          className="flex cursor-pointer items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/30"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedItemIds.includes(p.id)}
+                            onChange={() => toggleItem(p.id)}
+                            className="h-4 w-4 rounded border-border/70"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-foreground">{p.name}</p>
+                            {p.category && (
+                              <p className="text-xs text-muted-foreground">{p.category}</p>
+                            )}
+                          </div>
+                        </label>
+                      ));
+                    })()}
+                  </div>
+                  {selectedItemIds.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {selectedItemIds.length} product{selectedItemIds.length !== 1 ? "s" : ""} selected
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-muted/30 px-3 py-2.5">
+                  <div>
+                    <Label className="cursor-pointer text-sm text-foreground">Active</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Inactive promotions stay saved but do not apply at checkout.
+                    </p>
+                  </div>
+                  <Controller
+                    control={control}
+                    name="isActive"
+                    render={({ field }) => (
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    )}
+                  />
+                </div>
+              </div>
+            </DialogFormSection>
           </div>
 
-          {/* Active toggle */}
-          <div className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2.5">
-            <Label className="cursor-pointer">Active</Label>
-            <Controller
-              control={control}
-              name="isActive"
-              render={({ field }) => (
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              )}
-            />
-          </div>
-          </div>
-
-          <DialogFooter className="-mx-5 -mb-5 mt-4 shrink-0 border-t border-border/60 px-5 py-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>
+          <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" className="rounded-full" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" className="rounded-full" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Create Promotion"}
             </Button>
           </DialogFooter>

@@ -1,11 +1,12 @@
 "use client";
 
 import { format } from "date-fns";
-import { ArrowUp, ArrowDown, AlertCircle } from "lucide-react";
+import { ArrowUp, ArrowDown, AlertCircle, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -49,75 +50,100 @@ export function AdjustmentHistory({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
-        <DialogHeader>
-          <p className="eyebrow-label">History</p>
-          <DialogTitle>Adjustments</DialogTitle>
-          <DialogDescription>{itemName}</DialogDescription>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[80dvh] max-w-2xl flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">Inventory / History</p>
+              <DialogTitle className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                Adjustments
+              </DialogTitle>
+              <p className="mt-1 text-sm text-muted-foreground">{itemName}</p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
-        {adjustments.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <AlertCircle className="mb-3 h-12 w-12 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">No adjustments</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {adjustments.map((adj) => {
-              const info = reasonInfo(adj.reason);
-              const isIncrease = adj.quantityChange > 0;
+        <div className="overflow-y-auto px-6 py-5">
+          {adjustments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <AlertCircle className="mb-3 h-12 w-12 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">No adjustments</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {adjustments.map((adj) => {
+                const info = reasonInfo(adj.reason);
+                const isIncrease = adj.quantityChange > 0;
 
-              return (
-                <div
-                  key={adj.id}
-                  className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/72 p-3"
-                >
+                return (
                   <div
-                    className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl",
-                      isIncrease ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
-                    )}
+                    key={adj.id}
+                    className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/72 p-3"
                   >
-                    {isIncrease ? (
-                      <ArrowUp className="h-4 w-4" />
-                    ) : (
-                      <ArrowDown className="h-4 w-4" />
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="mb-1 flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                          info.color
-                        )}
-                      >
-                        {info.label}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-sm font-semibold tabular-nums",
-                          isIncrease ? "text-emerald-700" : "text-red-700"
-                        )}
-                      >
-                        {isIncrease ? "+" : ""}{adj.quantityChange}
-                      </span>
+                    <div
+                      className={cn(
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl",
+                        isIncrease ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                      )}
+                    >
+                      {isIncrease ? (
+                        <ArrowUp className="h-4 w-4" />
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
+                      )}
                     </div>
 
-                    {adj.notes && (
-                      <p className="mb-0.5 text-xs text-foreground/75">{adj.notes}</p>
-                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                            info.color
+                          )}
+                        >
+                          {info.label}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-sm font-semibold tabular-nums",
+                            isIncrease ? "text-emerald-700" : "text-red-700"
+                          )}
+                        >
+                          {isIncrease ? "+" : ""}{adj.quantityChange}
+                        </span>
+                      </div>
 
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(adj.createdAt), "MMM d, yyyy · h:mm a")}
-                    </p>
+                      {adj.notes && (
+                        <p className="mb-0.5 text-xs text-foreground/75">{adj.notes}</p>
+                      )}
+
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(adj.createdAt), "MMM d, yyyy · h:mm a")}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4 sm:flex-row sm:justify-end">
+          <Button variant="outline" className="rounded-full" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

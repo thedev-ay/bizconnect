@@ -507,6 +507,20 @@ export function POSTerminal({
                   onClick={() => addToCart(product)}
                   className="group rounded-[calc(var(--radius)+2px)] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(250,250,250,0.95)_100%)] p-3.5 text-left shadow-[0_24px_42px_-34px_rgba(15,23,42,0.38)] transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_28px_52px_-34px_rgba(13,148,136,0.5)] focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
+                  {/* Thumbnail with stock pill */}
+                  <div className="relative mb-3 flex items-start justify-between">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary/80">
+                      {product.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <span className={cn(
+                      "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                      product.quantity <= 5
+                        ? "border-amber-200 bg-amber-50 text-amber-700"
+                        : "border-border/70 bg-muted/70 text-muted-foreground"
+                    )}>
+                      {product.quantity}
+                    </span>
+                  </div>
                   {product.category && (
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/70">
                       {product.category}
@@ -518,17 +532,9 @@ export function POSTerminal({
                   {product.sku && (
                     <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{product.sku}</p>
                   )}
-                  <div className="mt-3 flex items-end justify-between gap-3">
+                  <div className="mt-3">
                     <span className="text-base font-bold tracking-[-0.03em] text-foreground">
                       {currencySymbol}{product.unitPrice.toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
-                    </span>
-                    <span className={cn(
-                      "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                      product.quantity <= 5
-                        ? "border-amber-200 bg-amber-50 text-amber-700"
-                        : "border-border/70 bg-muted/70 text-muted-foreground"
-                    )}>
-                      {product.quantity} left
                     </span>
                   </div>
                 </button>

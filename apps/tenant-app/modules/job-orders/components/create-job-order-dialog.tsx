@@ -130,7 +130,7 @@ export function CreateJobOrderDialog({
   const isOnline = useOnlineStatus();
   const customChargeNameRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const { register, handleSubmit, reset, control, watch, setValue, formState: { errors, isSubmitting } } =
+  const { register, handleSubmit, reset, control, watch, setValue, formState: { errors, isSubmitting, submitCount } } =
     useForm<CreateJobOrderInput>({
       resolver: zodResolver(createJobOrderSchema as any),
       defaultValues: {
@@ -335,7 +335,7 @@ export function CreateJobOrderDialog({
   }
 
   const grandTotal = items.reduce((s, i) => s + i.total, 0);
-
+  const hasCharges = items.length > 0;
   const incompleteWeights = items.filter((i) => i.pricingType === "per_kilo" && (!i.weight || i.weight <= 0));
   const invalidCustomCharges = items.filter((i) => i.isCustom && (!i.name.trim() || i.unitPrice <= 0));
 
@@ -350,6 +350,10 @@ export function CreateJobOrderDialog({
     }
     if (invalidCustomCharges.length > 0) {
       toast.error("Complete each custom charge with a name and price");
+      return;
+    }
+    if (!hasCharges) {
+      toast.error("Add at least one charge before creating this job order");
       return;
     }
     try {
@@ -749,7 +753,7 @@ export function CreateJobOrderDialog({
           </section>
           </div>
 
-          <DialogFooter className="mx-0 mb-0 rounded-b-[inherit] border-t border-border/60 bg-background/95 px-4 py-3 sm:px-5">
+          <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-background/95 px-4 py-3 sm:px-5">
             {!isOnline && (
               <p className="mr-auto flex items-center gap-1.5 text-xs text-amber-700">
                 <WifiOff className="h-3.5 w-3.5" /> Offline

@@ -14,10 +14,16 @@ interface ProductOption {
 interface NewPromotionButtonProps {
   tenantSlug: string;
   tenantId: string;
+  currencySymbol: string;
   products: ProductOption[];
 }
 
-export function NewPromotionButton({ tenantSlug, tenantId, products }: NewPromotionButtonProps) {
+export function NewPromotionButton({
+  tenantSlug,
+  tenantId,
+  currencySymbol,
+  products,
+}: NewPromotionButtonProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -29,6 +35,7 @@ export function NewPromotionButton({ tenantSlug, tenantId, products }: NewPromot
       <PromotionDialog
         tenantSlug={tenantSlug}
         tenantId={tenantId}
+        currencySymbol={currencySymbol}
         products={products}
         open={open}
         onOpenChange={setOpen}

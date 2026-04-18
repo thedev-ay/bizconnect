@@ -223,9 +223,10 @@ export function BranchManagement({ tenantSlug, branches, currentBranchId }: Bran
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md border border-border/70 bg-popover p-5 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Branch" : "Add Branch"}</DialogTitle>
+            <p className="eyebrow-label">Branches / {editing ? "Edit" : "New"}</p>
+            <DialogTitle>{editing ? "Edit branch" : "Add branch"}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -291,9 +292,9 @@ export function BranchManagement({ tenantSlug, branches, currentBranchId }: Bran
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={isPending}>
+          <DialogFooter className="border-t border-border/60 pt-4">
+            <Button variant="outline" className="rounded-full px-4" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button className="rounded-full px-4" onClick={handleSubmit} disabled={isPending}>
               {isPending ? "Saving…" : editing ? "Save Changes" : "Create Branch"}
             </Button>
           </DialogFooter>

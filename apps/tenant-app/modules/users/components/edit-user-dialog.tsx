@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Pencil } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DialogFormSection } from "@/components/ui/dialog-form-section";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -49,6 +49,13 @@ export function EditUserDialog({
   const [permissions, setPermissions] = useState<Record<string, boolean>>(user.permissions ?? {});
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    setName(user.name ?? "");
+    setRole(user.role);
+    setPermissions(user.permissions ?? {});
+  }, [open, user]);
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -65,30 +72,43 @@ export function EditUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] min-w-[min(92vw,56rem)] w-[min(95vw,64rem)] max-w-none flex-col overflow-hidden border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
-        <DialogHeader>
-          <p className="eyebrow-label text-primary">Users</p>
-          <DialogTitle>Edit</DialogTitle>
-          <DialogDescription>Workspace member</DialogDescription>
-        </DialogHeader>
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
-          <section className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white p-4">
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[94dvh] w-[min(95vw,64rem)] max-w-[64rem] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="eyebrow-label text-primary">Profile</p>
-              <h3 className="text-sm font-semibold text-slate-950">Member Details</h3>
+              <p className="eyebrow-label">Users / Edit</p>
+              <DialogTitle className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                Edit user
+              </DialogTitle>
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6">
+          <DialogFormSection num="01" title="Profile">
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2 md:col-span-2">
-                <Label>Name</Label>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label className="text-xs font-medium text-foreground/80">Name</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} />
               </div>
-              <div className="space-y-2 md:max-w-xs">
-                <Label>Role</Label>
+              <div className="space-y-1.5 md:max-w-xs">
+                <Label className="text-xs font-medium text-foreground/80">Role</Label>
                 <Select
                   value={role}
                   onValueChange={(v) => { if (v) setRole(v); }}
                 >
-                  <SelectTrigger className="bg-white">
+                  <SelectTrigger>
                     <SelectValue>
                       {{ owner: "Owner", admin: "Admin", member: "Member" }[role] ?? role}
                     </SelectValue>
@@ -98,28 +118,24 @@ export function EditUserDialog({
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="member">Member</SelectItem>
                   </SelectContent>
-                </Select>
+                  </Select>
               </div>
             </div>
-          </section>
+          </DialogFormSection>
 
           {role === "member" && (
-            <section className="space-y-3 rounded-[24px] border border-slate-200/80 bg-white p-4">
-              <div>
-                <p className="eyebrow-label text-primary">Access</p>
-                <h3 className="text-sm font-semibold text-slate-950">Module Permissions</h3>
-              </div>
+            <DialogFormSection num="02" title="Access">
               <PermissionEditor
                 value={permissions}
                 onChange={setPermissions}
                 activeModuleSlugs={activeModuleSlugs}
               />
-            </section>
+            </DialogFormSection>
           )}
         </div>
-        <DialogFooter className="-mx-5 -mb-5 mt-4 shrink-0 border-t border-slate-200/80 px-5 py-4">
-          <Button variant="outline" className="rounded-full" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button className="rounded-full" onClick={handleSave} disabled={saving}>
+        <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4">
+          <Button variant="outline" className="rounded-full px-4" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button className="rounded-full px-4" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>

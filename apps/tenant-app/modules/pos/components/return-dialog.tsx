@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, Check, WifiOff } from "lucide-react";
+import { AlertCircle, Check, WifiOff, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { createReturn } from "../actions";
@@ -80,7 +80,7 @@ export function ReturnDialog({
   open,
   onOpenChange,
 }: ReturnDialogProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [returnReason, setReturnReason] = useState("damaged");
   const [notes, setNotes] = useState("");
@@ -157,7 +157,7 @@ export function ReturnDialog({
       setSelectedItems(new Set());
       setNotes("");
       setReturnReason("damaged");
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["sales", tenantSlug] });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to create return"
@@ -169,15 +169,32 @@ export function ReturnDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Return Items</DialogTitle>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {sale.referenceNo}
-          </p>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[90dvh] max-w-lg flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">Sales / Return</p>
+              <DialogTitle className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                Return items
+              </DialogTitle>
+              <p className="mt-1 text-sm text-muted-foreground">{sale.referenceNo}</p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto px-6 py-5">
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-[calc(var(--radius)+2px)] border border-border/70 bg-white/80 px-4 py-3">
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-primary/70">Sale total</p>
@@ -197,7 +214,29 @@ export function ReturnDialog({
 
           {/* Items selection */}
           <div className="space-y-3">
-            <p className="text-sm font-medium text-foreground">Items</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-foreground">Items</p>
+              {(() => {
+                const returnable = returnableItems.filter((item) => item.remainingQuantity > 0);
+                if (returnable.length === 0) return null;
+                const allSelected = returnable.every((item) => selectedItems.has(item.id));
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (allSelected) {
+                        setSelectedItems(new Set());
+                      } else {
+                        setSelectedItems(new Set(returnable.map((item) => item.id)));
+                      }
+                    }}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    {allSelected ? "Deselect all" : "Select all"}
+                  </button>
+                );
+              })()}
+            </div>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {returnableItems.map((item) => {
                 const isSelected = selectedItems.has(item.id);
@@ -310,17 +349,19 @@ export function ReturnDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4 sm:justify-end">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={submitting}
+            className="rounded-full"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={submitting || !isOnline || selectedItems.size === 0 || returnableItems.every((item) => item.remainingQuantity <= 0)}
+            className="rounded-full"
           >
             {!isOnline ? <><WifiOff className="mr-2 h-4 w-4" />Offline</> : submitting ? "Creating..." : "Create Return"}
           </Button>

@@ -189,6 +189,8 @@ export async function updateJobOrderStatus(
   const data: Record<string, unknown> = { status };
   if (stageType === "completed") {
     data.completedAt = new Date();
+  } else if (stageType) {
+    data.completedAt = null;
   }
 
   await prisma.jobOrder.update({
@@ -350,6 +352,13 @@ export async function createInvoiceForJobOrder(
   }
 
   if (!jobOrder) throw new Error("Job order not found");
+  const stage = await prisma.workflowStage.findFirst({
+    where: { tenantId, slug: jobOrder.status },
+    select: { type: true },
+  });
+  if (stage?.type && stage.type !== "completed") {
+    throw new Error("Only completed job orders can be invoiced");
+  }
   if (!jobOrder.completedAt) throw new Error("Only completed job orders can be invoiced");
   if (jobOrder.invoice) throw new Error("This job order already has an invoice");
   if (jobOrder.items.length === 0) throw new Error("Add charges before invoicing this job order");

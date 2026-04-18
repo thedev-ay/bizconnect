@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tenant App
 
-## Getting Started
+The tenant app is the workspace-facing Next.js app in BizConnect.
 
-First, run the development server:
+## Run locally
+
+From the repo root:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000/<tenant-slug>/login` in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Capture screenshots
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The repo includes a reusable screenshot script that can capture:
 
-## Learn More
+- tenant app pages
+- auth pages
+- dialog states
 
-To learn more about Next.js, take a look at the following resources:
+Run it from the repo root:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run screenshots:tenant -- \
+  --tenant retail-company-1 \
+  --email retail1@example.com \
+  --password 'Summer1$'
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Screenshots are saved under:
 
-## Deploy on Vercel
+```bash
+artifacts/tenant-app-screenshots/<tenant-slug>
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Dialog screenshots are saved under:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+artifacts/tenant-app-screenshots/<tenant-slug>/dialogs
+```
+
+### Useful options
+
+```bash
+--pages-only
+--dialogs-only
+--base-url http://localhost:3000
+--output-dir artifacts/tenant-app-screenshots
+--chrome-path /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome
+--width 1440
+--height 1200
+```
+
+### Direct script usage
+
+```bash
+node scripts/capture-tenant-screenshots.mjs \
+  --tenant retail-company-1 \
+  --email retail1@example.com \
+  --password 'Summer1$'
+```
+
+## Notes
+
+- The script uses headless Google Chrome through the DevTools protocol.
+- Protected pages require valid tenant credentials.
+- `reset-password` screenshots use the page route directly; a real reset token is still needed if you want the active reset form state instead of the invalid-link state.

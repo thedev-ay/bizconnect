@@ -29,6 +29,7 @@ interface PromotionsListProps {
   promotions: Promotion[];
   tenantSlug: string;
   tenantId: string;
+  currencySymbol: string;
   products: ProductOption[];
 }
 
@@ -85,7 +86,13 @@ function promoSummary(p: Promotion): string {
   return "";
 }
 
-export function PromotionsList({ promotions, tenantSlug, tenantId, products }: PromotionsListProps) {
+export function PromotionsList({
+  promotions,
+  tenantSlug,
+  tenantId,
+  currencySymbol,
+  products,
+}: PromotionsListProps) {
   const router = useRouter();
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -279,6 +286,7 @@ export function PromotionsList({ promotions, tenantSlug, tenantId, products }: P
         <PromotionDialog
           tenantSlug={tenantSlug}
           tenantId={tenantId}
+          currencySymbol={currencySymbol}
           products={products}
           promotion={editingPromo}
           open={!!editingPromo}

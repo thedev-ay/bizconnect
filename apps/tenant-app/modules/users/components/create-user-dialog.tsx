@@ -5,17 +5,17 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { DialogFormSection } from "@/components/ui/dialog-form-section";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -66,51 +66,75 @@ export function CreateUserDialog({ tenantSlug, tenantId, activeModuleSlugs }: Cr
     }
   }
 
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      reset();
+      setRole("member");
+      setPermissions({});
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger render={<Button className="rounded-full px-4" />}>
         <Plus className="mr-2 h-4 w-4" />
         New
       </DialogTrigger>
-      <DialogContent className="flex max-h-[94dvh] w-[calc(100%-1rem)] max-w-[64rem] flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)] sm:w-[min(95vw,64rem)] sm:p-5">
-        <DialogHeader>
-          <p className="eyebrow-label text-primary">New User</p>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[94dvh] w-[min(95vw,64rem)] max-w-[64rem] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">Users / New</p>
+              <DialogTitle className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                Add user
+              </DialogTitle>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => handleOpenChange(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
-            <section className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white p-4">
-              <div>
-                <p className="eyebrow-label text-primary">Profile</p>
-                <h3 className="text-sm font-semibold text-slate-950">Member Details</h3>
-              </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6">
+            <DialogFormSection num="01" title="Profile">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="name">Name</Label>
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label htmlFor="name" className="text-xs font-medium text-foreground/80">Name</Label>
                   <Input id="name" placeholder="John Doe" {...register("name")} />
-                  {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+                  {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-xs font-medium text-foreground/80">Email</Label>
                   <Input id="email" type="email" placeholder="john@example.com" {...register("email")} />
-                  {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+                  {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Initial Password</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-xs font-medium text-foreground/80">Initial Password</Label>
                   <Input id="password" type="password" {...register("password")} />
                   {errors.password && (
-                    <p className="text-sm text-destructive">{errors.password.message}</p>
+                    <p className="text-xs text-destructive">{errors.password.message}</p>
                   )}
                 </div>
-                <div className="space-y-2 md:max-w-xs">
-                  <Label>Role</Label>
+                <div className="space-y-1.5 md:max-w-xs">
+                  <Label className="text-xs font-medium text-foreground/80">Role</Label>
                   <Select
-                    defaultValue="member"
+                    value={role}
                     onValueChange={(v) => {
                       if (v) setRole(v);
                       setValue("role", v as any);
                     }}
                   >
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger>
                       <SelectValue>
                         {{ owner: "Owner", admin: "Admin", member: "Member" }[role] ?? role}
                       </SelectValue>
@@ -123,28 +147,24 @@ export function CreateUserDialog({ tenantSlug, tenantId, activeModuleSlugs }: Cr
                   </Select>
                 </div>
               </div>
-            </section>
+            </DialogFormSection>
 
             {role === "member" && (
-              <section className="space-y-3 rounded-[24px] border border-slate-200/80 bg-white p-4">
-                <div>
-                  <p className="eyebrow-label text-primary">Access</p>
-                  <h3 className="text-sm font-semibold text-slate-950">Module Permissions</h3>
-                </div>
+              <DialogFormSection num="02" title="Access">
                 <PermissionEditor
                   value={permissions}
                   onChange={setPermissions}
                   activeModuleSlugs={activeModuleSlugs}
                 />
-              </section>
+              </DialogFormSection>
             )}
           </div>
 
-          <DialogFooter className="-mx-5 -mb-5 mt-4 shrink-0 border-t border-slate-200/80 px-5 py-4">
-            <Button type="button" variant="outline" className="rounded-full" onClick={() => setOpen(false)}>
+          <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4">
+            <Button type="button" variant="outline" className="rounded-full px-4" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="rounded-full" disabled={isSubmitting}>
+            <Button type="submit" className="rounded-full px-4" disabled={isSubmitting}>
               {isSubmitting ? "Creating..." : "Save"}
             </Button>
           </DialogFooter>

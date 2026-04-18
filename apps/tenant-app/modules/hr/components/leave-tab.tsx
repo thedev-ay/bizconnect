@@ -166,20 +166,19 @@ export function LeaveTab({ employees, requests, tenantSlug, tenantId }: LeaveTab
       </div>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-sm border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)]">
+        <DialogContent className="max-w-sm border border-border/70 bg-popover p-5 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]">
           <DialogHeader>
-            <p className="eyebrow-label text-primary">Leave</p>
-            <DialogTitle>Update</DialogTitle>
-            <DialogDescription>End date</DialogDescription>
+            <p className="eyebrow-label">Leave / Update</p>
+            <DialogTitle>Update end date</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">End Date</Label>
               <Input type="date" className="h-8 text-xs" value={editingEndDate} min={editingStartDate} onChange={(e) => setEditingEndDate(e.target.value)} />
             </div>
-            <DialogFooter>
-              <Button variant="outline" className="rounded-full" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-              <Button className="rounded-full" onClick={handleUpdateEndDate} disabled={loading !== null}>{loading !== null ? "Saving..." : "Save"}</Button>
+            <DialogFooter className="border-t border-border/60 pt-4">
+              <Button variant="outline" className="rounded-full px-4" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+              <Button className="rounded-full px-4" onClick={handleUpdateEndDate} disabled={loading !== null}>{loading !== null ? "Saving..." : "Save"}</Button>
             </DialogFooter>
           </div>
         </DialogContent>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Settings } from "lucide-react";
+import { Settings, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -56,12 +56,22 @@ export function LoyaltySettingsDialog({ tenantSlug, tenantId, settings }: Loyalt
         <Settings className="h-3.5 w-3.5" />
         Settings
       </DialogTrigger>
-      <DialogContent className="max-w-sm border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)]">
-        <DialogHeader>
-          <p className="eyebrow-label text-primary">Loyalty</p>
-          <DialogTitle>Loyalty Settings</DialogTitle>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[90dvh] w-[min(420px,calc(100vw-2rem))] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-5 py-4 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">Loyalty / Settings</p>
+              <DialogTitle className="mt-1 text-lg font-semibold tracking-tight text-foreground">Loyalty settings</DialogTitle>
+            </div>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" onClick={() => setOpen(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
-        <div className="space-y-4 py-1">
+        <div className="space-y-4 px-5 py-4">
           <div className="space-y-2">
             <Label>Stamps needed for reward</Label>
             <Input
@@ -82,9 +92,9 @@ export function LoyaltySettingsDialog({ tenantSlug, tenantId, settings }: Loyalt
             />
           </div>
         </div>
-        <DialogFooter className="border-t border-slate-200/80 pt-4">
-          <Button variant="outline" className="rounded-full" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button className="rounded-full" onClick={handleSave} disabled={saving}>
+        <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-5 py-4">
+          <Button variant="outline" className="rounded-full px-4" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button className="rounded-full px-4" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>

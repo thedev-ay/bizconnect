@@ -234,12 +234,26 @@ export function InventoryList({ items, tenantSlug, tenantId, currencySymbol, cur
                     ) : <span className="text-muted-foreground/50">—</span>}
                   </TableCell>
                   <TableCell className="text-right">
-                    <span className={cn(
-                      "text-sm font-semibold tabular-nums",
-                      isLow ? "text-amber-700" : "text-foreground"
-                    )}>
-                      {item.quantity}
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={cn(
+                        "text-sm font-semibold tabular-nums",
+                        isLow ? "text-amber-700" : "text-foreground"
+                      )}>
+                        {item.quantity}
+                        <span className="font-normal text-muted-foreground/60"> / {item.reorderAt}</span>
+                      </span>
+                      <div className="h-1 w-16 overflow-hidden rounded-full bg-border/60">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            isLow ? "bg-amber-500" : "bg-primary/60"
+                          )}
+                          style={{
+                            width: `${Math.min(100, Math.round((item.quantity / Math.max(1, item.reorderAt * 2)) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium text-foreground">
                     {currencySymbol}{Number(item.unitPrice).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}

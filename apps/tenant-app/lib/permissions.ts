@@ -6,6 +6,8 @@ export const PERMISSIONS = {
       process_sale: "Process sales",
       apply_discount: "Apply discounts",
       void: "Void transactions",
+      process_return: "Initiate returns",
+      approve_return: "Approve & process refunds",
     },
   },
   inventory: {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Printer, X } from "lucide-react";
 import { Receipt } from "./receipt";
@@ -90,40 +90,59 @@ export function ReceiptPrintDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {type === "sale" ? "Sales Receipt" : "Job Order Claim Receipt"}
-          </DialogTitle>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[90dvh] max-w-md flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">Receipt / Print</p>
+              <DialogTitle className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                {type === "sale" ? "Sales receipt" : "Job order claim receipt"}
+              </DialogTitle>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
-        <div ref={receiptRef} className="overflow-hidden rounded border bg-white">
-          <Receipt
-            type={type}
-            referenceNo={referenceNo}
-            createdAt={createdAt}
-            items={items}
-            subtotal={subtotal}
-            discount={discount}
-            total={total}
-            amountPaid={amountPaid}
-            change={change}
-            paymentMethod={paymentMethod}
-            customerName={customerName}
-            contactNo={contactNo}
-            tenantName={tenantName}
-            currencySymbol={currencySymbol}
-            assignedTo={assignedTo}
-            notes={notes}
-          />
+        <div className="overflow-y-auto px-6 py-5">
+          <div ref={receiptRef} className="overflow-hidden rounded-[24px] border border-border/60 bg-white">
+            <Receipt
+              type={type}
+              referenceNo={referenceNo}
+              createdAt={createdAt}
+              items={items}
+              subtotal={subtotal}
+              discount={discount}
+              total={total}
+              amountPaid={amountPaid}
+              change={change}
+              paymentMethod={paymentMethod}
+              customerName={customerName}
+              contactNo={contactNo}
+              tenantName={tenantName}
+              currencySymbol={currencySymbol}
+              assignedTo={assignedTo}
+              notes={notes}
+            />
+          </div>
         </div>
 
-        <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="gap-2">
+        <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="gap-2 rounded-full">
             <X className="h-4 w-4" />
             Close
           </Button>
-          <Button onClick={handlePrint} className="gap-2">
+          <Button onClick={handlePrint} className="gap-2 rounded-full">
             <Printer className="h-4 w-4" />
             Print Receipt
           </Button>

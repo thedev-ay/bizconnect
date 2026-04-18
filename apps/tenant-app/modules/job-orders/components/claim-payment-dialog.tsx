@@ -7,6 +7,7 @@ import { useOnlineStatus } from "@/lib/use-online-status";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -14,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { Banknote, CreditCard, Smartphone } from "lucide-react";
+import { Banknote, CreditCard, Smartphone, X } from "lucide-react";
 import type { JobOrder } from "../types";
 import { claimJobOrder } from "../actions";
 import { ReceiptPrintDialog } from "@/components/receipt";
@@ -109,12 +110,23 @@ export function ClaimPaymentDialog({
   return (
   <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="font-mono">{jobOrder.jobNo} — Payment</DialogTitle>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[90dvh] w-[min(440px,calc(100vw-2rem))] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-5 py-4 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">Job Orders / Payment</p>
+              <DialogTitle className="mt-1 text-lg font-semibold tracking-tight text-foreground font-mono">{jobOrder.jobNo}</DialogTitle>
+            </div>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" onClick={() => handleOpenChange(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto px-5 py-4">
           {/* Order summary */}
           <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-4 py-3 space-y-1.5">
             <p className="text-sm font-semibold text-zinc-800">{jobOrder.customerName}</p>
@@ -202,18 +214,18 @@ export function ClaimPaymentDialog({
           )}
         </div>
 
-        <div className="flex gap-2 pt-2">
-          <Button variant="outline" className="flex-1" onClick={() => handleOpenChange(false)} disabled={loading}>
+        <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-5 py-4">
+          <Button variant="outline" className="flex-1 rounded-full px-4" onClick={() => handleOpenChange(false)} disabled={loading}>
             Cancel
           </Button>
           <Button
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+            className="flex-1 rounded-full bg-emerald-600 hover:bg-emerald-700"
             onClick={handleConfirm}
             disabled={loading || !canConfirm || !isOnline}
           >
             {loading ? "Processing..." : "Confirm Payment"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
 

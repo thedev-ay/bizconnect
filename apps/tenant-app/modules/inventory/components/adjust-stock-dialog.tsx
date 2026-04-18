@@ -3,13 +3,12 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { WifiOff } from "lucide-react";
+import { WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -67,13 +66,22 @@ export function AdjustStockDialog({ item, tenantSlug, tenantId, open, onOpenChan
 
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setQty(""); }}>
-      <DialogContent className="max-w-md border border-border/70 bg-popover/98 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)]">
-        <DialogHeader>
-          <p className="eyebrow-label">Stock</p>
-          <DialogTitle>Adjust</DialogTitle>
-          <DialogDescription>{item.name}</DialogDescription>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[90dvh] w-[min(460px,calc(100vw-2rem))] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-5 py-4 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">Stock / Adjust</p>
+              <DialogTitle className="mt-1 text-lg font-semibold tracking-tight text-foreground">Adjust stock</DialogTitle>
+            </div>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" onClick={() => onOpenChange(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-4 px-5 py-4">
           <div className="rounded-2xl border border-border/60 bg-muted/35 px-4 py-3">
             <p className="text-sm font-medium text-foreground">{item.name}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">On hand {item.quantity}</p>
@@ -131,14 +139,14 @@ export function AdjustStockDialog({ item, tenantSlug, tenantId, open, onOpenChan
             </div>
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-5 py-4">
           {!isOnline && (
             <p className="mr-auto flex items-center gap-1.5 text-xs text-amber-700">
               <WifiOff className="h-3.5 w-3.5" /> Offline
             </p>
           )}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving || !qty || Number(qty) <= 0 || !isOnline}>
+          <Button variant="outline" className="rounded-full px-4" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button className="rounded-full px-4" onClick={handleSave} disabled={saving || !qty || Number(qty) <= 0 || !isOnline}>
             {saving ? "Saving..." : "Apply"}
           </Button>
         </DialogFooter>

@@ -289,115 +289,106 @@ export function InvoiceList({
         </Table>
       </div>
       <Sheet open={Boolean(selectedInvoice)} onOpenChange={(open) => { if (!open) closeInvoice(); }}>
-        <SheetContent side="right" className="w-full sm:max-w-xl">
+        <SheetContent side="right" className="w-full border-l-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(236,253,250,0.92)_100%)] sm:max-w-xl">
           {selectedInvoice && (
             <>
-            <SheetHeader className="border-b border-border/60 pb-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <SheetTitle className="font-mono text-lg">{selectedInvoice.invoiceNo}</SheetTitle>
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
-                      STATUS_PILL[selectedInvoice.status] ?? "bg-zinc-100 text-zinc-500 border-zinc-200"
-                    )}
-                  >
-                    {selectedInvoice.status}
-                  </span>
+            <SheetHeader className="border-b border-border/70 pb-5 pr-10">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Billing / Invoice</p>
+                  <SheetTitle className="font-mono text-base">{selectedInvoice.invoiceNo}</SheetTitle>
                 </div>
-                <SheetDescription>
-                  Review and settle.
-                </SheetDescription>
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
+                    STATUS_PILL[selectedInvoice.status] ?? "bg-zinc-100 text-zinc-500 border-zinc-200"
+                  )}
+                >
+                  {selectedInvoice.status}
+                </span>
               </div>
+              <SheetDescription className="mt-1 text-xs text-muted-foreground">
+                Issued {format(new Date(selectedInvoice.createdAt), "MMM d, yyyy")} · Due {format(new Date(selectedInvoice.dueDate), "MMM d, yyyy")}
+              </SheetDescription>
             </SheetHeader>
 
-            <div className="flex-1 space-y-6 overflow-y-auto p-4">
-              <section className="grid gap-4 rounded-[24px] border border-border/70 bg-muted/20 p-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Customer</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">{selectedInvoice.customerName}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{selectedInvoice.customerEmail ?? "No email on file"}</p>
-                  {selectedInvoice.jobOrderId && (
-                    <p className="mt-2 text-xs font-medium text-emerald-700">Generated from a completed job order</p>
+            <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
+              <section className="flex gap-6">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Customer</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-foreground">{selectedInvoice.customerName}</p>
+                  {selectedInvoice.customerEmail && (
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{selectedInvoice.customerEmail}</p>
                   )}
                 </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Issued</span>
-                    <span className="font-medium text-foreground">{format(new Date(selectedInvoice.createdAt), "MMM d, yyyy")}</span>
+                <div className="shrink-0 space-y-3 text-right">
+                  <div>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Issued</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{format(new Date(selectedInvoice.createdAt), "MMM d, yyyy")}</p>
                   </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Due</span>
-                    <span className="font-medium text-foreground">{format(new Date(selectedInvoice.dueDate), "MMM d, yyyy")}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Paid</span>
-                    <span className="font-medium text-foreground">
-                      {selectedInvoice.paidAt ? format(new Date(selectedInvoice.paidAt), "MMM d, yyyy") : "Not yet"}
-                    </span>
+                  <div>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Due</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{format(new Date(selectedInvoice.dueDate), "MMM d, yyyy")}</p>
                   </div>
                 </div>
               </section>
 
               <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-foreground">Line Items</h3>
-                  <span className="text-xs text-muted-foreground">
-                    {selectedInvoice.items.length} item{selectedInvoice.items.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-                <div className="overflow-hidden rounded-[24px] border border-border/70">
+                <h3 className="text-sm font-semibold text-foreground">Line Items</h3>
+                <div className="overflow-hidden rounded-[calc(var(--radius)+4px)] border border-border/70 bg-white/80">
                   <div className="divide-y divide-border/60">
                     {selectedInvoice.items.map((item) => (
-                      <div key={item.id} className="flex items-start justify-between gap-3 px-4 py-3">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{item.description}</p>
+                      <div key={item.id} className="flex items-center justify-between px-4 py-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{item.description}</p>
                           <p className="text-xs text-muted-foreground">
                             {item.quantity} × {currencySymbol}{Number(item.unitPrice).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
                           </p>
                         </div>
-                        <p className="text-sm font-semibold text-foreground">
+                        <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
                           {currencySymbol}{Number(item.total).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
-                        </p>
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
               </section>
 
-              <section className="space-y-2 rounded-[24px] border border-border/70 p-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium text-foreground">
-                    {currencySymbol}{Number(selectedInvoice.subtotal).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
-                  </span>
+              <section className="space-y-1.5 rounded-[calc(var(--radius)+4px)] border border-border/70 bg-white/80 p-4 text-sm">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span className="tabular-nums">{currencySymbol}{Number(selectedInvoice.subtotal).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Tax</span>
-                  <span className="font-medium text-foreground">
-                    {currencySymbol}{Number(selectedInvoice.tax).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
-                  </span>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Tax</span>
+                  <span className="tabular-nums">{currencySymbol}{Number(selectedInvoice.tax).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}</span>
                 </div>
-                <div className="flex items-center justify-between border-t border-border/60 pt-2 text-sm">
-                  <span className="font-semibold text-foreground">Total</span>
-                  <span className="text-base font-bold text-foreground">
-                    {currencySymbol}{Number(selectedInvoice.total).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
-                  </span>
+                <div className="flex justify-between border-t border-border/60 pt-2 text-base font-semibold text-foreground">
+                  <span>Total</span>
+                  <span className="tabular-nums">{currencySymbol}{Number(selectedInvoice.total).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}</span>
                 </div>
-                {selectedInvoice.notes && (
-                  <div className="border-t border-border/60 pt-3">
-                    <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Notes</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{selectedInvoice.notes}</p>
+                {selectedInvoice.paidAt && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Paid</span>
+                    <span className="tabular-nums">{format(new Date(selectedInvoice.paidAt), "MMM d, yyyy")}</span>
                   </div>
                 )}
               </section>
+
+              {selectedInvoice.notes && (
+                <section className="rounded-[calc(var(--radius)+4px)] border border-border/70 bg-white/80 p-4">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-primary/70">Notes</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{selectedInvoice.notes}</p>
+                </section>
+              )}
             </div>
 
-            <SheetFooter className="border-t border-border/60">
+            <SheetFooter className="border-t border-border/70">
               <div className="flex w-full flex-wrap justify-end gap-2">
                 {selectedInvoice.status === "draft" && (
                   <Button
                     variant="outline"
+                    size="sm"
                     className="rounded-full"
                     disabled={loading === selectedInvoice.id}
                     onClick={() => handleAction(selectedInvoice.id, sendInvoice, "Invoice marked as sent")}
@@ -407,6 +398,7 @@ export function InvoiceList({
                 )}
                 {selectedInvoice.status !== "paid" && selectedInvoice.status !== "void" && (
                   <Button
+                    size="sm"
                     className="rounded-full"
                     disabled={loading === selectedInvoice.id}
                     onClick={() => handleAction(selectedInvoice.id, markInvoicePaid, "Invoice marked as paid")}
@@ -417,6 +409,7 @@ export function InvoiceList({
                 {selectedInvoice.status !== "void" && (
                   <Button
                     variant="ghost"
+                    size="sm"
                     className="rounded-full text-destructive hover:text-destructive"
                     disabled={loading === selectedInvoice.id}
                     onClick={() => handleAction(selectedInvoice.id, voidInvoice, "Invoice voided")}

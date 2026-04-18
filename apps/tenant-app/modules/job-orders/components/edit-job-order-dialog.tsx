@@ -158,14 +158,6 @@ export function EditJobOrderDialog({
   }, [assets]);
 
   useEffect(() => {
-    if (!selectedCustomer) return;
-    const nextValue = selectedCustomer ? formatCustomerOptionLabel(selectedCustomer) : "";
-    if (customerSearch !== nextValue) {
-      setCustomerSearch(nextValue);
-    }
-  }, [selectedCustomer, customerSearch]);
-
-  useEffect(() => {
     if (!pendingCustomFocusId) return;
     const input = customChargeNameRefs.current[pendingCustomFocusId];
     if (!input) return;
@@ -279,6 +271,7 @@ export function EditJobOrderDialog({
   }
 
   const grandTotal = items.reduce((s, i) => s + i.total, 0);
+  const hasCharges = items.length > 0;
   const incompleteWeights = items.filter((i) => i.pricingType === "per_kilo" && (!i.weight || i.weight <= 0));
   const invalidCustomCharges = items.filter((i) => i.isCustom && (!i.name.trim() || i.unitPrice <= 0));
   const selectedCustomerId = watch("customerId");
@@ -306,6 +299,14 @@ export function EditJobOrderDialog({
     searchText: service.category ?? "",
   }));
 
+  useEffect(() => {
+    if (!selectedCustomer) return;
+    const nextValue = formatCustomerOptionLabel(selectedCustomer);
+    if (customerSearch !== nextValue) {
+      setCustomerSearch(nextValue);
+    }
+  }, [selectedCustomer, customerSearch]);
+
   async function onSubmit(data: CreateJobOrderInput) {
     if (!isOnline) {
       toast.error("You're offline. Connect to update job orders.");
@@ -317,6 +318,10 @@ export function EditJobOrderDialog({
     }
     if (invalidCustomCharges.length > 0) {
       toast.error("Complete each custom charge with a name and price");
+      return;
+    }
+    if (!hasCharges) {
+      toast.error("Add at least one charge before saving this job order");
       return;
     }
     try {
@@ -625,6 +630,9 @@ export function EditJobOrderDialog({
                 </div>
               </div>
             )}
+            {!hasCharges && (
+              <p className="text-sm text-amber-700">Add at least one charge before saving this job order.</p>
+            )}
           </section>
 
           <Separator />
@@ -690,7 +698,7 @@ export function EditJobOrderDialog({
           </section>
           </div>
 
-          <DialogFooter className="mx-0 mb-0 rounded-b-[inherit] border-t border-border/60 bg-background/95 px-4 py-3 sm:px-5">
+          <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-background/95 px-4 py-3 sm:px-5">
             {!isOnline && (
               <p className="mr-auto flex items-center gap-1.5 text-xs text-amber-600">
                 <WifiOff className="h-3.5 w-3.5" /> Offline
@@ -699,7 +707,7 @@ export function EditJobOrderDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !isOnline}>
+            <Button type="submit" disabled={isSubmitting || !isOnline || !hasCharges}>
               {isSubmitting ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>

@@ -21,15 +21,25 @@ async function getServiceShopBillingStats(tenantId: string, modules: Set<string>
   }
 
   try {
+    const completedStages = await prisma.workflowStage.findMany({
+      where: { tenantId, type: "completed" },
+      select: { slug: true },
+    });
+    const completedStageSlugs = completedStages.map((stage) => stage.slug);
+
     const [readyToInvoice, recentCompletedJobs] = await Promise.all([
       modules.has("billing")
-        ? prisma.jobOrder.findMany({
-            where: { tenantId, completedAt: { not: null }, invoice: null },
+        ? completedStageSlugs.length === 0
+          ? Promise.resolve([])
+          : prisma.jobOrder.findMany({
+            where: { tenantId, status: { in: completedStageSlugs }, completedAt: { not: null }, invoice: null },
             include: { items: { select: { total: true } } },
           })
         : Promise.resolve(null),
-      prisma.jobOrder.findMany({
-        where: { tenantId, completedAt: { not: null } },
+      completedStageSlugs.length === 0
+        ? Promise.resolve([])
+        : prisma.jobOrder.findMany({
+        where: { tenantId, status: { in: completedStageSlugs }, completedAt: { not: null } },
         select: {
           id: true,
           jobNo: true,

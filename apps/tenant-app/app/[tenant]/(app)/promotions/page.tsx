@@ -57,6 +57,7 @@ export default async function PromotionsPage({ params }: PromotionsPageProps) {
           <NewPromotionButton
             tenantSlug={tenantSlug}
             tenantId={tenant.id}
+            currencySymbol={tenant.currencySymbol}
             products={productOptions}
           />
         }
@@ -66,6 +67,7 @@ export default async function PromotionsPage({ params }: PromotionsPageProps) {
           promotions={typedPromotions}
           tenantSlug={tenantSlug}
           tenantId={tenant.id}
+          currencySymbol={tenant.currencySymbol}
           products={productOptions}
         />
       </ContentPanel>
