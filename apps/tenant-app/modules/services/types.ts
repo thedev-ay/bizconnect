@@ -10,10 +10,13 @@ export interface Service {
   id: string;
   name: string;
   description: string | null;
+  duration: number | null;
   pricingType: PricingType;
   price: string; // Decimal serialized as string
   category: string | null;
   isActive: boolean;
+  availableForAppointments: boolean;
+  availableForJobOrders: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

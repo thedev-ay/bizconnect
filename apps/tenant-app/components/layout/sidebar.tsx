@@ -270,11 +270,9 @@ export function Sidebar({ tenant, modules, branches, currentBranchId }: SidebarP
     hasPos && { label: "Sales", href: `/${tenant.slug}/reports?section=sales`, isActive: pathname === `/${tenant.slug}/reports` && reportsSection === "sales" },
     (hasPos || hasBilling) && { label: "Payments", href: `/${tenant.slug}/reports?section=payments`, isActive: pathname === `/${tenant.slug}/reports` && reportsSection === "payments" },
   ].filter(Boolean) as { label: string; href: string; isActive: boolean }[];
-  const hasAppointments = modules.some((m) => m.slug === "appointments");
   const settingsChildren = [
     { label: "General", href: `/${tenant.slug}/settings?tab=general`, isActive: pathname === `/${tenant.slug}/settings` && settingsTab === "general" },
     { label: "Business Hours", href: `/${tenant.slug}/settings?tab=hours`, isActive: pathname === `/${tenant.slug}/settings` && settingsTab === "hours" },
-    hasAppointments && { label: "Services", href: `/${tenant.slug}/settings?tab=services`, isActive: pathname === `/${tenant.slug}/settings` && settingsTab === "services" },
   ].filter(Boolean) as { label: string; href: string; isActive: boolean }[];
 
   function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {

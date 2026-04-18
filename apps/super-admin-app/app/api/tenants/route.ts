@@ -32,30 +32,42 @@ const SERVICE_SHOP_STARTER_SERVICES = [
   {
     name: "Diagnostic Fee",
     description: "Initial assessment and troubleshooting",
+    duration: 60,
     pricingType: "flat",
     price: 35,
     category: "Inspection",
+    availableForAppointments: false,
+    availableForJobOrders: true,
   },
   {
     name: "Repair Labor",
     description: "Standard bench labor",
+    duration: 60,
     pricingType: "per_piece",
     price: 75,
     category: "Labor",
+    availableForAppointments: false,
+    availableForJobOrders: true,
   },
   {
     name: "Installation Labor",
     description: "Install and setup service",
+    duration: 60,
     pricingType: "per_piece",
     price: 95,
     category: "Labor",
+    availableForAppointments: false,
+    availableForJobOrders: true,
   },
   {
     name: "Cleaning Service",
     description: "General cleaning and tune-up",
+    duration: 60,
     pricingType: "flat",
     price: 45,
     category: "Maintenance",
+    availableForAppointments: false,
+    availableForJobOrders: true,
   },
 ] as const;
 const RETAIL_STARTER_CATEGORIES = [
@@ -233,7 +245,7 @@ export async function POST(req: Request) {
         })),
       });
 
-      await tx.serviceCatalog.createMany({
+      await (tx as any).service.createMany({
         data: SERVICE_SHOP_STARTER_SERVICES.map((service) => ({
           tenantId: newTenant.id,
           ...service,

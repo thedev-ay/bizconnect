@@ -15,17 +15,20 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
   const { tenant: tenantSlug } = await params;
 
   const session = await authorize(tenantSlug);
-  if (!session.user.modules.includes("job-orders")) redirect(`/${tenantSlug}/dashboard?error=module_disabled`);
+  if (!session.user.modules.includes("services")) redirect(`/${tenantSlug}/dashboard?error=module_disabled`);
+  const hasAppointments = session.user.modules.includes("appointments");
+  const hasJobOrders = session.user.modules.includes("job-orders") || session.user.modules.includes("pos");
 
   const tenant = await getTenant(tenantSlug);
 
-  const raw = await (prisma as any).serviceCatalog.findMany({
+  const raw = await (prisma as any).service.findMany({
     where: { tenantId: tenant.id },
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
 
   const services: Service[] = raw.map((s: any) => ({
     ...s,
+    duration: s.duration,
     price: s.price.toString(),
     pricingType: s.pricingType as PricingType,
   }));
@@ -38,12 +41,15 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
         eyebrow="Catalog"
         title="Services"
         description={`${services.length} total · ${activeCount} active`}
-        className="py-4 sm:py-5"
+        className="py-3 sm:py-4"
         action={
           <NewServiceButton
             tenantSlug={tenantSlug}
             tenantId={tenant.id}
             currencySymbol={tenant.currencySymbol}
+            showDuration={hasAppointments}
+            showAppointmentsAvailability={hasAppointments}
+            showJobOrdersAvailability={hasJobOrders}
           />
         }
       />
@@ -55,6 +61,9 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
           tenantId={tenant.id}
           currencySymbol={tenant.currencySymbol}
           currencyLocale={tenant.currencyLocale}
+          showDuration={hasAppointments}
+          showAppointmentsAvailability={hasAppointments}
+          showJobOrdersAvailability={hasJobOrders}
         />
       </ContentPanel>
     </PageShell>

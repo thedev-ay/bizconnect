@@ -50,9 +50,20 @@ export default async function HRPage({ params, searchParams }: HRPageProps) {
       orderBy: { startAt: "asc" },
     }),
     prisma.service.findMany({
-      where: { tenantId: tenant.id },
+      where: { tenantId: tenant.id, availableForAppointments: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, description: true, duration: true, price: true, isActive: true, createdAt: true, tenantId: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        duration: true,
+        price: true,
+        isActive: true,
+        availableForAppointments: true,
+        availableForJobOrders: true,
+        createdAt: true,
+        tenantId: true,
+      },
     }),
   ]);
 

@@ -331,7 +331,6 @@ export function CreateAppointmentDialog({
                         id="new-service-duration"
                         type="number"
                         min={1}
-                        step={1}
                         value={newServiceDuration}
                         onChange={(e) => setNewServiceDuration(e.target.value)}
                       />

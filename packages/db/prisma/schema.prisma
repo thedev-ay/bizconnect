@@ -33,7 +33,6 @@ model Tenant {
   users           User[]
   tenantModules   TenantModule[]
   businessHours   BusinessHours[]
-  serviceCatalog  ServiceCatalog[]
   loyaltySetting  LoyaltySetting?
   loyaltyCards    LoyaltyCard[]
   workflowStages  WorkflowStage[]
@@ -412,29 +411,6 @@ model PromotionItem {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SERVICES MODULE
-// ─────────────────────────────────────────────────────────────────────────────
-
-model ServiceCatalog {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  name        String
-  description String?
-  pricingType String   @default("per_piece") @map("pricing_type") // per_piece | per_kilo | flat
-  price       Decimal  @db.Decimal(10, 2)
-  category    String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId])
-  @@index([tenantId, isActive])
-  @@map("service_catalog")
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // APPOINTMENTS MODULE
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -760,15 +736,21 @@ model Service {
   tenantId    String   @map("tenant_id")
   name        String
   description String?
-  duration    Int
+  duration    Int?
+  pricingType String   @default("flat") @map("pricing_type") // per_piece | per_kilo | flat
   price       Decimal  @db.Decimal(10, 2)
+  category    String?
   isActive    Boolean  @default(true) @map("is_active")
+  availableForAppointments Boolean @default(true) @map("available_for_appointments")
+  availableForJobOrders    Boolean @default(true) @map("available_for_job_orders")
   createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   staff        StaffService[]
   appointments Appointment[]
 
   @@index([tenantId])
+  @@index([tenantId, isActive])
   @@map("services")
 }
 

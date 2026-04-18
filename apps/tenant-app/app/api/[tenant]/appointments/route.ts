@@ -27,7 +27,12 @@ export async function GET(
       orderBy: { startAt: "asc" },
     }),
     prisma.service.findMany({
-      where: { tenantId, isActive: true },
+      where: {
+        tenantId,
+        isActive: true,
+        availableForAppointments: true,
+        duration: { not: null },
+      },
       orderBy: { name: "asc" },
     }),
     prisma.employee.findMany({
@@ -73,7 +78,7 @@ export async function GET(
     })),
     services: services.map((s) => ({
       id: s.id, name: s.name,
-      duration: s.duration,
+      duration: s.duration!,
       price: s.price.toString(),
     })),
     staff: staff.map((e) => ({

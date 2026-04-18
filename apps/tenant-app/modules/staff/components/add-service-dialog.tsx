@@ -64,7 +64,7 @@ export function AddServiceDialog({ tenantSlug, tenantId, currencySymbol }: AddSe
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Duration (minutes) *</Label>
-                <Input type="number" min={5} step={5} {...register("duration")} />
+                <Input type="number" min={1} {...register("duration")} />
                 {errors.duration && <p className="text-sm text-destructive">{errors.duration.message}</p>}
               </div>
               <div className="space-y-2">

@@ -5,30 +5,42 @@ const STARTER_SERVICES = [
   {
     name: "Diagnostic Fee",
     description: "Initial assessment and troubleshooting",
+    duration: 60,
     pricingType: "flat",
     price: 35,
     category: "Inspection",
+    availableForAppointments: false,
+    availableForJobOrders: true,
   },
   {
     name: "Repair Labor",
     description: "Standard bench labor",
+    duration: 60,
     pricingType: "per_piece",
     price: 75,
     category: "Labor",
+    availableForAppointments: false,
+    availableForJobOrders: true,
   },
   {
     name: "Installation Labor",
     description: "Install and setup service",
+    duration: 60,
     pricingType: "per_piece",
     price: 95,
     category: "Labor",
+    availableForAppointments: false,
+    availableForJobOrders: true,
   },
   {
     name: "Cleaning Service",
     description: "General cleaning and tune-up",
+    duration: 60,
     pricingType: "flat",
     price: 45,
     category: "Maintenance",
+    availableForAppointments: false,
+    availableForJobOrders: true,
   },
 ] as const;
 
@@ -63,11 +75,6 @@ async function main() {
               slug: true,
             },
           },
-        },
-      },
-      serviceCatalog: {
-        select: {
-          name: true,
         },
       },
     },
@@ -108,10 +115,14 @@ async function main() {
 
     updatedCount += 1;
 
-    const existingNames = new Set(tenant.serviceCatalog.map((service) => service.name));
+    const existingServices = await prisma.service.findMany({
+      where: { tenantId: tenant.id },
+      select: { name: true },
+    });
+    const existingNames = new Set(existingServices.map((service) => service.name));
     const missingStarterServices = STARTER_SERVICES.filter((service) => !existingNames.has(service.name));
     if (missingStarterServices.length > 0) {
-      await prisma.serviceCatalog.createMany({
+      await (prisma as any).service.createMany({
         data: missingStarterServices.map((service) => ({
           tenantId: tenant.id,
           ...service,

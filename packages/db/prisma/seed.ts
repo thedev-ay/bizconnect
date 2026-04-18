@@ -149,14 +149,14 @@ async function main() {
 
   // ── Services ───────────────────────────────────────────────────────────────
   const services = [
-    { id: "svc-001", tenantId: tenant.id, name: "Haircut & Blowdry", duration: 60, price: "450.00" },
-    { id: "svc-002", tenantId: tenant.id, name: "Full Color", duration: 120, price: "1800.00" },
-    { id: "svc-003", tenantId: tenant.id, name: "Highlights", duration: 150, price: "2500.00" },
-    { id: "svc-004", tenantId: tenant.id, name: "Keratin Treatment", duration: 180, price: "3500.00" },
-    { id: "svc-005", tenantId: tenant.id, name: "Facial Basic", duration: 60, price: "800.00" },
-    { id: "svc-006", tenantId: tenant.id, name: "Facial Premium", duration: 90, price: "1500.00" },
-    { id: "svc-007", tenantId: tenant.id, name: "Manicure", duration: 45, price: "350.00" },
-    { id: "svc-008", tenantId: tenant.id, name: "Pedicure", duration: 60, price: "450.00" },
+    { id: "svc-001", tenantId: tenant.id, name: "Haircut & Blowdry", duration: 60, price: "450.00", availableForAppointments: true, availableForJobOrders: false },
+    { id: "svc-002", tenantId: tenant.id, name: "Full Color", duration: 120, price: "1800.00", availableForAppointments: true, availableForJobOrders: false },
+    { id: "svc-003", tenantId: tenant.id, name: "Highlights", duration: 150, price: "2500.00", availableForAppointments: true, availableForJobOrders: false },
+    { id: "svc-004", tenantId: tenant.id, name: "Keratin Treatment", duration: 180, price: "3500.00", availableForAppointments: true, availableForJobOrders: false },
+    { id: "svc-005", tenantId: tenant.id, name: "Facial Basic", duration: 60, price: "800.00", availableForAppointments: true, availableForJobOrders: false },
+    { id: "svc-006", tenantId: tenant.id, name: "Facial Premium", duration: 90, price: "1500.00", availableForAppointments: true, availableForJobOrders: false },
+    { id: "svc-007", tenantId: tenant.id, name: "Manicure", duration: 45, price: "350.00", availableForAppointments: true, availableForJobOrders: false },
+    { id: "svc-008", tenantId: tenant.id, name: "Pedicure", duration: 60, price: "450.00", availableForAppointments: true, availableForJobOrders: false },
   ];
 
   for (const svc of services) {

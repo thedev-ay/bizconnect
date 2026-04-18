@@ -10,11 +10,15 @@ export async function createService(tenantSlug: string, tenantId: string, input:
   await authorize(tenantSlug, "services.create");
   const parsed = serviceSchema.parse(input);
 
-  await prisma.serviceCatalog.create({
+  await (prisma as any).service.create({
     data: { tenantId, ...parsed },
   });
 
   revalidatePath(`/${tenantSlug}/services`);
+  revalidatePath(`/${tenantSlug}/appointments`);
+  revalidatePath(`/${tenantSlug}/hr`);
+  revalidatePath(`/${tenantSlug}/job-orders`);
+  revalidatePath(`/${tenantSlug}/pos`);
 }
 
 export async function updateService(
@@ -26,27 +30,39 @@ export async function updateService(
   await authorize(tenantSlug, "services.edit");
   const parsed = updateServiceSchema.parse(input);
 
-  await prisma.serviceCatalog.update({
+  await (prisma as any).service.update({
     where: { id: serviceId, tenantId },
     data: parsed,
   });
 
   revalidatePath(`/${tenantSlug}/services`);
+  revalidatePath(`/${tenantSlug}/appointments`);
+  revalidatePath(`/${tenantSlug}/hr`);
+  revalidatePath(`/${tenantSlug}/job-orders`);
+  revalidatePath(`/${tenantSlug}/pos`);
 }
 
 export async function toggleService(tenantSlug: string, tenantId: string, serviceId: string, isActive: boolean) {
   await authorize(tenantSlug, "services.edit");
 
-  await prisma.serviceCatalog.update({
+  await (prisma as any).service.update({
     where: { id: serviceId, tenantId },
     data: { isActive },
   });
 
   revalidatePath(`/${tenantSlug}/services`);
+  revalidatePath(`/${tenantSlug}/appointments`);
+  revalidatePath(`/${tenantSlug}/hr`);
+  revalidatePath(`/${tenantSlug}/job-orders`);
+  revalidatePath(`/${tenantSlug}/pos`);
 }
 
 export async function deleteService(tenantSlug: string, tenantId: string, serviceId: string) {
   await authorize(tenantSlug, "services.delete");
-  await prisma.serviceCatalog.delete({ where: { id: serviceId, tenantId } });
+  await prisma.service.delete({ where: { id: serviceId, tenantId } });
   revalidatePath(`/${tenantSlug}/services`);
+  revalidatePath(`/${tenantSlug}/appointments`);
+  revalidatePath(`/${tenantSlug}/hr`);
+  revalidatePath(`/${tenantSlug}/job-orders`);
+  revalidatePath(`/${tenantSlug}/pos`);
 }

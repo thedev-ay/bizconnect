@@ -175,7 +175,7 @@ export function StaffProfileDialog({
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-foreground">{svc.name}</p>
-                      <p className="text-xs text-muted-foreground">{svc.duration} min</p>
+                      <p className="text-xs text-muted-foreground">{svc.duration ? `${svc.duration} min` : "No duration set"}</p>
                     </div>
                   </label>
                 ))}

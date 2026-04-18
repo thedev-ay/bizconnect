@@ -15,10 +15,16 @@ export async function createService(tenantSlug: string, tenantId: string, input:
   await authorize(tenantSlug);
   const parsed = createServiceSchema.parse(input);
   await prisma.service.create({
-    data: { tenantId, ...parsed },
+    data: {
+      tenantId,
+      ...parsed,
+      availableForAppointments: parsed.availableForAppointments ?? true,
+      availableForJobOrders: parsed.availableForJobOrders ?? false,
+    },
   });
   revalidatePath(`/${tenantSlug}/staff`);
   revalidatePath(`/${tenantSlug}/settings`, "page");
+  revalidatePath(`/${tenantSlug}/services`);
 }
 
 export async function deleteService(tenantSlug: string, tenantId: string, serviceId: string) {
@@ -26,6 +32,7 @@ export async function deleteService(tenantSlug: string, tenantId: string, servic
   await prisma.service.delete({ where: { id: serviceId, tenantId } });
   revalidatePath(`/${tenantSlug}/staff`);
   revalidatePath(`/${tenantSlug}/settings`, "page");
+  revalidatePath(`/${tenantSlug}/services`);
 }
 
 export async function updateStaffProfile(

@@ -76,7 +76,6 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             currencyLocale={tenant.currencyLocale}
             hasPos={hasPos}
             hasBilling={hasBilling}
-            hasAssets={hasAssets}
           />
           {(hasPos || hasBilling) && (
             <FadeIn delay={0.15}>

@@ -25,6 +25,7 @@ export async function createAppointmentService(
   const existing = await prisma.service.findFirst({
     where: {
       tenantId,
+      availableForAppointments: true,
       name: {
         equals: name,
         mode: "insensitive",
@@ -43,12 +44,15 @@ export async function createAppointmentService(
       description: input.description?.trim() || null,
       duration: input.duration,
       price: input.price,
+      availableForAppointments: true,
+      availableForJobOrders: false,
       isActive: true,
     },
   });
 
   revalidatePath(`/${tenantSlug}/appointments`);
   revalidatePath(`/${tenantSlug}/staff`);
+  revalidatePath(`/${tenantSlug}/services`);
 
   return service;
 }
@@ -107,6 +111,7 @@ export async function createAppointment(
   // Fetch service to get duration and title
   const service = await prisma.service.findUnique({ where: { id: parsed.serviceId } });
   if (!service) throw new Error("Service not found");
+  if (service.duration == null) throw new Error("This service needs a duration before it can be booked");
 
   const startAt = new Date(parsed.startAt);
   const endAt = new Date(startAt.getTime() + service.duration * 60 * 1000);

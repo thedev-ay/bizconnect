@@ -27,6 +27,7 @@ export async function GET(
   const hrEnabled = session.user.modules.includes("hr");
   const crmEnabled = session.user.modules.includes("crm");
   const assetsEnabled = session.user.modules.includes("assets");
+  const servicesEnabled = session.user.modules.includes("services");
   const branchFilter = branchId ? { branchId } : {};
   const employeeBranchFilter = branchId
     ? { OR: [{ homeBranchId: branchId }, { branchAssignments: { some: { branchId, endDate: null } } }] }
@@ -66,10 +67,12 @@ export async function GET(
   }
 
   const [rawServices, rawStages, rawCustomers, rawEmployees, rawAssets] = await Promise.all([
-    db.serviceCatalog.findMany({
-      where: { tenantId, isActive: true },
-      orderBy: [{ category: "asc" }, { name: "asc" }],
-    }),
+    servicesEnabled
+      ? db.service.findMany({
+          where: { tenantId, isActive: true, availableForJobOrders: true },
+          orderBy: [{ category: "asc" }, { name: "asc" }],
+        })
+      : [],
     db.workflowStage.findMany({
       where: { tenantId, ...branchFilter },
       orderBy: { sortOrder: "asc" },
@@ -154,7 +157,7 @@ export async function GET(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     services: rawServices.map((s: any) => ({
       id: s.id, name: s.name,
-      pricingType: s.pricingType,
+      pricingType: s.pricingType ?? "flat",
       price: Number(s.price),
       category: s.category ?? null,
     })),

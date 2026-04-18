@@ -9,9 +9,19 @@ interface NewServiceButtonProps {
   tenantSlug: string;
   tenantId: string;
   currencySymbol: string;
+  showDuration: boolean;
+  showAppointmentsAvailability: boolean;
+  showJobOrdersAvailability: boolean;
 }
 
-export function NewServiceButton({ tenantSlug, tenantId, currencySymbol }: NewServiceButtonProps) {
+export function NewServiceButton({
+  tenantSlug,
+  tenantId,
+  currencySymbol,
+  showDuration,
+  showAppointmentsAvailability,
+  showJobOrdersAvailability,
+}: NewServiceButtonProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -26,6 +36,9 @@ export function NewServiceButton({ tenantSlug, tenantId, currencySymbol }: NewSe
         tenantSlug={tenantSlug}
         tenantId={tenantId}
         currencySymbol={currencySymbol}
+        showDuration={showDuration}
+        showAppointmentsAvailability={showAppointmentsAvailability}
+        showJobOrdersAvailability={showJobOrdersAvailability}
       />
     </>
   );

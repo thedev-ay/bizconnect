@@ -45,8 +45,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ tenant:
     }),
     servicesEnabled
       ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (prisma as any).serviceCatalog.findMany({
-          where: { tenantId, isActive: true },
+        (prisma as any).service.findMany({
+          where: { tenantId, isActive: true, availableForJobOrders: true },
           orderBy: [{ category: "asc" }, { name: "asc" }],
         })
       : Promise.resolve([]),
@@ -78,7 +78,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ tenant:
   const services = (rawServices as any[]).map((s) => ({
     id: s.id as string,
     name: s.name as string,
-    pricingType: s.pricingType as "per_piece" | "per_kilo" | "flat",
+    pricingType: (s.pricingType ?? "flat") as "per_piece" | "per_kilo" | "flat",
     price: Number(s.price),
     category: s.category as string | null,
   }));

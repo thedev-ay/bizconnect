@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { TrendingUp, ShoppingCart, FileText, CheckCircle, RotateCcw, Clock3, CarFront, Wrench, History } from "lucide-react";
+import { TrendingUp, ShoppingCart, FileText, CheckCircle, RotateCcw, Clock3 } from "lucide-react";
 import type { ReportsSummary } from "../types";
 
 function AnimatedCurrency({ value, symbol, locale, className }: {

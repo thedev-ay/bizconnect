@@ -2,9 +2,11 @@ export interface Service {
   id: string;
   name: string;
   description: string | null;
-  duration: number; // minutes
+  duration: number | null; // minutes
   price: string;
   isActive: boolean;
+  availableForAppointments: boolean;
+  availableForJobOrders: boolean;
   createdAt: Date;
 }
 

@@ -5,6 +5,8 @@ export const createServiceSchema = z.object({
   description: z.string().optional(),
   duration: z.coerce.number().int().positive("Duration must be at least 1 minute"),
   price: z.coerce.number().min(0),
+  availableForAppointments: z.boolean().default(true),
+  availableForJobOrders: z.boolean().default(false),
 });
 
 export type CreateServiceInput = z.infer<typeof createServiceSchema>;
