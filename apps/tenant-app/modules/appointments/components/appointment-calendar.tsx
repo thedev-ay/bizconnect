@@ -16,6 +16,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -25,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, CheckCircle, XCircle, Clock, User, UserCheck } from "lucide-react";
+import { MoreHorizontal, CheckCircle, XCircle, Clock, User, UserCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Appointment } from "../types";
 import { updateAppointmentStatus } from "../actions";
@@ -211,14 +212,33 @@ export function AppointmentCalendar({
       </div>
 
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-lg flex-col overflow-hidden rounded-[26px] border border-border/70 bg-popover/98 p-4 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)] sm:p-5">
-          <DialogHeader>
-            <p className="eyebrow-label">Appointment</p>
-            <DialogTitle className="text-base font-semibold text-foreground">{selected?.serviceName ?? selected?.customerName}</DialogTitle>
-            <DialogDescription>{selected?.customerName}</DialogDescription>
+        <DialogContent
+          showCloseButton={false}
+          className="flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-lg flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+        >
+          <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="eyebrow-label">Appointments / Detail</p>
+                <DialogTitle className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+                  {selected?.serviceName ?? selected?.customerName}
+                </DialogTitle>
+                <DialogDescription className="mt-1">{selected?.customerName}</DialogDescription>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                onClick={() => setSelected(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </DialogHeader>
           {selected && (
-            <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+            <>
+            <div className="min-h-0 space-y-4 overflow-y-auto px-6 py-5">
               <div>
                 <StatusPill status={selected.status} />
               </div>
@@ -264,43 +284,43 @@ export function AppointmentCalendar({
                   <p className="text-sm text-foreground/80">{selected.notes}</p>
                 </div>
               )}
-
-              {(selected.status === "pending" || selected.status === "confirmed" || selected.status === "in-progress") && (
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    disabled={loading}
-                    onClick={() => {
-                      const next = selected.status === "pending" ? "confirmed"
-                        : selected.status === "confirmed" ? "in-progress"
-                        : "done";
-                      const msg = next === "confirmed" ? "Confirmed" : next === "in-progress" ? "Started" : "Completed";
-                      handleStatus(selected.id, next, msg);
-                    }}
-                  >
-                    <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                    {selected.status === "pending" ? "Confirm" : selected.status === "confirmed" ? "Start" : "Complete"}
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger render={<Button variant="outline" size="sm" disabled={loading} />}>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleStatus(selected.id, "no-show", "Marked as no-show")}>
-                        <XCircle className="mr-2 h-4 w-4" /> No-Show
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => handleStatus(selected.id, "cancelled", "Appointment cancelled")}
-                      >
-                        <XCircle className="mr-2 h-4 w-4" /> Cancel
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
             </div>
+            {(selected.status === "pending" || selected.status === "confirmed" || selected.status === "in-progress") && (
+              <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4 sm:justify-end">
+                <Button
+                  size="sm"
+                  className="rounded-full"
+                  disabled={loading}
+                  onClick={() => {
+                    const next = selected.status === "pending" ? "confirmed"
+                      : selected.status === "confirmed" ? "in-progress"
+                      : "done";
+                    const msg = next === "confirmed" ? "Confirmed" : next === "in-progress" ? "Started" : "Completed";
+                    handleStatus(selected.id, next, msg);
+                  }}
+                >
+                  <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                  {selected.status === "pending" ? "Confirm" : selected.status === "confirmed" ? "Start" : "Complete"}
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger render={<Button variant="outline" size="sm" disabled={loading} className="rounded-full" />}>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleStatus(selected.id, "no-show", "Marked as no-show")}>
+                      <XCircle className="mr-2 h-4 w-4" /> No-Show
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => handleStatus(selected.id, "cancelled", "Appointment cancelled")}
+                    >
+                      <XCircle className="mr-2 h-4 w-4" /> Cancel
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </DialogFooter>
+            )}
+            </>
           )}
         </DialogContent>
       </Dialog>

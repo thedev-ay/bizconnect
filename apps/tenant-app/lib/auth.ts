@@ -12,6 +12,7 @@ const loginSchema = z.object({
 
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   session: { strategy: "jwt" },
+  trustHost: true,
   cookies: {
     sessionToken: { name: "tenant.session-token" },
   },
@@ -44,16 +45,16 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
                 tenantModules: {
                   where: { isEnabled: true },
                   select: {
-                  module: {
-                    select: {
-                      slug: true,
-                      name: true,
-                      icon: true,
-                      sortOrder: true,
-                      isCore: true,
+                    module: {
+                      select: {
+                        slug: true,
+                        name: true,
+                        icon: true,
+                        sortOrder: true,
+                        isCore: true,
+                      },
                     },
                   },
-                },
                 },
               },
             },
@@ -100,7 +101,13 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           role: string;
           permissions: Record<string, boolean>;
           modules: string[];
-          moduleObjects: { slug: string; name: string; icon: string | null; sortOrder: number; isCore: boolean }[];
+          moduleObjects: {
+            slug: string;
+            name: string;
+            icon: string | null;
+            sortOrder: number;
+            isCore: boolean;
+          }[];
           currentBranchId: string | null;
         };
         token.tenantSlug = u.tenantSlug;
@@ -122,7 +129,14 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         session.user.role = token.role as string;
         session.user.permissions = (token.permissions as Record<string, boolean>) ?? {};
         session.user.modules = (token.modules as string[]) ?? [];
-        session.user.moduleObjects = (token.moduleObjects as { slug: string; name: string; icon: string | null; sortOrder: number; isCore: boolean }[]) ?? [];
+        session.user.moduleObjects =
+          (token.moduleObjects as {
+            slug: string;
+            name: string;
+            icon: string | null;
+            sortOrder: number;
+            isCore: boolean;
+          }[]) ?? [];
         session.user.currentBranchId = (token.currentBranchId as string | null) ?? null;
       }
       return session;

@@ -35,16 +35,27 @@
 ### Detail Drawer
 - Use for reviewing a record selected from a list, not for editing or creating.
 - Shell: `Sheet` with `side="right"`, `sm:max-w-xl`, teal gradient background (`bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(236,253,250,0.92)_100%)]`), `border-l-white/70`.
-- Header: eyebrow in `Module / State` format, title on the left, status badge on the right. Add `pr-10` to `SheetHeader` to prevent the default close button from overlapping the badge. `SheetDescription` shows key dates or meta below the title.
+- Header: eyebrow in `Module / State` format, title on the left, status badge on the right. Do not show a drawer close `X` by default; drawers should usually rely on backdrop click, Escape, or footer actions instead. Only add a close button if the interaction clearly needs it and the header still feels clean. `SheetDescription` shows key dates or meta below the title.
 - Body: `space-y-5`, `p-4 sm:p-5`. Section cards use `rounded-[calc(var(--radius)+4px)] border border-border/70 bg-white/80`. Stat-style cards (single short label + single short value, like "Cash" or "3 items") use `rounded-[calc(var(--radius)+2px)]` with `shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]`. Do not use stat cards for multi-line content (e.g. name + email + dates) — use a plain cardless layout with stacked label+value, using `text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground` labels. When one side can have unpredictably long text (names, emails), use `flex gap-6` with `min-w-0 flex-1` on that side and `shrink-0` on the fixed side so long text truncates instead of squeezing the other column — grid columns don't protect against overflow the same way. Line items use simple flex rows with `qty × price` as a subtitle. Totals card uses `space-y-1.5 text-sm` with `tabular-nums` on amounts and `text-base font-semibold text-foreground` for the total row. Notes in their own plain card with a `text-muted-foreground` label.
 - Footer: `border-border/70`, buttons are `size="sm" rounded-full`. Destructive actions use ghost style (`text-destructive hover:text-destructive`), not full-width or primary-colored.
 - Current reference: the sale detail drawer in `modules/pos/components/sale-detail-dialog.tsx`.
+
+### Mobile Bottom Sheet
+- Use for mobile-only utility surfaces such as quick watchlists, recent activity, or lightweight embedded panels.
+- Shell: `Sheet` with `side="bottom"`, `max-h-[88dvh]`, `rounded-t-[28px]`, the same teal gradient background as detail drawers (`bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(236,253,250,0.92)_100%)]`), and `border-t-white/70`.
+- Header: add a visible drag handle, then use a bordered top section with compact padding, eyebrow in `Module / State` format, short title, and no default close `X`.
+- Body: simple scroll area, usually `p-4`, and can embed an existing panel/component rather than recompose a full drawer-style detail layout.
+- Footer: optional. Only add one when the sheet has real actions; otherwise let the content end naturally.
+- Do not force the full right-side detail-drawer structure onto mobile bottom sheets.
 
 ### Header And Footer Consistency
 - Prefer a consistent header treatment across dialogs: bordered top section, stable horizontal padding, clear title placement.
 - Prefer eyebrow labels in the format `Module / State` when an eyebrow is used, such as `Inventory / New` or `Services / Edit`.
 - Prefer dialog titles as the direct action label, such as `Add item`, `Edit service`, or `Create invoice`.
 - Prefer a consistent footer treatment across dialogs: bordered action row, stable horizontal padding, primary and secondary buttons aligned the same way.
+- Use `DialogFooter` as the standard footer primitive instead of ad hoc `<footer>` wrappers.
+- Override the default `DialogFooter` spacing/layout so it matches the shared dialog shell rather than the primitive defaults. Current standard baseline: `mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30`.
+- For most workspace and compact dialogs, pair that baseline with `px-6 py-4`. For denser legacy flows that intentionally use a tighter shell, keep their tighter padding but still use the same `DialogFooter` baseline reset.
 - When a dialog is large enough to scroll, keep header and footer visually anchored while only the body scrolls.
 - When the same dialog UI pattern appears more than once, prefer a shared component instead of duplicating markup.
 - Current shared dialog building blocks include section wrappers and repeated field patterns such as numbered form sections and currency-prefixed numeric inputs.

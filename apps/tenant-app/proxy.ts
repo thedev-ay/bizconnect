@@ -11,7 +11,8 @@ export const proxy = auth(async (request) => {
   if (
     pathname.startsWith("/api/") ||
     pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico"
+    pathname === "/favicon.ico" ||
+    /\.[^/]+$/.test(pathname)
   ) {
     return NextResponse.next();
   }

@@ -197,7 +197,11 @@ export function SaleDetailDialog({
   return (
     <>
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full border-l-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(236,253,250,0.92)_100%)] sm:max-w-xl">
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="w-full border-l-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(236,253,250,0.92)_100%)] sm:max-w-xl"
+      >
         <SheetHeader className="border-b border-border/70 pb-5">
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -318,6 +322,7 @@ export function SaleDetailDialog({
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Button
                           size="sm"
+                          className="rounded-full"
                           onClick={() => handleApproveReturn(saleReturn.id)}
                           disabled={updatingReturnId === saleReturn.id}
                         >
@@ -327,6 +332,7 @@ export function SaleDetailDialog({
                         <Button
                           size="sm"
                           variant="outline"
+                          className="rounded-full"
                           onClick={() => handleRejectReturn(saleReturn.id)}
                           disabled={updatingReturnId === saleReturn.id}
                         >
@@ -340,6 +346,7 @@ export function SaleDetailDialog({
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Button
                           size="sm"
+                          className="rounded-full"
                           onClick={() => handleProcessRefund(saleReturn.id)}
                           disabled={updatingReturnId === saleReturn.id}
                         >
@@ -355,12 +362,13 @@ export function SaleDetailDialog({
           )}
         </div>
 
-        <SheetFooter className="border-t border-border/70">
-          <div className="flex w-full flex-wrap justify-end gap-2">
+        <SheetFooter className="border-t border-border/70 p-4 sm:p-5">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2">
             {!isVoided && (
               <Button
                 variant="outline"
                 size="sm"
+                className="rounded-full"
                 onClick={() => setReceiptOpen(true)}
               >
                 <Printer className="mr-2 h-3.5 w-3.5" />
@@ -370,8 +378,8 @@ export function SaleDetailDialog({
 
             {!isVoided && (
               <Button
-                variant="outline"
                 size="sm"
+                className="rounded-full"
                 onClick={() => setReturnOpen(true)}
                 disabled={latestReturn?.status === "pending" || latestReturn?.status === "approved" || allItemsReturned}
               >
@@ -388,9 +396,9 @@ export function SaleDetailDialog({
 
             {!isVoided && !hasReturnActivity && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5"
+                className="rounded-full text-destructive hover:text-destructive"
                 onClick={() => setVoidConfirmOpen(true)}
                 disabled={voiding}
               >

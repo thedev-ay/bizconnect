@@ -289,13 +289,17 @@ export function InvoiceList({
         </Table>
       </div>
       <Sheet open={Boolean(selectedInvoice)} onOpenChange={(open) => { if (!open) closeInvoice(); }}>
-        <SheetContent side="right" className="w-full border-l-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(236,253,250,0.92)_100%)] sm:max-w-xl">
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-full border-l-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(236,253,250,0.92)_100%)] sm:max-w-xl"
+        >
           {selectedInvoice && (
             <>
-            <SheetHeader className="border-b border-border/70 pb-5 pr-10">
+            <SheetHeader className="border-b border-border/70 pr-10 sm:p-5">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Billing / Invoice</p>
+                  <p className="text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Billing / Detail</p>
                   <SheetTitle className="font-mono text-base">{selectedInvoice.invoiceNo}</SheetTitle>
                 </div>
                 <span
@@ -312,28 +316,30 @@ export function InvoiceList({
               </SheetDescription>
             </SheetHeader>
 
-            <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
-              <section className="flex gap-6">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Customer</p>
-                  <p className="mt-1 truncate text-sm font-semibold text-foreground">{selectedInvoice.customerName}</p>
-                  {selectedInvoice.customerEmail && (
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{selectedInvoice.customerEmail}</p>
-                  )}
-                </div>
-                <div className="shrink-0 space-y-3 text-right">
-                  <div>
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Issued</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">{format(new Date(selectedInvoice.createdAt), "MMM d, yyyy")}</p>
+            <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
+              <section className="rounded-[calc(var(--radius)+4px)] border border-border/70 bg-white/80 p-4">
+                <div className="flex gap-6">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Customer</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{selectedInvoice.customerName}</p>
+                    {selectedInvoice.customerEmail && (
+                      <p className="mt-0.5 break-words text-xs text-muted-foreground">{selectedInvoice.customerEmail}</p>
+                    )}
                   </div>
-                  <div>
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Due</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">{format(new Date(selectedInvoice.dueDate), "MMM d, yyyy")}</p>
+                  <div className="shrink-0 space-y-3 text-right">
+                    <div>
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Issued</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">{format(new Date(selectedInvoice.createdAt), "MMM d, yyyy")}</p>
+                    </div>
+                    <div>
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Due</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">{format(new Date(selectedInvoice.dueDate), "MMM d, yyyy")}</p>
+                    </div>
                   </div>
                 </div>
               </section>
 
-              <section className="space-y-3">
+              <section className="space-y-2.5">
                 <h3 className="text-sm font-semibold text-foreground">Line Items</h3>
                 <div className="overflow-hidden rounded-[calc(var(--radius)+4px)] border border-border/70 bg-white/80">
                   <div className="divide-y divide-border/60">
@@ -377,14 +383,14 @@ export function InvoiceList({
 
               {selectedInvoice.notes && (
                 <section className="rounded-[calc(var(--radius)+4px)] border border-border/70 bg-white/80 p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-primary/70">Notes</p>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Notes</p>
                   <p className="mt-1 text-sm text-muted-foreground">{selectedInvoice.notes}</p>
                 </section>
               )}
             </div>
 
-            <SheetFooter className="border-t border-border/70">
-              <div className="flex w-full flex-wrap justify-end gap-2">
+            <SheetFooter className="border-t border-border/70 p-4 sm:p-5">
+              <div className="flex w-full flex-wrap items-center justify-end gap-2">
                 {selectedInvoice.status === "draft" && (
                   <Button
                     variant="outline"

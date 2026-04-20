@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Minus, Trash2, ShoppingCart, Scale } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingCart, Scale, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CartItem } from "../types";
 import { createSale } from "../actions";
@@ -28,6 +28,7 @@ import { queueOfflineSale } from "@/lib/offline-sale";
 import { bestPromo } from "@/modules/promotions/apply";
 import type { PromoType } from "@/modules/promotions";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { SaleDetailDialog } from "./sale-detail-dialog";
 
 interface ActivePromo {
   id: string;
@@ -69,6 +70,44 @@ interface POSTerminalProps {
   currencyLocale: string;
 }
 
+interface CompletedSale {
+  id: string;
+  referenceNo: string;
+  subtotal: string;
+  discount: string;
+  total: string;
+  amountPaid: string;
+  change: string;
+  paymentMethod: string;
+  status: string;
+  createdAt: string | Date;
+  servedByName?: string | null;
+  items: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    unitPrice: string;
+    total: string;
+  }>;
+  returns: Array<{
+    id: string;
+    referenceNo: string;
+    reason: string;
+    notes: string | null;
+    status: string;
+    refundAmount: string | null;
+    refundMethod: string | null;
+    approvedAt: string | Date | null;
+    refundedAt: string | Date | null;
+    createdAt: string | Date;
+    items: Array<{
+      id: string;
+      saleItemId: string;
+      quantity: number;
+    }>;
+  }>;
+}
+
 export function POSTerminal({
   products,
   services,
@@ -91,6 +130,7 @@ export function POSTerminal({
   const [activeTab, setActiveTab] = useState<"products" | "services">("products");
   const [weightService, setWeightService] = useState<POSService | null>(null);
   const [weightInput, setWeightInput] = useState("");
+  const [completedSale, setCompletedSale] = useState<CompletedSale | null>(null);
 
   const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
   const discountAmount = discountType === "percent"
@@ -385,6 +425,26 @@ export function POSTerminal({
     // ── Online path ───────────────────────────────────────────────────────
     try {
       const sale = await createSale(tenantSlug, tenantId, saleInput);
+      const completedSaleRecord: CompletedSale = {
+        id: sale.id,
+        referenceNo: sale.referenceNo,
+        subtotal: sale.subtotal,
+        discount: sale.discount,
+        total: sale.total,
+        amountPaid: sale.amountPaid,
+        change: sale.change,
+        paymentMethod: sale.paymentMethod,
+        status: sale.status,
+        createdAt: sale.createdAt,
+        items: sale.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          total: item.total,
+        })),
+        returns: [],
+      };
       setCart([]);
       setDiscountValue(0);
       setAmountPaid("");
@@ -392,7 +452,7 @@ export function POSTerminal({
       queryClient.invalidateQueries({ queryKey: ["pos-products", tenantSlug] });
       queryClient.invalidateQueries({ queryKey: ["inventory", tenantSlug] });
       queryClient.invalidateQueries({ queryKey: ["sales", tenantSlug] });
-      window.location.href = `/${tenantSlug}/sales?saleId=${sale.id}`;
+      setCompletedSale(completedSaleRecord);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to process sale");
     } finally {
@@ -808,16 +868,35 @@ export function POSTerminal({
 
       {/* Weight input dialog */}
       <Dialog open={!!weightService} onOpenChange={(o) => { if (!o) { setWeightService(null); setWeightInput(""); } }}>
-        <DialogContent className="max-w-xs">
-          <DialogHeader>
-            <DialogTitle>{weightService?.name}</DialogTitle>
+        <DialogContent
+          showCloseButton={false}
+          className="flex max-w-xs flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+        >
+          <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="eyebrow-label">POS / Weight</p>
+                <DialogTitle className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+                  {weightService?.name}
+                </DialogTitle>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                onClick={() => { setWeightService(null); setWeightInput(""); }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <p className="text-sm text-zinc-500">
+          <div className="space-y-3 px-6 py-5">
+            <p className="text-sm text-muted-foreground">
               {currencySymbol}{weightService?.price.toFixed(2)} per kg
             </p>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-zinc-700">Weight (kg)</label>
+              <label className="text-sm font-medium text-foreground">Weight (kg)</label>
               <Input
                 type="number"
                 step="0.1"
@@ -830,17 +909,34 @@ export function POSTerminal({
               />
             </div>
             {weightInput && !isNaN(parseFloat(weightInput)) && parseFloat(weightInput) > 0 && (
-              <p className="text-sm font-semibold text-zinc-800">
+              <p className="text-sm font-semibold text-foreground">
                 Total: {currencySymbol}{(parseFloat(weightInput) * (weightService?.price ?? 0)).toFixed(2)}
               </p>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setWeightService(null); setWeightInput(""); }}>Cancel</Button>
-            <Button onClick={confirmWeight}>Add to Cart</Button>
+          <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4 sm:justify-end">
+            <Button variant="outline" className="rounded-full" onClick={() => { setWeightService(null); setWeightInput(""); }}>Cancel</Button>
+            <Button className="rounded-full" onClick={confirmWeight}>Add to Cart</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {completedSale && (
+        <SaleDetailDialog
+          sale={completedSale}
+          tenantSlug={tenantSlug}
+          tenantId={tenantId}
+          tenantName={tenantName}
+          currencySymbol={currencySymbol}
+          currencyLocale={currencyLocale}
+          open={!!completedSale}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCompletedSale(null);
+            }
+          }}
+        />
+      )}
     </>
   );
 }

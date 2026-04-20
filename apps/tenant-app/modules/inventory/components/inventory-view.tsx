@@ -214,9 +214,17 @@ export function InventoryView({ tenantSlug, tenantId, currencySymbol, currencyLo
       </div>
 
       <Sheet open={watchlistOpen} onOpenChange={setWatchlistOpen}>
-        <SheetContent side="bottom" className="max-h-[88dvh] overflow-hidden rounded-t-[28px] p-0 sm:hidden">
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          className="max-h-[88dvh] overflow-hidden rounded-t-[28px] border-t-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(236,253,250,0.92)_100%)] p-0 sm:hidden"
+        >
+          <div className="flex justify-center pt-3">
+            <span className="h-1.5 w-12 rounded-full bg-foreground/15" />
+          </div>
           <SheetHeader className="border-b border-border/60 px-4 py-4">
-            <SheetTitle>Watchlist</SheetTitle>
+            <p className="eyebrow-label">Inventory / Watchlist</p>
+            <SheetTitle className="mt-1">Low stock</SheetTitle>
           </SheetHeader>
           <div className="overflow-y-auto p-4">
             <LowStockPanel items={lowStock} embedded />
@@ -225,9 +233,17 @@ export function InventoryView({ tenantSlug, tenantId, currencySymbol, currencyLo
       </Sheet>
 
       <Sheet open={activityOpen} onOpenChange={setActivityOpen}>
-        <SheetContent side="bottom" className="max-h-[88dvh] overflow-hidden rounded-t-[28px] p-0 sm:hidden">
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          className="max-h-[88dvh] overflow-hidden rounded-t-[28px] border-t-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(236,253,250,0.92)_100%)] p-0 sm:hidden"
+        >
+          <div className="flex justify-center pt-3">
+            <span className="h-1.5 w-12 rounded-full bg-foreground/15" />
+          </div>
           <SheetHeader className="border-b border-border/60 px-4 py-4">
-            <SheetTitle>Recent Activity</SheetTitle>
+            <p className="eyebrow-label">Inventory / Activity</p>
+            <SheetTitle className="mt-1">Recent activity</SheetTitle>
           </SheetHeader>
           <div className="overflow-y-auto p-4">
             <RecentActivityPanel adjustments={recentAdjustments} embedded />

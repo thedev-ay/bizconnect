@@ -375,7 +375,10 @@ export function Sidebar({ tenant, modules, branches, currentBranchId }: SidebarP
               <DropdownMenuContent side="top" align="end" className="w-44">
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive gap-2"
-                  onClick={() => signOut({ callbackUrl: `/${tenant.slug}/login` })}
+                  onClick={async () => {
+                    await signOut({ redirect: false });
+                    window.location.href = `/${tenant.slug}/login`;
+                  }}
                 >
                   <LogOut className="h-4 w-4" />
                   Sign out

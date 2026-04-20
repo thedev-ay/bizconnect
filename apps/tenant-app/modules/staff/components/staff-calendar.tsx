@@ -14,10 +14,11 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Trash2, Clock, User } from "lucide-react";
+import { Trash2, Clock, X } from "lucide-react";
 import { AddShiftDialog } from "./add-shift-dialog";
 import { deleteShift } from "../actions";
 import type { Shift, StaffEmployee } from "../types";
@@ -158,49 +159,72 @@ export function StaffCalendar({ shifts, employees, tenantSlug, tenantId }: Staff
 
       {/* Shift detail dialog */}
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Shift Details</DialogTitle>
+        <DialogContent
+          showCloseButton={false}
+          className="flex max-w-sm flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
+        >
+          <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="eyebrow-label">HR / Detail</p>
+                <DialogTitle className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+                  Shift details
+                </DialogTitle>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                onClick={() => setSelected(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </DialogHeader>
           {selected && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
+            <>
+              <div className="space-y-3 px-6 py-5">
+                <div className="flex items-center gap-2">
                 <span
                   className="h-3 w-3 rounded-full"
                   style={{ backgroundColor: employeeColorMap.get(selected.employeeId) }}
                 />
                 <span className="font-medium">{selected.employeeName}</span>
-              </div>
-
-              {selected.title && (
-                <p className="text-sm text-muted-foreground">{selected.title}</p>
-              )}
-
-              <div className="space-y-1.5 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <span>
-                    {format(new Date(selected.startAt), "MMM d, yyyy · h:mm a")} –{" "}
-                    {format(new Date(selected.endAt), "h:mm a")}
-                  </span>
                 </div>
+
+                {selected.title && (
+                  <p className="text-sm text-muted-foreground">{selected.title}</p>
+                )}
+
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    <span>
+                      {format(new Date(selected.startAt), "MMM d, yyyy · h:mm a")} –{" "}
+                      {format(new Date(selected.endAt), "h:mm a")}
+                    </span>
+                  </div>
+                </div>
+
+                {selected.notes && (
+                  <p className="rounded-md bg-muted px-3 py-2 text-sm">{selected.notes}</p>
+                )}
               </div>
 
-              {selected.notes && (
-                <p className="rounded-md bg-muted px-3 py-2 text-sm">{selected.notes}</p>
-              )}
-
-              <Button
-                variant="destructive"
-                size="sm"
-                className="w-full"
-                disabled={deleting}
-                onClick={handleDelete}
-              >
-                <Trash2 className="mr-1.5 h-4 w-4" />
-                {deleting ? "Removing..." : "Remove Shift"}
-              </Button>
-            </div>
+              <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-6 py-4 sm:justify-end">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="rounded-full"
+                  disabled={deleting}
+                  onClick={handleDelete}
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  {deleting ? "Removing..." : "Remove Shift"}
+                </Button>
+              </DialogFooter>
+            </>
           )}
         </DialogContent>
       </Dialog>
