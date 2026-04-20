@@ -3,9 +3,14 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { EditTenantProfileDialog } from "@/components/tenants/edit-tenant-profile-dialog";
 import { ModuleToggle } from "@/components/tenants/module-toggle";
 import { TenantStatusToggle } from "@/components/tenants/tenant-status-toggle";
-import { Users, Puzzle, Calendar } from "lucide-react";
+import {
+  TENANT_COMPANY_SIZE_LABELS,
+  TENANT_INDUSTRY_LABELS,
+} from "@/lib/tenant-options";
+import { Building2, Calendar, Mail, MapPin, Phone, Puzzle, Tags, Users } from "lucide-react";
 import { format } from "date-fns";
 
 interface TenantDetailPageProps {
@@ -33,6 +38,26 @@ export default async function TenantDetailPage({ params }: TenantDetailPageProps
   if (!tenant) notFound();
 
   const tenantModuleMap = new Map(tenant.tenantModules.map((tm) => [tm.moduleId, tm]));
+  const profileItems = [
+    {
+      label: "Industry",
+      value: tenant.industry
+        ? TENANT_INDUSTRY_LABELS[tenant.industry as keyof typeof TENANT_INDUSTRY_LABELS] ?? tenant.industry
+        : null,
+      icon: Building2,
+    },
+    {
+      label: "Company Size",
+      value: tenant.companySize
+        ? TENANT_COMPANY_SIZE_LABELS[tenant.companySize as keyof typeof TENANT_COMPANY_SIZE_LABELS] ?? tenant.companySize
+        : null,
+      icon: Users,
+    },
+    { label: "Address", value: tenant.address, icon: MapPin },
+    { label: "Phone", value: tenant.phone, icon: Phone },
+    { label: "Email", value: tenant.email, icon: Mail },
+    { label: "Website", value: tenant.website, icon: Building2 },
+  ];
 
   return (
     <div className="space-y-6">
@@ -86,6 +111,66 @@ export default async function TenantDetailPage({ params }: TenantDetailPageProps
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-col gap-3 border-b border-border/60 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>Tenant Profile</CardTitle>
+            <CardDescription>Business details captured during provisioning.</CardDescription>
+          </div>
+          <EditTenantProfileDialog
+            tenant={{
+              id: tenant.id,
+              name: tenant.name,
+              country: tenant.country,
+              plan: tenant.plan,
+              address: tenant.address,
+              phone: tenant.phone,
+              email: tenant.email,
+              website: tenant.website,
+              industry: tenant.industry,
+              companySize: tenant.companySize,
+              tags: tenant.tags,
+            }}
+          />
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {profileItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.label} className="rounded-2xl border border-border/70 bg-muted/25 p-3">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    <Icon className="h-3.5 w-3.5" />
+                    {item.label}
+                  </div>
+                  <p className="mt-2 break-words text-sm font-medium text-foreground">
+                    {item.value || "Not set"}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="rounded-2xl border border-border/70 bg-muted/25 p-3">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              <Tags className="h-3.5 w-3.5" />
+              Tags
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {tenant.tags.length > 0 ? (
+                tenant.tags.map((tag) => (
+                  <Badge key={tag} variant="outline">
+                    {tag}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-sm text-muted-foreground">No tags</span>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="border-b border-border/60">

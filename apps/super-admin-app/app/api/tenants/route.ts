@@ -8,6 +8,13 @@ const createTenantSchema = z.object({
   name: z.string().min(2),
   slug: z.string().min(2).regex(/^[a-z0-9-]+$/),
   country: z.string().default("nl"),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  website: z.string().url().optional().or(z.literal("")),
+  industry: z.string().optional(),
+  companySize: z.string().optional(),
+  tags: z.union([z.array(z.string()), z.string()]).optional(),
   preset: z.enum(["service-shop", "retail"]).default("service-shop"),
   plan: z.enum(["starter", "growth", "enterprise"]).default("starter"),
   adminName: z.string().min(2),
@@ -16,10 +23,36 @@ const createTenantSchema = z.object({
   includeInventory: z.boolean().default(false),
   includeBilling: z.boolean().default(false),
   includeLoyalty: z.boolean().default(false),
+  moduleSlugs: z.array(z.string()).optional(),
 });
 
 const SERVICE_SHOP_MODULES = ["users", "crm", "assets", "services", "job-orders", "billing", "reports"] as const;
 const RETAIL_MODULES = ["users", "inventory", "pos", "promotions", "reports"] as const;
+const MODULE_DEPENDENCIES: Record<string, readonly string[]> = {
+  pos: ["inventory"],
+  promotions: ["inventory"],
+  appointments: ["services", "hr"],
+  "job-orders": ["services"],
+  assets: ["crm"],
+  billing: ["crm"],
+  loyalty: ["crm"],
+};
+const CORE_MODULES = ["users"] as const;
+const ALL_MODULE_SLUGS = [
+  "users",
+  "inventory",
+  "pos",
+  "promotions",
+  "appointments",
+  "billing",
+  "hr",
+  "reports",
+  "job-orders",
+  "crm",
+  "assets",
+  "services",
+  "loyalty",
+] as const;
 const SERVICE_SHOP_WORKFLOW = [
   { name: "Received", slug: "received", color: "blue", sortOrder: 0, type: "active" as const },
   { name: "Diagnosing", slug: "diagnosing", color: "amber", sortOrder: 1, type: "active" as const },
@@ -134,6 +167,22 @@ const RETAIL_LOYALTY_SETTINGS = {
   isActive: true,
 } as const;
 
+function normalizeOptionalText(value?: string | null) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeTags(value?: string[] | string) {
+  const rawTags = Array.isArray(value) ? value : value?.split(",") ?? [];
+  return Array.from(
+    new Set(
+      rawTags
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean)
+    )
+  );
+}
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.isSuperAdmin) {
@@ -166,6 +215,13 @@ export async function POST(req: Request) {
     name,
     slug,
     country,
+    address,
+    phone,
+    email,
+    website,
+    industry,
+    companySize,
+    tags,
     preset,
     plan,
     adminName,
@@ -174,8 +230,10 @@ export async function POST(req: Request) {
     includeInventory,
     includeBilling,
     includeLoyalty,
+    moduleSlugs: requestedModuleSlugs,
   } = parsed.data;
   const normalizedCountry = country.toLowerCase();
+  const normalizedTags = normalizeTags(tags);
 
   const existing = await prisma.tenant.findUnique({ where: { slug } });
   if (existing) {
@@ -189,7 +247,7 @@ export async function POST(req: Request) {
 
   const passwordHash = await bcrypt.hash(adminPassword, 12);
   const currencyConfig = getCurrencyConfig(normalizedCountry);
-  const moduleSlugs =
+  const fallbackModuleSlugs =
     preset === "retail"
       ? [
           ...RETAIL_MODULES,
@@ -199,6 +257,40 @@ export async function POST(req: Request) {
       : includeInventory
         ? [...SERVICE_SHOP_MODULES, "inventory"]
         : [...SERVICE_SHOP_MODULES];
+  const submittedModuleSlugs = requestedModuleSlugs?.length ? requestedModuleSlugs : fallbackModuleSlugs;
+  const moduleSlugSet = new Set<string>(submittedModuleSlugs);
+
+  for (const coreModule of CORE_MODULES) {
+    moduleSlugSet.add(coreModule);
+  }
+
+  for (const moduleSlug of Array.from(moduleSlugSet)) {
+    for (const dependency of MODULE_DEPENDENCIES[moduleSlug] ?? []) {
+      moduleSlugSet.add(dependency);
+    }
+  }
+
+  const unknownModules = Array.from(moduleSlugSet).filter(
+    (moduleSlug) => !ALL_MODULE_SLUGS.includes(moduleSlug as (typeof ALL_MODULE_SLUGS)[number])
+  );
+  if (unknownModules.length > 0) {
+    return NextResponse.json({ error: `Unknown module(s): ${unknownModules.join(", ")}` }, { status: 400 });
+  }
+
+  const moduleSlugs = Array.from(moduleSlugSet);
+  const moduleRecords = await prisma.module.findMany({
+    where: { slug: { in: moduleSlugs } },
+    select: { id: true, slug: true },
+  });
+
+  if (moduleRecords.length !== moduleSlugs.length) {
+    const foundSlugs = new Set(moduleRecords.map((module) => module.slug));
+    const missingSlugs = moduleSlugs.filter((moduleSlug) => !foundSlugs.has(moduleSlug));
+    return NextResponse.json(
+      { error: `Missing module seed data for: ${missingSlugs.join(", ")}. Run the database seed before creating this tenant.` },
+      { status: 400 }
+    );
+  }
 
   const tenant = await prisma.$transaction(async (tx) => {
     const newTenant = await tx.tenant.create({
@@ -206,26 +298,26 @@ export async function POST(req: Request) {
         name,
         slug,
         country: normalizedCountry,
+        address: normalizeOptionalText(address),
+        phone: normalizeOptionalText(phone),
+        email: normalizeOptionalText(email),
+        website: normalizeOptionalText(website),
+        industry: normalizeOptionalText(industry),
+        companySize: normalizeOptionalText(companySize),
+        tags: normalizedTags,
         plan,
         currencySymbol: currencyConfig.symbol,
         currencyLocale: currencyConfig.locale,
       },
     });
 
-    const modules = await tx.module.findMany({
-      where: { slug: { in: moduleSlugs } },
-      select: { id: true },
+    await tx.tenantModule.createMany({
+      data: moduleRecords.map((module) => ({
+        tenantId: newTenant.id,
+        moduleId: module.id,
+        isEnabled: true,
+      })),
     });
-
-    if (modules.length > 0) {
-      await tx.tenantModule.createMany({
-        data: modules.map((module) => ({
-          tenantId: newTenant.id,
-          moduleId: module.id,
-          isEnabled: true,
-        })),
-      });
-    }
 
     await tx.user.create({
       data: {
@@ -237,14 +329,16 @@ export async function POST(req: Request) {
       },
     });
 
-    if (preset === "service-shop") {
+    if (moduleSlugs.includes("job-orders")) {
       await tx.workflowStage.createMany({
         data: SERVICE_SHOP_WORKFLOW.map((stage) => ({
           tenantId: newTenant.id,
           ...stage,
         })),
       });
+    }
 
+    if (moduleSlugs.includes("services")) {
       await (tx as any).service.createMany({
         data: SERVICE_SHOP_STARTER_SERVICES.map((service) => ({
           tenantId: newTenant.id,
@@ -253,7 +347,7 @@ export async function POST(req: Request) {
       });
     }
 
-    if (preset === "retail") {
+    if (preset === "retail" && moduleSlugs.includes("inventory")) {
       const categories = await Promise.all(
         RETAIL_STARTER_CATEGORIES.map((category) =>
           tx.inventoryCategory.create({
@@ -284,35 +378,37 @@ export async function POST(req: Request) {
         )
       );
 
-      const promoTargetItems = items.filter((item) =>
-        ["Sea Salt Chips", "Trail Mix Pack"].includes(item.name)
-      );
+      if (moduleSlugs.includes("promotions")) {
+        const promoTargetItems = items.filter((item) =>
+          ["Sea Salt Chips", "Trail Mix Pack"].includes(item.name)
+        );
 
-      if (promoTargetItems.length > 0) {
-        await tx.promotion.create({
-          data: {
-            tenantId: newTenant.id,
-            name: RETAIL_STARTER_PROMOTION.name,
-            description: RETAIL_STARTER_PROMOTION.description,
-            type: RETAIL_STARTER_PROMOTION.type,
-            value: RETAIL_STARTER_PROMOTION.value,
-            items: {
-              create: promoTargetItems.map((item) => ({
-                itemId: item.id,
-              })),
+        if (promoTargetItems.length > 0) {
+          await tx.promotion.create({
+            data: {
+              tenantId: newTenant.id,
+              name: RETAIL_STARTER_PROMOTION.name,
+              description: RETAIL_STARTER_PROMOTION.description,
+              type: RETAIL_STARTER_PROMOTION.type,
+              value: RETAIL_STARTER_PROMOTION.value,
+              items: {
+                create: promoTargetItems.map((item) => ({
+                  itemId: item.id,
+                })),
+              },
             },
-          },
-        });
+          });
+        }
       }
+    }
 
-      if (includeLoyalty) {
-        await tx.loyaltySetting.create({
-          data: {
-            tenantId: newTenant.id,
-            ...RETAIL_LOYALTY_SETTINGS,
-          },
-        });
-      }
+    if (moduleSlugs.includes("loyalty")) {
+      await tx.loyaltySetting.create({
+        data: {
+          tenantId: newTenant.id,
+          ...RETAIL_LOYALTY_SETTINGS,
+        },
+      });
     }
 
     return newTenant;

@@ -65,6 +65,7 @@
 - For Base UI `Select` components, prefer a stable controlled `value` from the first render.
 - Use string fallbacks such as `""` or `"none"` instead of `undefined` when a selectable empty state is needed.
 - Avoid patterns like `value={someValue || undefined}` on `Select` components.
+- For select options backed by keys/codes/enums, store the key in `SelectItem value` but display the human-facing label as the item text and selected trigger text. Prefer shared option/label maps over recomputing display text from keys.
 
 ### Current Reference
 - The inventory add-item dialog is the current visual reference for the workspace-dialog pattern.

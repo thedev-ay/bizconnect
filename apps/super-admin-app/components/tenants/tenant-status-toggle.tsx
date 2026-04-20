@@ -49,21 +49,32 @@ export function TenantStatusToggle({ tenantId, isActive }: TenantStatusTogglePro
       <DialogTrigger render={<Button variant={isActive ? "destructive" : "default"} size="sm" />}>
         {isActive ? "Suspend Tenant" : "Reactivate Tenant"}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader className="-mx-4 -mt-4 border-b border-border/60 px-4 py-4 sm:-mx-5 sm:px-5">
-          <DialogTitle>{isActive ? "Suspend Tenant?" : "Reactivate Tenant?"}</DialogTitle>
-          <DialogDescription>
+      <DialogContent
+        showCloseButton={false}
+        className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
+      >
+        <DialogHeader className="shrink-0 border-b border-border/60 px-6 py-5 text-left">
+          <p className="admin-eyebrow">Tenant / Status</p>
+          <DialogTitle className="mt-1 text-xl font-semibold tracking-tight">
+            {isActive ? "Suspend Tenant?" : "Reactivate Tenant?"}
+          </DialogTitle>
+          <DialogDescription className="mt-1">
             {isActive
               ? "Suspending this tenant will prevent all their users from logging in. You can reactivate it at any time."
               : "This will restore access for all tenant users."}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button
+            variant="outline"
+            className="rounded-full px-4"
+            onClick={() => setOpen(false)}
+          >
             Cancel
           </Button>
           <Button
             variant={isActive ? "destructive" : "default"}
+            className="rounded-full px-4"
             onClick={handleToggle}
             disabled={loading}
           >

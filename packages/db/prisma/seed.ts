@@ -11,11 +11,13 @@ const MODULES = [
   { slug: "pos", name: "Point of Sale", description: "Walk-in sales, cart, payments, and receipts", icon: "ShoppingCart", isCore: false, sortOrder: 2 },
   { slug: "appointments", name: "Appointments", description: "Calendar, bookings, reminders, and availability", icon: "Calendar", isCore: false, sortOrder: 3 },
   { slug: "billing", name: "Billing & Invoicing", description: "Invoices, payments, and outstanding balances", icon: "CreditCard", isCore: false, sortOrder: 4 },
-  { slug: "hr", name: "HR & Staff", description: "Employees, services, scheduling, attendance, leave, and payroll", icon: "Briefcase", isCore: false, sortOrder: 5 },
-  { slug: "reports", name: "Reports & Analytics", description: "Revenue, inventory, and performance reports", icon: "BarChart2", isCore: false, sortOrder: 6 },
-  { slug: "job-orders", name: "Job Orders", description: "Track service jobs, assignments, and status", icon: "ClipboardList", isCore: false, sortOrder: 7 },
-  { slug: "crm", name: "CRM", description: "Customer records, history, and communications", icon: "UserCheck", isCore: false, sortOrder: 8 },
-  { slug: "assets", name: "Assets", description: "Track customer-linked serviceable assets and history", icon: "CarFront", isCore: false, sortOrder: 9 },
+  { slug: "services", name: "Services", description: "Service catalog, prices, and appointment/job availability", icon: "Wrench", isCore: false, sortOrder: 5 },
+  { slug: "hr", name: "HR & Staff", description: "Employees, scheduling, attendance, leave, and payroll", icon: "Briefcase", isCore: false, sortOrder: 6 },
+  { slug: "reports", name: "Reports & Analytics", description: "Revenue, inventory, and performance reports", icon: "BarChart2", isCore: false, sortOrder: 7 },
+  { slug: "job-orders", name: "Job Orders", description: "Track service jobs, assignments, and status", icon: "ClipboardList", isCore: false, sortOrder: 8 },
+  { slug: "crm", name: "CRM", description: "Customer records, history, and communications", icon: "UserCheck", isCore: false, sortOrder: 9 },
+  { slug: "assets", name: "Assets", description: "Track customer-linked serviceable assets and history", icon: "CarFront", isCore: false, sortOrder: 10 },
+  { slug: "loyalty", name: "Loyalty", description: "Stamp cards, rewards, and loyalty redemptions", icon: "BadgePercent", isCore: false, sortOrder: 11 },
 ];
 
 async function main() {

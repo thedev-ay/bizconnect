@@ -7,7 +7,30 @@ const updateTenantSchema = z.object({
   name: z.string().min(2).optional(),
   plan: z.enum(["starter", "growth", "enterprise"]).optional(),
   isActive: z.boolean().optional(),
+  address: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  email: z.string().email().optional().or(z.literal("")).nullable(),
+  website: z.string().url().optional().or(z.literal("")).nullable(),
+  industry: z.string().optional().nullable(),
+  companySize: z.string().optional().nullable(),
+  tags: z.union([z.array(z.string()), z.string()]).optional(),
 });
+
+function normalizeOptionalText(value?: string | null) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeTags(value?: string[] | string) {
+  const rawTags = Array.isArray(value) ? value : value?.split(",") ?? [];
+  return Array.from(
+    new Set(
+      rawTags
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean)
+    )
+  );
+}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ tenantId: string }> }) {
   const session = await auth();
@@ -46,9 +69,29 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ tenant
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  const {
+    address,
+    phone,
+    email,
+    website,
+    industry,
+    companySize,
+    tags,
+    ...directUpdates
+  } = parsed.data;
+
   const tenant = await prisma.tenant.update({
     where: { id: tenantId },
-    data: parsed.data,
+    data: {
+      ...directUpdates,
+      ...(address !== undefined ? { address: normalizeOptionalText(address) } : {}),
+      ...(phone !== undefined ? { phone: normalizeOptionalText(phone) } : {}),
+      ...(email !== undefined ? { email: normalizeOptionalText(email) } : {}),
+      ...(website !== undefined ? { website: normalizeOptionalText(website) } : {}),
+      ...(industry !== undefined ? { industry: normalizeOptionalText(industry) } : {}),
+      ...(companySize !== undefined ? { companySize: normalizeOptionalText(companySize) } : {}),
+      ...(tags !== undefined ? { tags: normalizeTags(tags) } : {}),
+    },
   });
 
   return NextResponse.json(tenant);

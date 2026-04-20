@@ -6,8 +6,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { BriefcaseBusiness, Plus, ShoppingBag } from "lucide-react";
-import { SUPPORTED_COUNTRIES } from "@bizconnect/db";
+import { BriefcaseBusiness, Lock, Plus, ShoppingBag, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,6 +21,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  TENANT_COMPANY_SIZE_OPTIONS,
+  TENANT_COUNTRY_OPTIONS,
+  TENANT_INDUSTRY_OPTIONS,
+  TENANT_PLAN_OPTIONS,
+} from "@/lib/tenant-options";
 import {
   Select,
   SelectContent,
@@ -36,27 +42,92 @@ const createTenantSchema = z.object({
     .min(2)
     .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
   country: z.string().default("nl"),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email("Enter a valid business email").optional().or(z.literal("")),
+  website: z.string().optional(),
+  industry: z.string().optional(),
+  companySize: z.string().optional(),
+  tags: z.string().optional(),
   preset: z.enum(["service-shop", "retail"]).default("service-shop"),
   plan: z.enum(["starter", "growth", "enterprise"]),
   adminName: z.string().min(2, "Admin name must be at least 2 characters"),
   adminEmail: z.string().email("Enter a valid email address"),
   adminPassword: z.string().min(8, "Password must be at least 8 characters"),
-  includeInventory: z.boolean().default(false),
-  includeBilling: z.boolean().default(false),
-  includeLoyalty: z.boolean().default(false),
+  moduleSlugs: z.array(z.string()).min(1, "Select at least one module"),
 });
 
 type CreateTenantForm = z.infer<typeof createTenantSchema>;
+type Preset = CreateTenantForm["preset"];
+type ModuleSlug =
+  | "users"
+  | "inventory"
+  | "pos"
+  | "promotions"
+  | "appointments"
+  | "billing"
+  | "hr"
+  | "reports"
+  | "job-orders"
+  | "crm"
+  | "assets"
+  | "services"
+  | "loyalty";
 
-const PLAN_OPTIONS = [
-  { value: "starter", label: "Starter" },
-  { value: "growth", label: "Growth" },
-  { value: "enterprise", label: "Enterprise" },
-] as const;
+const MODULE_OPTIONS: Array<{
+  slug: ModuleSlug;
+  name: string;
+  description: string;
+  core?: boolean;
+}> = [
+  { slug: "users", name: "User Management", description: "Roles, permissions, and account access.", core: true },
+  { slug: "crm", name: "CRM", description: "Customer records, history, and communications." },
+  { slug: "assets", name: "Assets", description: "Customer-linked equipment, vehicles, or serviceable assets." },
+  { slug: "services", name: "Services", description: "Service catalog, pricing, and availability flags." },
+  { slug: "job-orders", name: "Job Orders", description: "Service workflow, assignments, and job status tracking." },
+  { slug: "inventory", name: "Inventory", description: "Stock, products, categories, and reorder points." },
+  { slug: "pos", name: "Point of Sale", description: "Walk-in sales, cart, payments, and receipts." },
+  { slug: "promotions", name: "Promotions", description: "Discounts and item-level promo campaigns." },
+  { slug: "appointments", name: "Appointments", description: "Calendar bookings, services, and staff availability." },
+  { slug: "billing", name: "Billing & Invoicing", description: "Invoices, payments, and balances." },
+  { slug: "hr", name: "HR & Staff", description: "Employees, scheduling, attendance, leave, and payroll." },
+  { slug: "reports", name: "Reports & Analytics", description: "Revenue, inventory, and performance reporting." },
+  { slug: "loyalty", name: "Loyalty", description: "Stamp cards, rewards, and redemptions." },
+];
+
+const PRESET_MODULES: Record<Preset, ModuleSlug[]> = {
+  "service-shop": ["users", "crm", "assets", "services", "job-orders", "billing", "reports"],
+  retail: ["users", "inventory", "pos", "promotions", "reports"],
+};
+
+const EMPTY_SELECT_VALUE = "none";
+
+const MODULE_DEPENDENCIES: Partial<Record<ModuleSlug, ModuleSlug[]>> = {
+  pos: ["inventory"],
+  promotions: ["inventory"],
+  appointments: ["services", "hr"],
+  "job-orders": ["services"],
+  assets: ["crm"],
+  billing: ["crm"],
+  loyalty: ["crm"],
+};
+
+function applyModuleDependencies(moduleSlugs: ModuleSlug[]) {
+  const moduleSet = new Set<ModuleSlug>(moduleSlugs);
+  moduleSet.add("users");
+
+  for (const moduleSlug of Array.from(moduleSet)) {
+    for (const dependency of MODULE_DEPENDENCIES[moduleSlug] ?? []) {
+      moduleSet.add(dependency);
+    }
+  }
+
+  return Array.from(moduleSet);
+}
 
 export function CreateTenantDialog() {
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const router = useRouter();
   const {
     register,
@@ -72,17 +143,54 @@ export function CreateTenantDialog() {
       country: "nl",
       preset: "service-shop",
       plan: "starter",
-      includeInventory: false,
-      includeBilling: false,
-      includeLoyalty: false,
+      moduleSlugs: PRESET_MODULES["service-shop"],
     },
   });
 
   const preset = watch("preset");
   const country = watch("country");
   const plan = watch("plan");
-  const selectedCountry = SUPPORTED_COUNTRIES.find((option) => option.value === country);
-  const selectedPlan = PLAN_OPTIONS.find((option) => option.value === plan);
+  const industry = watch("industry");
+  const companySize = watch("companySize");
+  const tagPreview = (watch("tags") ?? "")
+    .split(",")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean);
+  const moduleSlugs = (watch("moduleSlugs") ?? ["users"]) as ModuleSlug[];
+  const selectedModuleSet = new Set(moduleSlugs);
+  const selectedModules = MODULE_OPTIONS.filter((module) => selectedModuleSet.has(module.slug));
+  const selectedCountry = TENANT_COUNTRY_OPTIONS.find((option) => option.value === country);
+  const selectedPlan = TENANT_PLAN_OPTIONS.find((option) => option.value === plan);
+  const selectedIndustry = TENANT_INDUSTRY_OPTIONS.find((option) => option.value === industry);
+  const selectedCompanySize = TENANT_COMPANY_SIZE_OPTIONS.find((option) => option.value === companySize);
+  const stepDescription =
+    step === 1
+      ? "Business profile and classification."
+      : step === 2
+        ? "Plan, preset, and module access."
+        : "Owner account and final review.";
+
+  function handlePresetChange(nextPreset: Preset) {
+    setValue("preset", nextPreset);
+    setValue("moduleSlugs", PRESET_MODULES[nextPreset]);
+  }
+
+  function getSelectedDependents(moduleSlug: ModuleSlug) {
+    return MODULE_OPTIONS.filter((module) =>
+      selectedModuleSet.has(module.slug) && (MODULE_DEPENDENCIES[module.slug] ?? []).includes(moduleSlug)
+    );
+  }
+
+  function handleModuleToggle(moduleSlug: ModuleSlug, checked: boolean) {
+    const option = MODULE_OPTIONS.find((module) => module.slug === moduleSlug);
+    if (option?.core && !checked) return;
+
+    const nextModules = checked
+      ? Array.from(new Set([...moduleSlugs, moduleSlug]))
+      : moduleSlugs.filter((selectedSlug) => selectedSlug !== moduleSlug);
+
+    setValue("moduleSlugs", applyModuleDependencies(nextModules), { shouldValidate: true });
+  }
 
   function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
     const name = e.target.value;
@@ -95,10 +203,16 @@ export function CreateTenantDialog() {
   }
 
   async function onSubmit(data: CreateTenantForm) {
+    const website = data.website?.trim();
+    const normalizedWebsite = website && !/^https?:\/\//i.test(website) ? `https://${website}` : website;
     const res = await fetch("/api/tenants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        website: normalizedWebsite,
+        tags: tagPreview,
+      }),
     });
 
     if (!res.ok) {
@@ -115,12 +229,27 @@ export function CreateTenantDialog() {
   }
 
   async function handleNextStep() {
-    const isValid = await trigger(["name", "slug", "country", "preset", "plan"]);
+    const fieldsToValidate =
+      step === 1
+        ? ([
+            "name",
+            "slug",
+            "country",
+            "address",
+            "phone",
+            "email",
+            "website",
+            "industry",
+            "companySize",
+            "tags",
+          ] as const)
+        : (["preset", "plan", "moduleSlugs"] as const);
+    const isValid = await trigger(fieldsToValidate);
     if (!isValid) {
-      toast.error("Please complete the business setup before continuing");
+      toast.error(step === 1 ? "Please complete the business profile before continuing" : "Please complete the module setup before continuing");
       return;
     }
-    setStep(2);
+    setStep(step === 1 ? 2 : 3);
   }
 
   return (
@@ -135,18 +264,36 @@ export function CreateTenantDialog() {
         <Plus className="mr-2 h-4 w-4" />
         New Tenant
       </DialogTrigger>
-      <DialogContent className="grid max-h-[92vh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden sm:max-w-5xl lg:max-w-6xl">
-        <DialogHeader className="-mx-4 -mt-4 border-b border-border/60 px-4 py-4 sm:-mx-5 sm:px-5">
-          <DialogTitle>New Tenant</DialogTitle>
-          <DialogDescription>
-            Step {step} of 2. {step === 1
-              ? "Business setup and launch preset."
-              : "Owner account and review."}
-          </DialogDescription>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl lg:max-w-6xl"
+      >
+        <DialogHeader className="shrink-0 border-b border-border/60 px-6 py-5 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="admin-eyebrow">Tenants / New</p>
+              <DialogTitle className="mt-1 text-xl font-semibold tracking-tight">
+                New Tenant
+              </DialogTitle>
+              <DialogDescription className="mt-1">
+                Step {step} of 3 — {stepDescription}
+              </DialogDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="mt-1 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => setOpen(false)}
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </Button>
+          </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
-          <div className="min-h-0 overflow-y-auto pr-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-6 py-5">
             {step === 1 ? (
               <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
                 <div className="space-y-5">
@@ -154,7 +301,6 @@ export function CreateTenantDialog() {
                     <Label htmlFor="name">Business Name</Label>
                     <Input
                       id="name"
-                      placeholder="Acme Corporation"
                       {...register("name", { onChange: handleNameChange })}
                     />
                     {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
@@ -162,7 +308,7 @@ export function CreateTenantDialog() {
 
                   <div className="space-y-2">
                     <Label htmlFor="slug">URL Slug</Label>
-                    <Input id="slug" placeholder="acme-corporation" {...register("slug")} />
+                    <Input id="slug" {...register("slug")} />
                     {errors.slug && <p className="text-sm text-destructive">{errors.slug.message}</p>}
                     <p className="text-xs text-muted-foreground">
                       Used in the URL: app.bizconnect.app/<strong>{watch("slug") || "slug"}</strong>
@@ -179,7 +325,7 @@ export function CreateTenantDialog() {
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {SUPPORTED_COUNTRIES.map((country) => (
+                          {TENANT_COUNTRY_OPTIONS.map((country) => (
                             <SelectItem key={country.value} value={country.value}>
                               {country.label}
                             </SelectItem>
@@ -188,20 +334,49 @@ export function CreateTenantDialog() {
                       </Select>
                       {errors.country && <p className="text-sm text-destructive">{errors.country.message}</p>}
                     </div>
+                  </div>
+
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="address">Business Address</Label>
+                      <Input
+                        id="address"
+                        {...register("address")}
+                      />
+                    </div>
 
                     <div className="space-y-2">
-                      <Label>Plan</Label>
+                      <Label htmlFor="phone">Business Phone</Label>
+                      <Input id="phone" {...register("phone")} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Business Email</Label>
+                      <Input id="email" type="email" {...register("email")} />
+                      {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="website">Website</Label>
+                      <Input id="website" {...register("website")} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Industry</Label>
                       <Select
-                        value={plan}
-                        onValueChange={(value) => value && setValue("plan", value as CreateTenantForm["plan"])}
+                        value={industry || EMPTY_SELECT_VALUE}
+                        onValueChange={(value) => {
+                          if (value) setValue("industry", value === EMPTY_SELECT_VALUE ? "" : value);
+                        }}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a plan">
-                            {selectedPlan?.label ?? "Select a plan"}
+                          <SelectValue placeholder="Select industry">
+                            {TENANT_INDUSTRY_OPTIONS.find((option) => option.value === industry)?.label ?? "Select industry"}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {PLAN_OPTIONS.map((option) => (
+                          <SelectItem value={EMPTY_SELECT_VALUE}>Select industry</SelectItem>
+                          {TENANT_INDUSTRY_OPTIONS.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -209,6 +384,90 @@ export function CreateTenantDialog() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    <div className="space-y-2">
+                      <Label>Company Size</Label>
+                      <Select
+                        value={companySize || EMPTY_SELECT_VALUE}
+                        onValueChange={(value) => {
+                          if (value) setValue("companySize", value === EMPTY_SELECT_VALUE ? "" : value);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select size">
+                            {TENANT_COMPANY_SIZE_OPTIONS.find((option) => option.value === companySize)?.label ?? "Select size"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={EMPTY_SELECT_VALUE}>Select size</SelectItem>
+                          {TENANT_COMPANY_SIZE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="tags">Tags</Label>
+                      <Input id="tags" placeholder="pilot, vip, franchise" {...register("tags")} />
+                      {tagPreview.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {tagPreview.map((tag) => (
+                            <Badge key={tag} variant="secondary">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-5 rounded-[24px] border border-border/70 p-5">
+                  <p className="text-sm font-semibold text-foreground">Profile summary</p>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li>Business: <span className="font-medium text-foreground">{watch("name") || "Your business"}</span></li>
+                    <li>URL slug: <span className="font-mono text-foreground">{watch("slug") || "slug"}</span></li>
+                    <li>Country: <span className="font-medium text-foreground">{selectedCountry?.label ?? "Netherlands"}</span></li>
+                    <li>Industry: <span className="font-medium text-foreground">{selectedIndustry?.label ?? "Not set"}</span></li>
+                    <li>Size: <span className="font-medium text-foreground">{selectedCompanySize?.label ?? "Not set"}</span></li>
+                    <li>Contact: <span className="font-medium text-foreground">{watch("email") || watch("phone") || "Not set"}</span></li>
+                  </ul>
+                  {tagPreview.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {tagPreview.map((tag) => (
+                        <Badge key={tag} variant="outline">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : step === 2 ? (
+              <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <Label>Plan</Label>
+                    <Select
+                      value={plan}
+                      onValueChange={(value) => value && setValue("plan", value as CreateTenantForm["plan"])}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a plan">
+                          {selectedPlan?.label ?? "Select a plan"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TENANT_PLAN_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
@@ -216,7 +475,7 @@ export function CreateTenantDialog() {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <button
                         type="button"
-                        onClick={() => setValue("preset", "service-shop")}
+                        onClick={() => handlePresetChange("service-shop")}
                         className={`rounded-[24px] border p-4 text-left transition-colors ${
                           preset === "service-shop"
                             ? "border-primary bg-primary text-primary-foreground shadow-[0_18px_40px_-30px_hsl(var(--primary)/0.65)]"
@@ -238,7 +497,7 @@ export function CreateTenantDialog() {
 
                       <button
                         type="button"
-                        onClick={() => setValue("preset", "retail")}
+                        onClick={() => handlePresetChange("retail")}
                         className={`rounded-[24px] border p-4 text-left transition-colors ${
                           preset === "retail"
                             ? "border-primary bg-primary text-primary-foreground shadow-[0_18px_40px_-30px_hsl(var(--primary)/0.65)]"
@@ -261,85 +520,94 @@ export function CreateTenantDialog() {
                   </div>
 
                   <div className="rounded-[24px] border border-border/70 bg-muted/35 p-5">
-                    {preset === "service-shop" ? (
-                      <>
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5 rounded-2xl bg-primary p-2 text-primary-foreground">
-                            <BriefcaseBusiness className="h-4 w-4" />
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-foreground">Service shop preset</p>
-                            <p className="text-xs text-muted-foreground">
-                              Includes CRM, services, job orders, billing, reports, and a ready-to-use workflow.
-                            </p>
-                          </div>
-                        </div>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-2xl bg-primary p-2 text-primary-foreground">
+                        {preset === "service-shop" ? (
+                          <BriefcaseBusiness className="h-4 w-4" />
+                        ) : (
+                          <ShoppingBag className="h-4 w-4" />
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">Customize modules</p>
+                        <p className="text-xs text-muted-foreground">
+                          Presets select recommended modules. Adjust the final module list before creating the tenant.
+                        </p>
+                      </div>
+                    </div>
 
-                        <div className="mt-4 flex items-center justify-between rounded-2xl border border-border/70 bg-background px-3 py-2">
-                          <div>
-                            <p className="text-sm font-medium text-foreground">Add inventory</p>
-                            <p className="text-xs text-muted-foreground">
-                              Enable parts and material tracking for repair workflows.
-                            </p>
-                          </div>
-                          <Switch
-                            checked={watch("includeInventory")}
-                            onCheckedChange={(checked) => setValue("includeInventory", checked)}
-                          />
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5 rounded-2xl bg-primary p-2 text-primary-foreground">
-                            <ShoppingBag className="h-4 w-4" />
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-foreground">Retail preset</p>
-                            <p className="text-xs text-muted-foreground">
-                              Includes inventory, POS, promotions, reports, starter products, and an opening-week promo.
-                            </p>
-                          </div>
-                        </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {MODULE_OPTIONS.map((module) => {
+                        const isSelected = selectedModuleSet.has(module.slug);
+                        const selectedDependents = getSelectedDependents(module.slug);
+                        const isLocked = Boolean(module.core || selectedDependents.length > 0);
 
-                        <div className="mt-4 flex items-center justify-between rounded-2xl border border-border/70 bg-background px-3 py-2">
-                          <div>
-                            <p className="text-sm font-medium text-foreground">Add billing</p>
-                            <p className="text-xs text-muted-foreground">
-                              Enable formal invoices for charge accounts and pay-later sales.
-                            </p>
+                        return (
+                          <div
+                            key={module.slug}
+                            className={`rounded-2xl border bg-background p-3 transition-colors ${
+                              isSelected ? "border-primary/45" : "border-border/70"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-medium text-foreground">{module.name}</p>
+                                  {module.core && (
+                                    <Badge variant="outline" className="gap-1">
+                                      <Lock className="h-2.5 w-2.5" />
+                                      Core
+                                    </Badge>
+                                  )}
+                                  {PRESET_MODULES[preset].includes(module.slug) && (
+                                    <Badge variant="secondary">Preset</Badge>
+                                  )}
+                                </div>
+                                <p className="mt-1 text-xs text-muted-foreground">{module.description}</p>
+                                {selectedDependents.length > 0 && (
+                                  <p className="mt-2 text-xs text-muted-foreground">
+                                    Required by {selectedDependents.map((dependent) => dependent.name).join(", ")}.
+                                  </p>
+                                )}
+                                {(MODULE_DEPENDENCIES[module.slug]?.length ?? 0) > 0 && (
+                                  <p className="mt-2 text-xs text-muted-foreground">
+                                    Adds {MODULE_DEPENDENCIES[module.slug]
+                                      ?.map((dependency) => MODULE_OPTIONS.find((option) => option.slug === dependency)?.name)
+                                      .filter(Boolean)
+                                      .join(", ")}.
+                                  </p>
+                                )}
+                              </div>
+                              <Switch
+                                checked={isSelected}
+                                disabled={isLocked && isSelected}
+                                onCheckedChange={(checked) => handleModuleToggle(module.slug, checked)}
+                              />
+                            </div>
                           </div>
-                          <Switch
-                            checked={watch("includeBilling")}
-                            onCheckedChange={(checked) => setValue("includeBilling", checked)}
-                          />
-                        </div>
-
-                        <div className="mt-3 flex items-center justify-between rounded-2xl border border-border/70 bg-background px-3 py-2">
-                          <div>
-                            <p className="text-sm font-medium text-foreground">Add loyalty</p>
-                            <p className="text-xs text-muted-foreground">
-                              Enable loyalty cards and starter rewards for repeat customers.
-                            </p>
-                          </div>
-                          <Switch
-                            checked={watch("includeLoyalty")}
-                            onCheckedChange={(checked) => setValue("includeLoyalty", checked)}
-                          />
-                        </div>
-                      </>
+                        );
+                      })}
+                    </div>
+                    {errors.moduleSlugs && (
+                      <p className="mt-3 text-sm text-destructive">{errors.moduleSlugs.message}</p>
                     )}
                   </div>
                 </div>
 
                 <div className="space-y-5 rounded-[24px] border border-border/70 p-5">
-                  <p className="text-sm font-semibold text-foreground">What this creates</p>
+                  <p className="text-sm font-semibold text-foreground">Module summary</p>
                   <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li>Business: <span className="font-medium text-foreground">{watch("name") || "Your business"}</span></li>
-                    <li>URL slug: <span className="font-mono text-foreground">{watch("slug") || "slug"}</span></li>
                     <li>Preset: <span className="font-medium text-foreground">{preset === "service-shop" ? "Service Shop" : "Retail"}</span></li>
                     <li>Plan: <span className="font-medium text-foreground">{selectedPlan?.label ?? "Starter"}</span></li>
+                    <li>Modules: <span className="font-medium text-foreground">{selectedModules.length}</span></li>
                   </ul>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedModules.map((module) => (
+                      <Badge key={module.slug} variant="secondary">
+                        {module.name}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -390,33 +658,46 @@ export function CreateTenantDialog() {
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Business</p>
                       <p className="mt-1 text-sm font-semibold text-foreground">{watch("name") || "Your business"}</p>
                       <p className="mt-1 text-xs text-muted-foreground">app.bizconnect.app/{watch("slug") || "slug"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{watch("email") || watch("phone") || "No contact details yet"}</p>
                     </div>
 
                     <div className="rounded-2xl border border-border/70 bg-background p-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Preset</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Profile</p>
                       <p className="mt-1 text-sm font-semibold text-foreground">
-                        {preset === "service-shop" ? "Service Shop" : "Retail"}
+                        {TENANT_INDUSTRY_OPTIONS.find((option) => option.value === industry)?.label ?? "Industry not set"}
                       </p>
-                      <p className="mt-1 text-xs text-muted-foreground">{selectedPlan?.label ?? "Starter"} plan</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {TENANT_COMPANY_SIZE_OPTIONS.find((option) => option.value === companySize)?.label ?? "Size not set"} · {selectedPlan?.label ?? "Starter"} plan
+                      </p>
                     </div>
                   </div>
 
+                  {tagPreview.length > 0 && (
+                    <div className="rounded-2xl border border-border/70 bg-background p-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Tags</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {tagPreview.map((tag) => (
+                          <Badge key={tag} variant="outline">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="rounded-2xl border border-border/70 bg-background p-3">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Modules & options</p>
-                    <div className="mt-2 space-y-2 text-sm text-muted-foreground">
-                      {preset === "service-shop" ? (
-                        <>
-                          <p>Includes CRM, services, job orders, billing, reports, and users.</p>
-                          <p>{watch("includeInventory") ? "Inventory will also be enabled." : "Inventory will stay off for now."}</p>
-                        </>
-                      ) : (
-                        <>
-                          <p>Includes inventory, POS, promotions, reports, and users.</p>
-                          <p>{watch("includeBilling") ? "Billing will also be enabled." : "Billing will stay off for now."}</p>
-                          <p>{watch("includeLoyalty") ? "Loyalty will also be enabled." : "Loyalty will stay off for now."}</p>
-                        </>
-                      )}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {selectedModules.map((module) => (
+                        <Badge key={module.slug} variant="secondary">
+                          {module.name}
+                        </Badge>
+                      ))}
                     </div>
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      {selectedModules.length} module{selectedModules.length === 1 ? "" : "s"} selected from the{" "}
+                      {preset === "service-shop" ? "Service Shop" : "Retail"} preset.
+                    </p>
                   </div>
 
                   <div className="rounded-2xl border border-border/70 bg-background p-3">
@@ -429,24 +710,52 @@ export function CreateTenantDialog() {
             )}
           </div>
 
-          <DialogFooter className="-mx-4 -mb-4 mt-4 sm:-mx-5">
+          <DialogFooter className="sm:justify-between">
             {step === 1 ? (
               <>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full px-4"
+                  onClick={() => setOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button type="button" onClick={handleNextStep}>
+                <Button
+                  type="button"
+                  className="rounded-full px-4"
+                  onClick={handleNextStep}
+                >
                   Continue
                 </Button>
               </>
             ) : (
               <>
-                <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full px-4"
+                  onClick={() => setStep(step === 2 ? 1 : 2)}
+                >
                   Back
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Creating..." : "Create Tenant"}
-                </Button>
+                {step === 2 ? (
+                  <Button
+                    type="button"
+                    className="rounded-full px-4"
+                    onClick={handleNextStep}
+                  >
+                    Continue
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    className="rounded-full px-4"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Creating..." : "Create Tenant"}
+                  </Button>
+                )}
               </>
             )}
           </DialogFooter>
