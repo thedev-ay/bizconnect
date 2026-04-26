@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useTransition, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { ChevronDown, LogOut, Menu, MoreHorizontal } from "lucide-react";
+import { ChevronDown, LogOut, MoreHorizontal, Check, GitBranch, Loader2 } from "lucide-react";
 import { isPrivilegedRole, canViewModule } from "@/lib/permissions";
 import { PendingSalesBadge } from "./pending-sales-badge";
-import { BranchSwitcher } from "@/modules/branches";
+import { switchBranch } from "@/modules/branches/actions";
 import * as Icons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -45,6 +45,8 @@ interface SidebarProps {
   modules: SidebarModule[];
   branches: SidebarBranch[];
   currentBranchId: string | null;
+  mobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
 }
 
 const MODULE_GROUPS: { label: string; slugs: string[] }[] = [
@@ -54,16 +56,34 @@ const MODULE_GROUPS: { label: string; slugs: string[] }[] = [
   },
   {
     label: "Business",
-    slugs: ["pos", "inventory", "job-orders", "services", "sales", "promotions", "loyalty", "appointments", "billing", "crm", "hr"],
+    slugs: [
+      "pos",
+      "inventory",
+      "job-orders",
+      "services",
+      "sales",
+      "promotions",
+      "loyalty",
+      "appointments",
+      "billing",
+      "crm",
+      "hr",
+    ],
   },
 ];
 
-export function Sidebar({ tenant, modules, branches, currentBranchId }: SidebarProps) {
+export function Sidebar({
+  tenant,
+  modules,
+  branches,
+  currentBranchId,
+  mobileOpen,
+  onMobileOpenChange,
+}: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     reports: pathname === `/${tenant.slug}/reports`,
     settings: pathname === `/${tenant.slug}/settings`,
@@ -108,15 +128,27 @@ export function Sidebar({ tenant, modules, branches, currentBranchId }: SidebarP
       <Link
         href={href}
         className={cn(
-          "flex items-center gap-2.5 rounded-[calc(var(--radius)-4px)] px-3 py-2.5 text-sm transition-all duration-200",
+          "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
           isActive
-            ? "bg-white text-slate-900 shadow-[0_14px_24px_-18px_rgba(15,23,42,0.8)] font-medium"
-            : "text-sidebar-foreground/72 hover:bg-white/10 hover:text-sidebar-foreground"
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+            : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         )}
         onClick={onNavigate}
       >
-        {Icon && <Icon className="h-4 w-4 shrink-0" />}
-        {name}
+        {isActive && (
+          <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
+        )}
+        {Icon && (
+          <Icon
+            className={cn(
+              "h-4 w-4 shrink-0 transition-colors",
+              isActive
+                ? "text-primary"
+                : "text-sidebar-foreground/55 group-hover:text-sidebar-foreground"
+            )}
+          />
+        )}
+        <span className="flex-1">{name}</span>
         {slug === "sales" && session?.user?.tenantId && (
           <PendingSalesBadge tenantId={session.user.tenantId} />
         )}
@@ -148,18 +180,10 @@ export function Sidebar({ tenant, modules, branches, currentBranchId }: SidebarP
           type="button"
           onClick={() => {
             if (isOpen && isActive) {
-              setOpenGroups((current) => ({
-                ...current,
-                [slug]: false,
-              }));
+              setOpenGroups((current) => ({ ...current, [slug]: false }));
               return;
             }
-
-            setOpenGroups((current) => ({
-              ...current,
-              [slug]: true,
-            }));
-
+            setOpenGroups((current) => ({ ...current, [slug]: true }));
             const firstChild = children[0];
             if (firstChild) {
               router.push(firstChild.href);
@@ -167,33 +191,45 @@ export function Sidebar({ tenant, modules, branches, currentBranchId }: SidebarP
             }
           }}
           className={cn(
-            "flex w-full items-center gap-2.5 rounded-[calc(var(--radius)-4px)] px-3 py-2.5 text-sm transition-all duration-200",
+            "group relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
             isActive
-              ? "bg-white text-slate-900 font-medium shadow-[0_14px_24px_-18px_rgba(15,23,42,0.8)]"
-              : "text-sidebar-foreground/72 hover:bg-white/10 hover:text-sidebar-foreground"
+              ? "bg-sidebar-accent text-sidebar-accent-foreground"
+              : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
           )}
         >
-          {Icon && <Icon className="h-4 w-4 shrink-0" />}
+          {isActive && (
+            <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
+          )}
+          {Icon && (
+            <Icon
+              className={cn(
+                "h-4 w-4 shrink-0 transition-colors",
+                isActive
+                  ? "text-primary"
+                  : "text-sidebar-foreground/55 group-hover:text-sidebar-foreground"
+              )}
+            />
+          )}
           <span className="flex-1 text-left">{name}</span>
           <ChevronDown
             className={cn(
-              "h-4 w-4 shrink-0 transition-transform",
+              "h-3.5 w-3.5 shrink-0 text-sidebar-foreground/45 transition-transform",
               isOpen && "rotate-180"
             )}
           />
         </button>
         {isOpen && (
-          <div className="ml-6 space-y-1 border-l border-white/10 pl-3">
+          <div className="ml-7 space-y-0.5 border-l border-sidebar-border pl-3">
             {children.map((child) => (
               <Link
                 key={child.href}
                 href={child.href}
                 onClick={onNavigate}
                 className={cn(
-                  "block rounded-md px-2.5 py-1.5 text-xs transition-all",
+                  "block rounded-md px-2.5 py-1.5 text-xs transition-colors",
                   child.isActive
-                    ? "bg-white/12 text-sidebar-foreground"
-                    : "text-sidebar-foreground/55 hover:bg-white/8 hover:text-sidebar-foreground/88"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/55 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                 )}
               >
                 {child.label}
@@ -237,7 +273,7 @@ export function Sidebar({ tenant, modules, branches, currentBranchId }: SidebarP
   ]);
 
   const role = session?.user?.role ?? "member";
-  const permissions = (session?.user as any)?.permissions as Record<string, boolean> ?? {};
+  const permissions = ((session?.user as any)?.permissions as Record<string, boolean>) ?? {};
   const privileged = isPrivilegedRole(role);
 
   const moduleSlugSet = new Set(modules.map((m) => m.slug));
@@ -245,7 +281,6 @@ export function Sidebar({ tenant, modules, branches, currentBranchId }: SidebarP
 
   function canSeeModule(slug: string): boolean {
     if (slug === "dashboard" || slug === "settings") return true;
-    // Sales is auto-derived — visible if any payment-generating module is active
     if (slug === "sales") return salesEnabled;
     if (privileged) return true;
     return canViewModule(permissions, slug);
@@ -259,54 +294,140 @@ export function Sidebar({ tenant, modules, branches, currentBranchId }: SidebarP
   })).filter((g) => g.items.length > 0);
 
   const groupedSlugs = new Set(MODULE_GROUPS.flatMap((g) => g.slugs));
-  const ungrouped = modules.filter((m) => !groupedSlugs.has(m.slug) && canSeeModule(m.slug));
+  const ungrouped = modules.filter(
+    (m) => !groupedSlugs.has(m.slug) && canSeeModule(m.slug)
+  );
   const reportsSection = searchParams.get("section");
   const settingsTab = searchParams.get("tab") ?? "general";
   const hasPos = modules.some((m) => m.slug === "pos");
   const hasBilling = modules.some((m) => m.slug === "billing");
 
   const reportsChildren = [
-    { label: "Overview", href: `/${tenant.slug}/reports?section=overview`, isActive: pathname === `/${tenant.slug}/reports` && (reportsSection === "overview" || reportsSection === null) },
-    hasPos && { label: "Sales", href: `/${tenant.slug}/reports?section=sales`, isActive: pathname === `/${tenant.slug}/reports` && reportsSection === "sales" },
-    (hasPos || hasBilling) && { label: "Payments", href: `/${tenant.slug}/reports?section=payments`, isActive: pathname === `/${tenant.slug}/reports` && reportsSection === "payments" },
+    {
+      label: "Overview",
+      href: `/${tenant.slug}/reports?section=overview`,
+      isActive:
+        pathname === `/${tenant.slug}/reports` &&
+        (reportsSection === "overview" || reportsSection === null),
+    },
+    hasPos && {
+      label: "Sales",
+      href: `/${tenant.slug}/reports?section=sales`,
+      isActive: pathname === `/${tenant.slug}/reports` && reportsSection === "sales",
+    },
+    (hasPos || hasBilling) && {
+      label: "Payments",
+      href: `/${tenant.slug}/reports?section=payments`,
+      isActive: pathname === `/${tenant.slug}/reports` && reportsSection === "payments",
+    },
   ].filter(Boolean) as { label: string; href: string; isActive: boolean }[];
+
   const settingsChildren = [
-    { label: "General", href: `/${tenant.slug}/settings?tab=general`, isActive: pathname === `/${tenant.slug}/settings` && settingsTab === "general" },
-    { label: "Business Hours", href: `/${tenant.slug}/settings?tab=hours`, isActive: pathname === `/${tenant.slug}/settings` && settingsTab === "hours" },
+    {
+      label: "General",
+      href: `/${tenant.slug}/settings?tab=general`,
+      isActive: pathname === `/${tenant.slug}/settings` && settingsTab === "general",
+    },
+    {
+      label: "Business Hours",
+      href: `/${tenant.slug}/settings?tab=hours`,
+      isActive: pathname === `/${tenant.slug}/settings` && settingsTab === "hours",
+    },
   ].filter(Boolean) as { label: string; href: string; isActive: boolean }[];
+
+  function WorkspacePill() {
+    const [isPending, startTransition] = useTransition();
+    const currentBranch = branches.find((b) => b.id === currentBranchId);
+
+    if (branches.length <= 1) {
+      return (
+        <div className="flex items-center gap-3 rounded-xl border border-sidebar-border bg-sidebar-accent/30 px-3 py-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary via-primary to-cyan-300/70 shadow-[0_8px_20px_-12px_color-mix(in_oklch,var(--primary)_60%,transparent)]">
+            <Icons.Zap className="h-4 w-4 text-primary-foreground" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/55">
+              BizConnect
+            </p>
+            <span className="block truncate text-sm font-semibold text-sidebar-foreground">
+              {tenant.name}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-xl border border-sidebar-border bg-sidebar-accent/30 px-3 py-2.5 text-left transition-colors hover:bg-sidebar-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            />
+          }
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary via-primary to-cyan-300/70 shadow-[0_8px_20px_-12px_color-mix(in_oklch,var(--primary)_60%,transparent)]">
+            {isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin text-primary-foreground" />
+            ) : (
+              <Icons.Zap className="h-4 w-4 text-primary-foreground" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/55">
+              BizConnect
+            </p>
+            <span className="block truncate text-sm font-semibold text-sidebar-foreground">
+              {tenant.name}
+            </span>
+            <span className="flex items-center gap-1 text-[11px] text-sidebar-foreground/55">
+              <GitBranch className="h-3 w-3 shrink-0" />
+              <span className="truncate">{currentBranch?.name ?? "Select branch"}</span>
+            </span>
+          </div>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/40" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="bottom" align="start" className="w-56">
+          {branches.map((branch) => (
+            <DropdownMenuItem
+              key={branch.id}
+              className="gap-2"
+              onClick={() => {
+                if (branch.id === currentBranchId) return;
+                startTransition(async () => {
+                  await switchBranch(tenant.slug, branch.id);
+                  router.refresh();
+                });
+              }}
+            >
+              <GitBranch className="h-4 w-4 text-muted-foreground" />
+              <span className="flex-1 truncate">{branch.name}</span>
+              {branch.id === currentBranchId && (
+                <Check className="h-3.5 w-3.5 text-primary" />
+              )}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
 
   function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
     return (
       <>
-        <div className="border-b border-white/10 px-4 py-4 space-y-2.5">
-          <div className="flex items-center gap-3 rounded-[calc(var(--radius)+2px)] border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/95 to-cyan-200 shadow-[0_12px_24px_-14px_rgba(56,189,248,0.75)]">
-              <Icons.Zap className="h-4.5 w-4.5 text-slate-950" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/45">
-                BizConnect
-              </p>
-              <span className="block truncate text-sm font-semibold text-white">{tenant.name}</span>
-            </div>
-          </div>
-          {branches.length > 1 && (
-            <BranchSwitcher
-              tenantSlug={tenant.slug}
-              branches={branches}
-              currentBranchId={currentBranchId}
-            />
-          )}
+        <div className="border-b border-sidebar-border px-3 pb-3 pt-4">
+          <WorkspacePill />
         </div>
 
-        <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-5 overflow-y-auto px-2.5 py-4">
           {groups.map((group) => (
             <div key={group.label}>
-              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/40">
+              <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/35">
                 {group.label}
               </p>
-              <div className="space-y-1">
-                {group.items.map((item) => (
+              <div className="space-y-0.5">
+                {group.items.map((item) =>
                   item.slug === "reports" ? (
                     <NavItemWithChildren
                       key={item.slug}
@@ -326,55 +447,69 @@ export function Sidebar({ tenant, modules, branches, currentBranchId }: SidebarP
                       onNavigate={onNavigate}
                     />
                   ) : (
-                    <NavItem key={item.slug} slug={item.slug} name={item.name} icon={item.icon} onNavigate={onNavigate} />
+                    <NavItem
+                      key={item.slug}
+                      slug={item.slug}
+                      name={item.name}
+                      icon={item.icon}
+                      onNavigate={onNavigate}
+                    />
                   )
-                ))}
+                )}
               </div>
             </div>
           ))}
 
           {ungrouped.length > 0 && (
             <div>
-              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/40">
+              <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/35">
                 Other
               </p>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {ungrouped.map((item) => (
-                  <NavItem key={item.slug} slug={item.slug} name={item.name} icon={item.icon} onNavigate={onNavigate} />
+                  <NavItem
+                    key={item.slug}
+                    slug={item.slug}
+                    name={item.name}
+                    icon={item.icon}
+                    onNavigate={onNavigate}
+                  />
                 ))}
               </div>
             </div>
           )}
         </nav>
 
-        <div className="border-t border-white/10 p-3">
-          <div className="flex items-center gap-3 rounded-[calc(var(--radius)+2px)] border border-white/10 bg-white/8 px-3 py-2.5 backdrop-blur-sm">
-            <Avatar className="h-9 w-9 shrink-0">
-              <AvatarFallback className="bg-white/14 text-white text-xs font-medium">
+        <div className="border-t border-sidebar-border p-2.5">
+          <div className="flex items-center gap-2.5 rounded-xl border border-sidebar-border bg-sidebar-accent/30 px-2.5 py-2">
+            <Avatar className="h-8 w-8 shrink-0">
+              <AvatarFallback className="bg-primary/20 text-xs font-medium text-primary">
                 {initials ?? "?"}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-zinc-50">
+              <p className="truncate text-sm font-medium text-sidebar-foreground">
                 {session?.user?.name ?? "User"}
               </p>
-              <p className="truncate text-xs capitalize text-sidebar-foreground/50">
+              <p className="truncate text-[11px] capitalize text-sidebar-foreground/55">
                 {session?.user?.role ?? "member"}
               </p>
             </div>
             <DropdownMenu>
-              <DropdownMenuTrigger render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-sidebar-foreground/55 hover:bg-white/10 hover:text-sidebar-foreground"
-                />
-              }>
-                <MoreHorizontal className="h-4 w-4" />
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 rounded-full text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  />
+                }
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="end" className="w-44">
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive gap-2"
+                  className="gap-2 text-destructive focus:text-destructive"
                   onClick={async () => {
                     await signOut({ redirect: false });
                     window.location.href = `/${tenant.slug}/login`;
@@ -393,38 +528,23 @@ export function Sidebar({ tenant, modules, branches, currentBranchId }: SidebarP
 
   return (
     <>
-      <div className="border-b border-border/70 bg-white/90 px-4 py-3 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.3)] backdrop-blur-sm lg:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-primary/65">
-              BizConnect
-            </p>
-            <p className="truncate text-sm font-semibold text-foreground">{tenant.name}</p>
-          </div>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-10 w-10 rounded-full border-border/70 bg-white"
-            onClick={() => setMobileNavOpen(true)}
-          >
-            <Menu className="h-4 w-4" />
-            <span className="sr-only">Open navigation</span>
-          </Button>
-        </div>
-      </div>
-
-      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetContent side="left" className="w-full max-w-none border-r-white/10 bg-[linear-gradient(180deg,rgba(18,34,39,0.99)_0%,rgba(29,51,59,0.97)_100%)] p-0 text-sidebar-foreground sm:max-w-sm lg:hidden">
+      <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
+        <SheetContent
+          side="left"
+          className="w-full max-w-none border-r-sidebar-border bg-sidebar p-0 text-sidebar-foreground sm:max-w-sm lg:hidden"
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>Navigation</SheetTitle>
           </SheetHeader>
           <div className="flex h-full flex-col">
-            <SidebarBody onNavigate={() => setMobileNavOpen(false)} />
+            <SidebarBody onNavigate={() => onMobileOpenChange(false)} />
           </div>
         </SheetContent>
       </Sheet>
 
-      <aside className="hidden h-full w-72 shrink-0 flex-col border-r border-sidebar-border/80 bg-[linear-gradient(180deg,rgba(18,34,39,0.98)_0%,rgba(29,51,59,0.96)_100%)] text-sidebar-foreground shadow-[8px_0_32px_-24px_rgba(15,23,42,0.45)] lg:flex">
+      <aside
+        className="hidden h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex"
+      >
         <SidebarBody />
       </aside>
     </>

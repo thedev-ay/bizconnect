@@ -13,6 +13,7 @@ import type { LoyaltyCard, LoyaltySetting, LoyaltyActivity } from "../types";
 import { addStamp, redeemReward, deleteLoyaltyCard } from "../actions";
 import { LoyaltySettingsDialog } from "./loyalty-settings-dialog";
 import { NewCardDialog, NewCardButton } from "./new-card-dialog";
+import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 
 interface LoyaltyCardWithActivity extends LoyaltyCard {
   recentActivity: LoyaltyActivity[];
@@ -55,6 +56,7 @@ export function LoyaltyShell({ cards, settings, tenantSlug, tenantId }: LoyaltyS
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(cards[0]?.id ?? null);
   const [newCardOpen, setNewCardOpen] = useState(false);
+  useTopbarCta("New Card", () => setNewCardOpen(true));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionLoading, setActionLoading] = useState<"stamp" | "redeem" | "delete" | null>(null);
 

@@ -119,6 +119,12 @@ export function CreateJobOrderDialog({
 }: CreateJobOrderDialogProps) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<LineItem[]>([]);
+  useEffect(() => {
+    if (disabled) return;
+    function handleTopbarCta() { setOpen(true); }
+    window.addEventListener("topbar-cta", handleTopbarCta);
+    return () => window.removeEventListener("topbar-cta", handleTopbarCta);
+  }, [disabled]);
   const [assetOptions, setAssetOptions] = useState<AssetOption[]>(assets);
   const [serviceSearch, setServiceSearch] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");

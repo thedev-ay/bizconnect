@@ -5,7 +5,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, WifiOff, X } from "lucide-react";
+import { WifiOff, X } from "lucide-react";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,8 @@ interface AddItemDialogProps {
   tenantSlug: string;
   tenantId: string;
   currencySymbol: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 function MarginChip({ cost, price }: { cost: number; price: number }) {
@@ -58,8 +60,8 @@ function MarginChip({ cost, price }: { cost: number; price: number }) {
   );
 }
 
-export function AddItemDialog({ tenantSlug, tenantId, currencySymbol }: AddItemDialogProps) {
-  const [open, setOpen] = useState(false);
+export function AddItemDialog({ tenantSlug, tenantId, currencySymbol, open, onOpenChange }: AddItemDialogProps) {
+  const setOpen = onOpenChange;
   const [addAnother, setAddAnother] = useState(false);
   const queryClient = useQueryClient();
   const isOnline = useOnlineStatus();
@@ -101,13 +103,7 @@ export function AddItemDialog({ tenantSlug, tenantId, currencySymbol }: AddItemD
   }
 
   return (
-    <>
-      <Button className="rounded-full px-4" onClick={() => setOpen(true)}>
-        <Plus className="mr-2 h-4 w-4" />
-        Add
-      </Button>
-
-      <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           showCloseButton={false}
           className="flex max-h-[90dvh] w-[min(560px,calc(100vw-2rem))] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"
@@ -267,6 +263,5 @@ export function AddItemDialog({ tenantSlug, tenantId, currencySymbol }: AddItemD
           </form>
         </DialogContent>
       </Dialog>
-    </>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 import { ServiceDialog } from "./service-dialog";
 
 interface NewServiceButtonProps {
@@ -23,6 +24,7 @@ export function NewServiceButton({
   showJobOrdersAvailability,
 }: NewServiceButtonProps) {
   const [open, setOpen] = useState(false);
+  useTopbarCta("New Service", () => setOpen(true));
 
   return (
     <>

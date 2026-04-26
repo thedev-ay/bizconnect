@@ -8,6 +8,11 @@ interface SessionModule {
   isCore: boolean;
 }
 
+interface SessionUserGroup {
+  id: string;
+  name: string;
+}
+
 declare module "next-auth" {
   interface Session {
     user: {
@@ -16,6 +21,8 @@ declare module "next-auth" {
       tenantName: string;
       role: string;
       permissions: Record<string, boolean>;
+      directPermissions: Record<string, boolean>;
+      userGroup: SessionUserGroup | null;
       modules: string[];
       moduleObjects: SessionModule[];
       currentBranchId: string | null;
@@ -30,6 +37,8 @@ declare module "next-auth/jwt" {
     tenantName: string;
     role: string;
     permissions: Record<string, boolean>;
+    directPermissions: Record<string, boolean>;
+    userGroup: SessionUserGroup | null;
     modules: string[];
     moduleObjects: SessionModule[];
     currentBranchId: string | null;

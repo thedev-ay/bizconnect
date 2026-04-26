@@ -121,6 +121,25 @@ export const PERMISSIONS = {
 export type PermissionModule = keyof typeof PERMISSIONS;
 export type UserPermissions = Record<string, boolean>;
 
+export function mergePermissions(
+  ...permissionSets: Array<UserPermissions | null | undefined>
+): UserPermissions {
+  return permissionSets.reduce<UserPermissions>((merged, current) => {
+    if (!current) return merged;
+    return { ...merged, ...current };
+  }, {});
+}
+
+export function getPermissionLabel(key: string): string {
+  const [moduleSlug, actionKey] = key.split(".");
+  const moduleDef = PERMISSIONS[moduleSlug as PermissionModule];
+
+  if (!moduleDef || !actionKey) return key;
+
+  const actionLabel = moduleDef.actions[actionKey as keyof typeof moduleDef.actions];
+  return typeof actionLabel === "string" ? actionLabel : key;
+}
+
 /** Check if a user has a specific permission key (e.g. "pos.void") */
 export function hasPermission(permissions: UserPermissions, key: string): boolean {
   return permissions[key] === true;

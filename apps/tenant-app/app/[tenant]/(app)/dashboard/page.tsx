@@ -1,19 +1,39 @@
 import { getTenant } from "@/lib/tenant";
 import { authorize } from "@/lib/authorize";
 import { prisma } from "@bizconnect/db";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, AlertTriangle, Clock, ArrowRight, Sparkles } from "lucide-react";
+import {
+  Package,
+  AlertTriangle,
+  Clock,
+  ArrowRight,
+  ClipboardList,
+  RotateCcw,
+} from "lucide-react";
 import Link from "next/link";
 import { RevenueChart, TransactionChart } from "@/components/dashboard/revenue-chart";
 import { DashboardStatCards, type DashboardStatCardData } from "@/components/dashboard/stat-cards";
 import { FadeIn } from "@/components/dashboard/fade-in";
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
 
 interface DashboardPageProps {
   params: Promise<{ tenant: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; range?: string }>;
 }
+
+const VALID_RANGES = ["today", "week", "month"] as const;
+type RangeKey = typeof VALID_RANGES[number];
+
+function trendPercent(current: number, prev: number | null): number | null {
+  if (prev === null) return null;
+  if (prev === 0) return current > 0 ? 100 : null;
+  return Math.round(((current - prev) / prev) * 100);
+}
+
+const RANGE_LABELS: Record<RangeKey, { period: string; short: string }> = {
+  today: { period: "Today", short: "Today" },
+  week: { period: "This Week", short: "Week" },
+  month: { period: "This Month", short: "Month" },
+};
 
 async function getServiceShopBillingStats(tenantId: string, modules: Set<string>) {
   if (!modules.has("job-orders")) {
@@ -62,14 +82,32 @@ async function getServiceShopBillingStats(tenantId: string, modules: Set<string>
   }
 }
 
-async function getDashboardStats(tenantId: string, modules: Set<string>) {
+async function getDashboardStats(tenantId: string, modules: Set<string>, range: "today" | "week" | "month" = "month") {
   const now = new Date();
   const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30);
 
-  // Fetch workflow stages to avoid hardcoded slug assumptions
+  let periodStart: Date;
+  let prevPeriodStart: Date;
+  let prevPeriodEnd: Date;
+
+  if (range === "today") {
+    periodStart = new Date(todayStart);
+    prevPeriodStart = new Date(todayStart); prevPeriodStart.setDate(todayStart.getDate() - 1);
+    prevPeriodEnd = new Date(todayStart); prevPeriodEnd.setMilliseconds(-1);
+  } else if (range === "week") {
+    periodStart = new Date(now); periodStart.setDate(now.getDate() - 6); periodStart.setHours(0, 0, 0, 0);
+    prevPeriodStart = new Date(periodStart); prevPeriodStart.setDate(periodStart.getDate() - 7);
+    prevPeriodEnd = new Date(periodStart); prevPeriodEnd.setMilliseconds(-1);
+  } else {
+    periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    prevPeriodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    prevPeriodEnd = new Date(periodStart); prevPeriodEnd.setMilliseconds(-1);
+  }
+
+  const monthStart = periodStart;
+  const chartStart = range === "week" ? periodStart : range === "today" ? todayStart : (() => { const d = new Date(now); d.setDate(now.getDate() - 30); return d; })();
+
   const workflowStages = modules.has("job-orders")
     ? await prisma.workflowStage.findMany({ where: { tenantId }, select: { slug: true, type: true } })
     : [];
@@ -97,6 +135,9 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
     monthlyInvoiced,
     monthlyCollected,
     lowStockWatchlist,
+    prevSales,
+    prevMonthlyInvoiced,
+    prevMonthlyCollected,
   ] = await Promise.all([
     modules.has("appointments")
       ? prisma.appointment.count({ where: { tenantId, startAt: { gte: todayStart, lte: todayEnd } } })
@@ -140,7 +181,7 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
 
     modules.has("pos")
       ? prisma.sale.findMany({
-          where: { tenantId, createdAt: { gte: thirtyDaysAgo }, status: "completed" },
+          where: { tenantId, createdAt: { gte: chartStart }, status: "completed" },
           select: { createdAt: true, total: true },
           orderBy: { createdAt: "asc" },
         })
@@ -233,11 +274,34 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
           LIMIT 5
         `
       : Promise.resolve(null),
+
+    modules.has("pos")
+      ? prisma.sale.aggregate({
+          where: { tenantId, createdAt: { gte: prevPeriodStart, lte: prevPeriodEnd } },
+          _sum: { total: true },
+          _count: true,
+        })
+      : Promise.resolve(null),
+
+    modules.has("billing")
+      ? prisma.invoice.aggregate({
+          where: { tenantId, createdAt: { gte: prevPeriodStart, lte: prevPeriodEnd } },
+          _sum: { total: true },
+          _count: true,
+        })
+      : Promise.resolve(null),
+
+    modules.has("billing")
+      ? prisma.invoice.aggregate({
+          where: { tenantId, paidAt: { gte: prevPeriodStart, lte: prevPeriodEnd }, status: "paid" },
+          _sum: { total: true },
+          _count: true,
+        })
+      : Promise.resolve(null),
   ]);
 
   const { readyToInvoice, recentCompletedJobs } = await serviceShopBillingStatsPromise;
 
-  // Aggregate sales by day for charting
   const salesByDay = new Map<string, { revenue: number; count: number }>();
   if (last30DaysSales) {
     for (const sale of last30DaysSales) {
@@ -282,6 +346,9 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
     monthlyInvoicedTotal: monthlyInvoiced ? Number(monthlyInvoiced._sum.total ?? 0) : 0,
     monthlyInvoicedCount: monthlyInvoiced?._count ?? 0,
     monthlyCollectedTotal: monthlyCollected ? Number(monthlyCollected._sum.total ?? 0) : 0,
+    prevPeriodRevenue: prevSales ? Number(prevSales._sum.total ?? 0) : null,
+    prevPeriodInvoicedTotal: prevMonthlyInvoiced ? Number(prevMonthlyInvoiced._sum.total ?? 0) : null,
+    prevPeriodCollectedTotal: prevMonthlyCollected ? Number(prevMonthlyCollected._sum.total ?? 0) : null,
     recentCompletedJobs,
     lowStockWatchlist: lowStockWatchlist?.map((item) => ({
       id: item.id,
@@ -295,7 +362,8 @@ async function getDashboardStats(tenantId: string, modules: Set<string>) {
 
 export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
   const { tenant: tenantSlug } = await params;
-  const { error } = await searchParams;
+  const { error, range: rangeParam } = await searchParams;
+  const range: RangeKey = VALID_RANGES.includes(rangeParam as RangeKey) ? (rangeParam as RangeKey) : "month";
 
   const [session, tenant] = await Promise.all([
     authorize(tenantSlug),
@@ -304,10 +372,10 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
   const moduleSet = new Set<string>(session.user.modules);
   const activeModules = session.user.moduleObjects;
-  const data = await getDashboardStats(tenant.id, moduleSet);
+  const data = await getDashboardStats(tenant.id, moduleSet, range);
   const firstName = session?.user?.name?.split(" ")[0] ?? "there";
+  const periodLabel = RANGE_LABELS[range].period;
 
-  // Job Orders & Billing stats
   const opsCards = [
     moduleSet.has("job-orders") && {
       label: "Active Jobs",
@@ -335,7 +403,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       color: "violet" as const,
     },
     moduleSet.has("billing") && {
-      label: "Collected This Month",
+      label: `Collected ${periodLabel}`,
       rawValue: data.monthlyCollectedTotal ?? 0,
       isCurrency: true,
       currencySymbol: tenant.currencySymbol,
@@ -344,13 +412,13 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       iconKey: "ShoppingCart" as const,
       href: `/${tenantSlug}/billing`,
       color: "green" as const,
+      trendPercent: trendPercent(data.monthlyCollectedTotal ?? 0, data.prevPeriodCollectedTotal),
     },
   ].filter(Boolean) as DashboardStatCardData[];
 
-  // POS / Sales stats
   const salesCards = [
     moduleSet.has("pos") && {
-      label: "Sales This Month",
+      label: `Sales ${periodLabel}`,
       rawValue: data.monthlyRevenue ?? 0,
       isCurrency: true,
       currencySymbol: tenant.currencySymbol,
@@ -358,10 +426,11 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       sub: `${data.monthlySalesCount ?? 0} completed sales`,
       iconKey: "ShoppingCart" as const,
       href: `/${tenantSlug}/sales`,
-      color: "blue" as const,
+      color: "violet" as const,
+      trendPercent: trendPercent(data.monthlyRevenue ?? 0, data.prevPeriodRevenue),
     },
     moduleSet.has("pos") && {
-      label: "Refunded This Month",
+      label: `Refunded ${periodLabel}`,
       rawValue: data.monthlyRefundAmount ?? 0,
       isCurrency: true,
       currencySymbol: tenant.currencySymbol,
@@ -373,7 +442,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     },
   ].filter(Boolean) as DashboardStatCardData[];
 
-  // Operations stats (appointments, CRM, inventory)
   const operationsCards = [
     moduleSet.has("appointments") && {
       label: "Today's Appointments",
@@ -402,7 +470,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const activeSections = [opsCards, salesCards, operationsCards].filter((g) => g.length > 0).length;
   const showSectionLabels = activeSections > 1;
 
-  // Build attention rows only for active modules
   const attentionRows = [
     moduleSet.has("job-orders") && {
       label: "Overdue job orders",
@@ -431,61 +498,74 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     },
   ].filter(Boolean) as { label: string; value: number; href: string }[];
 
-  // Which main activity panel to show in the bottom grid
   const hasActivityPanel =
     moduleSet.has("appointments") ||
     moduleSet.has("job-orders") ||
     (!moduleSet.has("appointments") && !moduleSet.has("job-orders") && moduleSet.has("inventory"));
 
+  const today = new Date();
+  const weekday = today.toLocaleDateString("en-US", { weekday: "long" });
+  const longDate = today.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
   return (
-    <PageShell className="h-auto min-h-full">
+    <div className="flex flex-col gap-5">
       {error === "module_disabled" && (
-        <div className="flex items-center gap-2 rounded-2xl border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive shadow-[0_12px_28px_-24px_rgba(220,38,38,0.45)]">
+        <div className="flex items-center gap-2 rounded-[calc(var(--radius)+4px)] border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           Module unavailable on this plan.
         </div>
       )}
 
-      <PageHeader
-        eyebrow="Overview"
-        title={`Good ${getTimeGreeting()}, ${firstName}`}
-        description={new Date().toLocaleDateString("nl-NL", {
-          weekday: "long", month: "long", day: "numeric",
-        })}
-        action={
-          <div className="hidden items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-[0_12px_28px_-24px_rgba(15,23,42,0.28)] sm:flex">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            Live
+      <FadeIn>
+        <div className="flex flex-col gap-3 py-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="eyebrow-label">{weekday} · {longDate}</p>
+            <h1 className="mt-1.5 text-[1.7rem] font-semibold tracking-[-0.035em] text-foreground sm:text-[2rem]">
+              Good {getTimeGreeting()}, {firstName}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Here&rsquo;s what&rsquo;s happening across {tenant.name} today.
+            </p>
           </div>
-        }
-        className="py-4 sm:py-5"
-      />
+          <div className="flex shrink-0 items-center gap-0.5 rounded-full border border-border/70 bg-muted/50 p-0.5">
+            {VALID_RANGES.map((r) => (
+              <Link
+                key={r}
+                href={`/${tenantSlug}/dashboard?range=${r}`}
+                className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                  r === range
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {RANGE_LABELS[r].short}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </FadeIn>
 
       {activeModules.every((m: { isCore: boolean }) => m.isCore) && (
-        <ContentPanel className="flex flex-col items-center justify-center border-dashed border-border/80 py-14 text-center">
+        <div className="surface flex flex-col items-center justify-center border-dashed py-14 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             <Package className="h-6 w-6 text-muted-foreground" />
           </div>
           <h3 className="mt-4 text-sm font-semibold text-foreground">No modules enabled</h3>
-        </ContentPanel>
+        </div>
       )}
 
       {opsCards.length > 0 && (
-        <section className="space-y-3">
-          {showSectionLabels && (
-            <p className="eyebrow-label px-1">Jobs & Billing</p>
-          )}
+        <section className="space-y-2.5">
+          {showSectionLabels && <SectionLabel>Jobs &amp; Billing</SectionLabel>}
           <DashboardStatCards cards={opsCards} />
         </section>
       )}
 
       {salesCards.length > 0 && (
         <section className="space-y-3">
-          {showSectionLabels && (
-            <p className="eyebrow-label px-1">Sales</p>
-          )}
+          {showSectionLabels && <SectionLabel>Sales</SectionLabel>}
           <DashboardStatCards cards={salesCards} cols={2} />
-          {data.chartData && data.chartData.length > 0 && (
+          {range !== "today" && data.chartData && data.chartData.length > 0 && (
             <FadeIn delay={0.1}>
               <div className="grid gap-4 lg:grid-cols-2">
                 <RevenueChart data={data.chartData} currencySymbol={tenant.currencySymbol} />
@@ -497,10 +577,8 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       )}
 
       {operationsCards.length > 0 && (
-        <section className="space-y-3">
-          {showSectionLabels && (
-            <p className="eyebrow-label px-1">Operations</p>
-          )}
+        <section className="space-y-2.5">
+          {showSectionLabels && <SectionLabel>Operations</SectionLabel>}
           <DashboardStatCards cards={operationsCards} />
         </section>
       )}
@@ -508,199 +586,257 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       {(hasActivityPanel || moduleSet.has("pos") || attentionRows.length > 0) && (
         <FadeIn delay={0.15}>
           <div className="grid gap-4 lg:grid-cols-3">
-
             {moduleSet.has("appointments") && (
-              <div className="lg:col-span-2">
-                <Card className="border-border/60 bg-card/95">
-                  <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-4">
-                    <CardTitle className="text-base text-foreground">Appointments</CardTitle>
-                    <Link
-                      href={`/${tenantSlug}/appointments`}
-                      className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      All <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {!data.upcomingAppointments?.length ? (
-                      <div className="px-6 py-8 text-center text-sm text-muted-foreground">No appointments</div>
-                    ) : (
-                      <div className="divide-y divide-border/50">
-                        {data.upcomingAppointments.map((apt) => (
-                          <div key={apt.id} className="flex items-center gap-3 px-6 py-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-sky-100/80 text-sky-700 ring-1 ring-sky-200/70">
-                              <Clock className="h-3.5 w-3.5" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium text-foreground">{apt.customerName}</p>
-                              <p className="truncate text-xs text-muted-foreground">
-                                {apt.service?.name ?? "—"} · {apt.employee?.name ?? "Unassigned"}
-                              </p>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <p className="text-xs font-medium text-foreground">
-                                {apt.startAt.toLocaleDateString("nl-NL", { month: "short", day: "numeric" })}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {apt.startAt.toLocaleTimeString("nl-NL", { hour: "numeric", minute: "2-digit" })}
-                              </p>
-                            </div>
-                            <StatusDot status={apt.status} />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+              <ActivityPanel
+                title="Appointments"
+                href={`/${tenantSlug}/appointments`}
+                linkLabel="All"
+                empty="No upcoming appointments"
+                className="lg:col-span-2"
+                items={data.upcomingAppointments ?? []}
+                renderItem={(apt) => (
+                  <div key={apt.id} className="relative flex items-center gap-3 px-5 py-3">
+                    <StatusBar color={APT_STATUS_COLOR[apt.status] ?? "bg-muted-foreground/25"} />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25">
+                      <Clock className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {apt.customerName}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {apt.service?.name ?? "—"} · {apt.employee?.name ?? "Unassigned"}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-xs font-medium text-foreground">
+                        {apt.startAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {apt.startAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                      </p>
+                    </div>
+                    <StatusDot status={apt.status} />
+                  </div>
+                )}
+              />
             )}
 
             {moduleSet.has("job-orders") && !moduleSet.has("appointments") && (
-              <div className="lg:col-span-2">
-                <Card className="border-border/60 bg-card/95">
-                  <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-4">
-                    <CardTitle className="text-base text-foreground">Completed Jobs</CardTitle>
-                    <Link
-                      href={`/${tenantSlug}/job-orders`}
-                      className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      Board <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {!data.recentCompletedJobs?.length ? (
-                      <div className="px-6 py-8 text-center text-sm text-muted-foreground">No jobs</div>
-                    ) : (
-                      <div className="divide-y divide-border/50">
-                        {data.recentCompletedJobs.map((job) => (
-                          <div key={job.id} className="flex items-center justify-between gap-3 px-6 py-3">
-                            <div>
-                              <p className="font-mono text-xs text-muted-foreground">{job.jobNo}</p>
-                              <p className="text-sm font-medium text-foreground">{job.customerName}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs text-foreground/80">
-                                {job.completedAt?.toLocaleDateString("nl-NL", { month: "short", day: "numeric" })}
-                              </p>
-                              <p className="text-[11px] text-muted-foreground">{job.invoice ? "Invoiced" : "Needs invoice"}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+              <ActivityPanel
+                title="Completed jobs"
+                href={`/${tenantSlug}/job-orders`}
+                linkLabel="Board"
+                empty="No completed jobs yet"
+                className="lg:col-span-2"
+                items={data.recentCompletedJobs ?? []}
+                renderItem={(job) => (
+                  <div key={job.id} className="relative flex items-center gap-3 px-5 py-3">
+                    <StatusBar color={job.invoice ? "bg-[color:var(--success)]" : "bg-[color:var(--warning)]"} />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25">
+                      <ClipboardList className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                        {job.jobNo}
+                      </p>
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {job.customerName}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-xs text-foreground/80">
+                        {job.completedAt?.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {job.invoice ? "Invoiced" : "Needs invoice"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              />
             )}
 
             {!moduleSet.has("job-orders") && !moduleSet.has("appointments") && moduleSet.has("inventory") && (
-              <div className="lg:col-span-2">
-                <Card className="border-border/60 bg-card/95">
-                  <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-4">
-                    <CardTitle className="text-base text-foreground">Low Stock</CardTitle>
-                    <Link
-                      href={`/${tenantSlug}/inventory`}
-                      className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      Inventory <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {!data.lowStockWatchlist?.length ? (
-                      <div className="px-6 py-8 text-center text-sm text-muted-foreground">No urgent restocks</div>
-                    ) : (
-                      <div className="divide-y divide-border/50">
-                        {data.lowStockWatchlist.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between gap-3 px-6 py-3">
-                            <div>
-                              <p className="text-sm font-medium text-foreground">{item.name}</p>
-                              <p className="text-xs text-muted-foreground">Reorder at {item.reorderAt}</p>
-                            </div>
-                            <p className="text-sm font-semibold text-amber-700">{item.quantity} left</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+              <ActivityPanel
+                title="Low stock"
+                href={`/${tenantSlug}/inventory`}
+                linkLabel="Inventory"
+                empty="Nothing needs restocking"
+                className="lg:col-span-2"
+                items={data.lowStockWatchlist ?? []}
+                renderItem={(item) => (
+                  <div key={item.id} className="relative flex items-center gap-3 px-5 py-3">
+                    <StatusBar color="bg-[color:var(--warning)]" />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[color-mix(in_oklch,var(--warning)_18%,transparent)] text-[color:var(--warning)] ring-1 ring-[color-mix(in_oklch,var(--warning)_25%,transparent)]">
+                      <Package className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">Reorder at {item.reorderAt}</p>
+                    </div>
+                    <p className="text-sm font-semibold tabular-nums text-[color:var(--warning)]">
+                      {item.quantity} left
+                    </p>
+                  </div>
+                )}
+              />
             )}
 
             {(moduleSet.has("pos") || attentionRows.length > 0) && (
               <div className={`space-y-4 ${!hasActivityPanel ? "lg:col-span-3" : ""}`}>
                 {moduleSet.has("pos") && (
-                  <Card className="border-border/60 bg-card/95">
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-4">
-                      <CardTitle className="text-base text-foreground">Returns</CardTitle>
-                      <Link
-                        href={`/${tenantSlug}/sales`}
-                        className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        Sales <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      {!data.recentReturns?.length ? (
-                        <div className="px-6 py-8 text-center text-sm text-muted-foreground">No returns</div>
-                      ) : (
-                        <div className="divide-y divide-border/50">
-                          {data.recentReturns.map((saleReturn) => (
-                            <div key={saleReturn.id} className="flex items-center justify-between gap-3 px-6 py-3">
-                              <div>
-                                <p className="font-mono text-xs text-muted-foreground">{saleReturn.referenceNo}</p>
-                                <p className="text-sm font-medium text-foreground">{saleReturn.sale.referenceNo}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xs capitalize text-muted-foreground">{saleReturn.status}</p>
-                                <p className="text-sm font-semibold text-foreground">
-                                  {tenant.currencySymbol}{Number(saleReturn.refundAmount ?? 0).toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
+                  <ActivityPanel
+                    title="Returns"
+                    href={`/${tenantSlug}/sales`}
+                    linkLabel="Sales"
+                    empty="No returns"
+                    items={data.recentReturns ?? []}
+                    renderItem={(ret) => (
+                      <div key={ret.id} className="relative flex items-center gap-3 px-5 py-3">
+                        <StatusBar color={RETURN_STATUS_COLOR[ret.status] ?? "bg-muted-foreground/25"} />
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-muted text-muted-foreground ring-1 ring-border/70">
+                          <RotateCcw className="h-3.5 w-3.5" />
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                            {ret.referenceNo}
+                          </p>
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {ret.sale.referenceNo}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-[11px] capitalize text-muted-foreground">{ret.status}</p>
+                          <p className="text-sm font-semibold tabular-nums text-foreground">
+                            {tenant.currencySymbol}
+                            {Number(ret.refundAmount ?? 0).toLocaleString(tenant.currencyLocale, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  />
                 )}
 
                 {attentionRows.length > 0 && (
-                  <Card className="border-border/60 bg-card/95">
-                    <CardHeader className="border-b border-border/50 pb-4">
-                      <CardTitle className="text-base text-foreground">Attention</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
+                  <div className="surface overflow-hidden">
+                    <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
+                      <h3 className="text-sm font-semibold tracking-tight text-foreground">
+                        Needs attention
+                      </h3>
+                    </div>
+                    <div className="divide-y divide-border/50">
                       {attentionRows.map((row) => (
                         <AttentionRow key={row.label} {...row} warn={row.value > 0} />
                       ))}
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
-
           </div>
         </FadeIn>
       )}
-    </PageShell>
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 px-1">
+      <p className="eyebrow-label">{children}</p>
+      <div className="h-px flex-1 bg-gradient-to-r from-border/60 to-transparent" />
+    </div>
+  );
+}
+
+function ActivityPanel<T>({
+  title,
+  href,
+  linkLabel,
+  items,
+  renderItem,
+  empty,
+  className,
+}: {
+  title: string;
+  href: string;
+  linkLabel: string;
+  items: T[];
+  renderItem: (item: T) => React.ReactNode;
+  empty: string;
+  className?: string;
+}) {
+  return (
+    <div className={`surface overflow-hidden ${className ?? ""}`}>
+      <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
+        <h3 className="text-sm font-semibold tracking-tight text-foreground">{title}</h3>
+        <Link
+          href={href}
+          className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+        >
+          {linkLabel} <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      {items.length === 0 ? (
+        <div className="px-5 py-10 text-center text-sm text-muted-foreground">{empty}</div>
+      ) : (
+        <div className="divide-y divide-border/50">{items.map(renderItem)}</div>
+      )}
+    </div>
   );
 }
 
 function StatusDot({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    pending: "bg-amber-400",
-    confirmed: "bg-sky-400",
-    "in-progress": "bg-cyan-400",
-    done: "bg-emerald-400",
+    pending: "bg-[color:var(--warning)]",
+    confirmed: "bg-[color:var(--info)]",
+    "in-progress": "bg-primary",
+    done: "bg-[color:var(--success)]",
   };
-  return <div className={`h-2 w-2 shrink-0 rounded-full ${colors[status] ?? "bg-zinc-300"}`} />;
+  return <div className={`h-2 w-2 shrink-0 rounded-full ${colors[status] ?? "bg-muted-foreground/40"}`} />;
 }
 
-function AttentionRow({ label, value, href, warn }: { label: string; value: number; href: string; warn: boolean }) {
+function StatusBar({ color }: { color: string }) {
+  return <span className={`absolute inset-y-2.5 left-0 w-[3px] rounded-r-full ${color}`} />;
+}
+
+const APT_STATUS_COLOR: Record<string, string> = {
+  pending: "bg-[color:var(--warning)]",
+  confirmed: "bg-[color:var(--info)]",
+  "in-progress": "bg-primary",
+  done: "bg-[color:var(--success)]",
+};
+
+const RETURN_STATUS_COLOR: Record<string, string> = {
+  pending: "bg-[color:var(--warning)]",
+  approved: "bg-[color:var(--success)]",
+  rejected: "bg-destructive",
+};
+
+function AttentionRow({
+  label,
+  value,
+  href,
+  warn,
+}: {
+  label: string;
+  value: number;
+  href: string;
+  warn: boolean;
+}) {
   return (
-    <Link href={href} className="flex items-center justify-between rounded-2xl border border-transparent px-1 py-1 transition hover:border-border/70 hover:bg-muted/30">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <Badge variant={warn ? "destructive" : "secondary"} className="min-w-[1.5rem] justify-center text-xs">
+    <Link
+      href={href}
+      className="flex items-center justify-between gap-3 px-5 py-3 transition hover:bg-muted/40"
+    >
+      <span className="text-sm text-foreground/90">{label}</span>
+      <Badge
+        variant={warn ? "destructive" : "secondary"}
+        className="min-w-[1.5rem] justify-center tabular-nums"
+      >
         {value}
       </Badge>
     </Link>

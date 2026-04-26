@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createInvoiceSchema, type CreateInvoiceInput } from "../schema";
 import { createInvoice } from "../actions";
+import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 
 interface CustomerOption {
   id: string;
@@ -47,6 +48,7 @@ export function CreateInvoiceDialog({
   crmEnabled,
 }: CreateInvoiceDialogProps) {
   const [open, setOpen] = useState(false);
+  useTopbarCta("New Invoice", () => setOpen(true));
   const router = useRouter();
 
   const {

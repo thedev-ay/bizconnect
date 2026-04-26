@@ -15,6 +15,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   turbopack: {},
+  devIndicators: false
 };
 
 module.exports = withPWA(nextConfig);

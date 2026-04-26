@@ -35,6 +35,7 @@ model Tenant {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   users           User[]
+  userGroups      UserGroup[]
   tenantModules   TenantModule[]
   businessHours   BusinessHours[]
   loyaltySetting  LoyaltySetting?
@@ -150,6 +151,7 @@ model TenantModule {
 model User {
   id            String    @id @default(cuid())
   tenantId      String?   @map("tenant_id")
+  userGroupId   String?   @map("user_group_id")
   email         String    @unique
   name          String?
   passwordHash  String?   @map("password_hash")
@@ -162,13 +164,32 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  tenant   Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  accounts Account[]
-  sessions Session[]
+  tenant     Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userGroup  UserGroup? @relation(fields: [userGroupId], references: [id], onDelete: SetNull)
+  accounts   Account[]
+  sessions   Session[]
 
   @@index([tenantId])
+  @@index([userGroupId])
   @@index([email])
   @@map("users")
+}
+
+model UserGroup {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  description String?
+  permissions Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users  User[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("user_groups")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

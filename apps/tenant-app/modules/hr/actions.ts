@@ -32,7 +32,7 @@ export async function createEmployee(tenantSlug: string, tenantId: string, input
   });
 
   revalidatePath(`/${tenantSlug}/hr`);
-  return employee;
+  return { ...employee, salary: employee.salary?.toString() ?? null, commissionRate: employee.commissionRate?.toString() ?? null };
 }
 
 export async function deactivateEmployee(tenantSlug: string, tenantId: string, employeeId: string) {

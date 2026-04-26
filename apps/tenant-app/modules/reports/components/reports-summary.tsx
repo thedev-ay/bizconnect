@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { TrendingUp, ShoppingCart, FileText, CheckCircle, RotateCcw, Clock3 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import type { ReportsSummary } from "../types";
 
 function AnimatedCurrency({ value, symbol, locale, className }: {
@@ -81,29 +82,31 @@ export function ReportsSummaryCards({ summary, currencySymbol, currencyLocale, h
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.055, duration: 0.28, ease: "easeOut" }}
         >
-          <div className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_42px_-32px_rgba(15,23,42,0.28)]">
+          <Card className="h-full">
+            <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{label}</p>
+                  <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">{label}</p>
                   {isCurrency ? (
                     <AnimatedCurrency
                       value={summary[key] as number}
                       symbol={currencySymbol}
                       locale={currencyLocale}
-                      className={`mt-1.5 text-2xl font-bold block ${color}`}
+                      className="metric-value mt-2 block"
                     />
                   ) : (
                     <AnimatedCount
                       value={summary[key] as number}
-                      className={`mt-1.5 text-2xl font-bold block ${color}`}
+                      className="metric-value mt-2 block"
                     />
                   )}
                 </div>
-                <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${bg}`}>
-                  <Icon className={`h-4 w-4 ${color}`} />
+                <div className={`flex h-10 w-10 items-center justify-center rounded-2xl shadow-inner ${bg} ${color}`}>
+                  <Icon className="h-4 w-4" />
                 </div>
               </div>
-          </div>
+            </CardContent>
+          </Card>
         </motion.div>
       ))}
     </div>

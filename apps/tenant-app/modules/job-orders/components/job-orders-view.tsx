@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 import { JobOrderBoard, CreateJobOrderDialog, WorkflowStageEditor } from "@/modules/job-orders";
 import type { JobOrder, WorkflowStage } from "../types";
 import { db } from "@/lib/local-db";
@@ -37,6 +38,7 @@ export function JobOrdersView({
   billingEnabled,
   initialCustomerId,
 }: JobOrdersViewProps) {
+  useTopbarCta("New Job", () => {});
   const { data, isPending } = useQuery<JobOrdersData>({
     queryKey: ["job-orders", tenantSlug],
     queryFn: async () => {
@@ -56,7 +58,10 @@ export function JobOrdersView({
       }
 
       const fresh: JobOrdersData = await r.json();
-      await db.jobOrdersSnapshots.put({ key: cacheKey, tenantId, data: JSON.stringify(fresh), savedAt: Date.now() });
+      await Promise.all([
+        db.jobOrdersSnapshots.put({ key: cacheKey, tenantId, data: JSON.stringify(fresh), savedAt: Date.now() }),
+        db.syncMeta.put({ key: cacheKey, syncedAt: Date.now() }),
+      ]);
       return fresh;
     },
   });
@@ -108,6 +113,8 @@ export function JobOrdersView({
         }
         className="py-4 sm:py-5"
       />
+
+
 
       <ContentPanel className="min-h-0 flex-1 overflow-visible p-3 sm:p-4 lg:overflow-hidden lg:p-5">
         {isPending ? (

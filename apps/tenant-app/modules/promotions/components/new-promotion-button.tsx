@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PromotionDialog } from "./promotion-dialog";
+import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 
 interface ProductOption {
   id: string;
@@ -25,6 +26,7 @@ export function NewPromotionButton({
   products,
 }: NewPromotionButtonProps) {
   const [open, setOpen] = useState(false);
+  useTopbarCta("New Promotion", () => setOpen(true));
 
   return (
     <>

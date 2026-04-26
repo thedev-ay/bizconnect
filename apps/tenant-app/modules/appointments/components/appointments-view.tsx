@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 import { useQuery } from "@tanstack/react-query";
 import { AppointmentsShell } from "./appointments-shell";
 import { CreateAppointmentDialog } from "./create-appointment-dialog";
@@ -28,6 +29,7 @@ interface AppointmentsData {
 export function AppointmentsView({ tenantSlug, tenantId, currencySymbol, currencyLocale }: AppointmentsViewProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [defaultStart, setDefaultStart] = useState<string | undefined>();
+  useTopbarCta("New Appointment", () => { setDefaultStart(undefined); setDialogOpen(true); });
 
   const { data, isPending } = useQuery<AppointmentsData>({
     queryKey: ["appointments", tenantSlug],

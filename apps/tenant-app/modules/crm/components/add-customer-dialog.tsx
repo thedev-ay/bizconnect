@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createCustomerSchema, type CreateCustomerInput } from "../schema";
 import { createCustomer } from "../actions";
+import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 
 interface AddCustomerDialogProps {
   tenantSlug: string;
@@ -30,6 +31,7 @@ interface AddCustomerDialogProps {
 
 export function AddCustomerDialog({ tenantSlug, tenantId }: AddCustomerDialogProps) {
   const [open, setOpen] = useState(false);
+  useTopbarCta("New Customer", () => setOpen(true));
   const router = useRouter();
   const queryClient = useQueryClient();
 

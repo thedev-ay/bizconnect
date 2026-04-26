@@ -26,7 +26,7 @@ export function PermissionEditor({ value, onChange, activeModuleSlugs }: Permiss
   }
 
   if (visibleModules.length === 0) {
-    return <p className="text-sm text-muted-foreground">No modules available.</p>;
+    return <p className="text-muted-foreground text-sm">No modules available.</p>;
   }
 
   return (
@@ -39,9 +39,12 @@ export function PermissionEditor({ value, onChange, activeModuleSlugs }: Permiss
         const someOn = !allOn && actions.some(([action]) => value[`${module}.${action}`] === true);
 
         return (
-          <div key={module} className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-white">
+          <div
+            key={module}
+            className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-white"
+          >
             <div className="flex items-center justify-between border-b border-slate-200/80 bg-slate-50/80 px-4 py-3">
-              <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+              <span className="text-xs font-semibold tracking-[0.22em] text-slate-500 uppercase">
                 {def.label}
               </span>
               <Switch
@@ -61,7 +64,7 @@ export function PermissionEditor({ value, onChange, activeModuleSlugs }: Permiss
                   <div key={action} className="flex items-center justify-between px-4 py-3">
                     <Label
                       htmlFor={key}
-                      className="cursor-pointer select-none text-sm text-slate-600"
+                      className="cursor-pointer text-sm text-slate-600 select-none"
                     >
                       {label as string}
                     </Label>

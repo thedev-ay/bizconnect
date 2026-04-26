@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@bizconnect/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { mergePermissions } from "@/lib/permissions";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -58,6 +59,13 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
                 },
               },
             },
+            userGroup: {
+              select: {
+                id: true,
+                name: true,
+                permissions: true,
+              },
+            },
           },
         });
 
@@ -72,6 +80,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           select: { id: true },
         });
 
+        const directPermissions = (user.permissions as Record<string, boolean>) ?? {};
+        const groupPermissions = (user.userGroup?.permissions as Record<string, boolean>) ?? {};
+
         return {
           id: user.id,
           email: user.email,
@@ -80,7 +91,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           tenantId: user.tenant.id,
           tenantName: user.tenant.name,
           role: user.role,
-          permissions: (user.permissions as Record<string, boolean>) ?? {},
+          permissions: mergePermissions(groupPermissions, directPermissions),
+          directPermissions,
+          userGroup: user.userGroup ? { id: user.userGroup.id, name: user.userGroup.name } : null,
           modules: user.tenant.tenantModules.map((tm) => tm.module.slug),
           moduleObjects: user.tenant.tenantModules.map((tm) => tm.module),
           currentBranchId: firstBranch?.id ?? null,
@@ -100,6 +113,8 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           tenantName: string;
           role: string;
           permissions: Record<string, boolean>;
+          directPermissions: Record<string, boolean>;
+          userGroup: { id: string; name: string } | null;
           modules: string[];
           moduleObjects: {
             slug: string;
@@ -115,6 +130,8 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         token.tenantName = u.tenantName;
         token.role = u.role;
         token.permissions = u.permissions;
+        token.directPermissions = u.directPermissions;
+        token.userGroup = u.userGroup;
         token.modules = u.modules;
         token.moduleObjects = u.moduleObjects;
         token.currentBranchId = u.currentBranchId;
@@ -128,6 +145,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         session.user.tenantName = token.tenantName as string;
         session.user.role = token.role as string;
         session.user.permissions = (token.permissions as Record<string, boolean>) ?? {};
+        session.user.directPermissions = (token.directPermissions as Record<string, boolean>) ?? {};
+        session.user.userGroup =
+          (token.userGroup as { id: string; name: string } | null | undefined) ?? null;
         session.user.modules = (token.modules as string[]) ?? [];
         session.user.moduleObjects =
           (token.moduleObjects as {

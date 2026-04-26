@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createEmployeeSchema, type CreateEmployeeInput } from "../schema";
 import { createEmployee } from "../actions";
+import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 
 interface AddEmployeeDialogProps {
   tenantSlug: string;
@@ -30,6 +31,7 @@ interface AddEmployeeDialogProps {
 
 export function AddEmployeeDialog({ tenantSlug, tenantId, currencySymbol }: AddEmployeeDialogProps) {
   const [open, setOpen] = useState(false);
+  useTopbarCta("Add Employee", () => setOpen(true));
   const router = useRouter();
 
   const {

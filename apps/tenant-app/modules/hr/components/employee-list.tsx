@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, UserCheck, UserX } from "lucide-react";
+import { MoreHorizontal, Search, UserCheck, UserX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StaffProfileDialog } from "@/modules/staff";
 import type { StaffMember, Service } from "@/modules/staff";
@@ -48,6 +48,17 @@ function getInitials(name: string) {
 export function EmployeeList({ employees, staffMembers, services, tenantSlug, tenantId, currencySymbol, currencyLocale }: EmployeeListProps) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = q
+    ? employees.filter(
+        (e) =>
+          e.name.toLowerCase().includes(q) ||
+          e.email?.toLowerCase().includes(q) ||
+          e.position?.toLowerCase().includes(q) ||
+          e.department?.toLowerCase().includes(q)
+      )
+    : employees;
 
   async function handleToggle(id: string, isActive: boolean) {
     setLoading(id);
@@ -69,11 +80,25 @@ export function EmployeeList({ employees, staffMembers, services, tenantSlug, te
 
   return (
     <>
+      <div className="border-b border-border/60 px-4 py-3 sm:px-5">
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 pointer-events-none text-muted-foreground/55" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search employees…"
+            className="w-full rounded-full border border-border/60 bg-muted/30 py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground/55 focus:border-border focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/15"
+          />
+        </div>
+      </div>
+
       <div className="space-y-3 p-4 sm:hidden">
-        {employees.length === 0 ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">No employees yet.</div>
+        {filtered.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            {q ? `No employees matching "${searchQuery}"` : "No employees yet."}
+          </div>
         ) : (
-          employees.map((emp) => {
+          filtered.map((emp) => {
             const staffMember = staffMembers.find((s) => s.id === emp.id);
             return (
               <div
@@ -182,14 +207,26 @@ export function EmployeeList({ employees, staffMembers, services, tenantSlug, te
             </TableRow>
           </TableHeader>
           <TableBody>
-            {employees.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="py-12 text-center text-sm text-muted-foreground">
-                  No employees yet.
+            {filtered.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={8}>
+                  <div className="flex flex-col items-center gap-3 py-16 text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border/60 bg-muted/60 text-muted-foreground shadow-sm">
+                      <UserCheck className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {q ? `No employees matching "${searchQuery}"` : "No employees yet"}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {q ? "Try a different search term." : "Add your first employee to get started."}
+                      </p>
+                    </div>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
-              employees.map((emp) => {
+              filtered.map((emp) => {
                 const staffMember = staffMembers.find((s) => s.id === emp.id);
                 return (
                   <TableRow

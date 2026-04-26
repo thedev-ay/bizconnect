@@ -6,6 +6,8 @@ import { RevenueChart, PaymentMethodChart } from "@/modules/reports";
 import { ReportsSummaryCards, TopItemsTable } from "@/modules/reports/components/reports-summary";
 import { DateRangeFilter } from "@/modules/reports/components/date-range-filter";
 import { FadeIn } from "@/components/dashboard/fade-in";
+import { Card, CardContent } from "@/components/ui/card";
+import { RotateCcw, Banknote, Clock3 } from "lucide-react";
 import { format } from "date-fns";
 
 const toDateStr = (d: Date) => format(d, "yyyy-MM-dd");
@@ -140,21 +142,50 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
               <p className="eyebrow-label text-primary">Sales</p>
               <h2 className="text-base font-semibold text-slate-950">Returns</h2>
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-[24px] border border-slate-200/80 bg-white p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Refunds</p>
-                <p className="mt-2 text-2xl font-bold text-slate-950">{summary.refundCount}</p>
-              </div>
-              <div className="rounded-[24px] border border-slate-200/80 bg-white p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Refunded</p>
-                <p className="mt-2 text-2xl font-bold text-amber-600">
-                  {tenant.currencySymbol}{summary.totalRefunded.toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-              <div className="rounded-[24px] border border-slate-200/80 bg-white p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Pending</p>
-                <p className="mt-2 text-2xl font-bold text-slate-950">{summary.pendingReturnCount}</p>
-              </div>
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+              <Card className="h-full">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Refunds</p>
+                      <p className="metric-value mt-2">{summary.refundCount}</p>
+                    </div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 shadow-inner">
+                      <RotateCcw className="h-4 w-4" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="h-full">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Refunded</p>
+                      <p className="metric-value mt-2">
+                        {tenant.currencySymbol}{summary.totalRefunded.toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 shadow-inner">
+                      <Banknote className="h-4 w-4" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="h-full">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Pending</p>
+                      <p className="metric-value mt-2">{summary.pendingReturnCount}</p>
+                    </div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 shadow-inner">
+                      <Clock3 className="h-4 w-4" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </section>
         </>

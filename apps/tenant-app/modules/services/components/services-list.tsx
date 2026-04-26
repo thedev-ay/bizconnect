@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Pencil } from "lucide-react";
+import { MoreHorizontal, Pencil, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Service } from "../types";
 import { PRICING_TYPE_LABELS } from "../types";
@@ -63,8 +63,18 @@ export function ServicesList({
     }
   }
 
-  // Group by category
-  const categories = Array.from(new Set(services.map((s) => s.category ?? "Uncategorized"))).sort();
+  const [searchQuery, setSearchQuery] = useState("");
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = q
+    ? services.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          s.category?.toLowerCase().includes(q) ||
+          s.description?.toLowerCase().includes(q)
+      )
+    : services;
+
+  const categories = Array.from(new Set(filtered.map((s) => s.category ?? "Uncategorized"))).sort();
 
   return (
     <div className="space-y-4">
@@ -76,9 +86,28 @@ export function ServicesList({
           </p>
         </div>
       ) : (
+        <>
+          <div className="border-b border-border/60 px-4 py-3 sm:px-5">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 pointer-events-none text-muted-foreground/55" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search services, categories…"
+                className="w-full rounded-full border border-border/60 bg-muted/30 py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground/55 focus:border-border focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/15"
+              />
+            </div>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-sm font-semibold text-foreground">No services matching &ldquo;{searchQuery}&rdquo;</p>
+              <p className="mt-1 text-xs text-muted-foreground">Try a different search term.</p>
+            </div>
+          ) : (
         <div className="space-y-5 px-4 py-4 sm:px-5 sm:py-5">
           {categories.map((cat) => {
-            const group = services.filter((s) => (s.category ?? "Uncategorized") === cat);
+            const group = filtered.filter((s) => (s.category ?? "Uncategorized") === cat);
             const activeCount = group.filter((s) => s.isActive).length;
             return (
               <section key={cat} className="space-y-2.5">
@@ -222,6 +251,8 @@ export function ServicesList({
             );
           })}
         </div>
+          )}
+        </>
       )}
 
       {editingService && (
