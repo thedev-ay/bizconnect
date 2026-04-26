@@ -74,7 +74,7 @@ export function ServicesList({
       )
     : services;
 
-  const categories = Array.from(new Set(filtered.map((s) => s.category ?? "Uncategorized"))).sort();
+  const categories = Array.from(new Set(filtered.map((s) => s.category || "Uncategorized"))).sort();
 
   return (
     <div className="space-y-4">
@@ -107,7 +107,7 @@ export function ServicesList({
           ) : (
         <div className="space-y-5 px-4 py-4 sm:px-5 sm:py-5">
           {categories.map((cat) => {
-            const group = filtered.filter((s) => (s.category ?? "Uncategorized") === cat);
+            const group = filtered.filter((s) => (s.category || "Uncategorized") === cat);
             const activeCount = group.filter((s) => s.isActive).length;
             return (
               <section key={cat} className="space-y-2.5">
