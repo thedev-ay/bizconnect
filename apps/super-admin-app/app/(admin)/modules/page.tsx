@@ -11,6 +11,7 @@ import {
 import { Lock, Tag } from "lucide-react";
 import * as Icons from "lucide-react";
 import { LucideIcon } from "lucide-react";
+import { DependencyGraphLoader } from "@/components/modules/dependency-graph-loader";
 
 async function getModules() {
   return prisma.module.findMany({
@@ -91,6 +92,15 @@ export default async function ModulesPage() {
               })}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="border-b border-border/60 py-4">
+          <CardTitle className="text-base">Module mapping</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <DependencyGraphLoader />
         </CardContent>
       </Card>
     </div>
