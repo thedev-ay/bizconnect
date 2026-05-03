@@ -382,6 +382,8 @@ export async function createInvoiceForJobOrder(
       subtotal,
       tax: 0,
       total: subtotal,
+      amountPaid: 0,
+      balanceDue: subtotal,
       notes: `Generated from job order ${jobOrder.jobNo}`,
       status: "draft",
       items: {

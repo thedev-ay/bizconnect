@@ -483,15 +483,19 @@ model Invoice {
   subtotal      Decimal   @db.Decimal(10, 2)
   tax           Decimal   @default(0) @db.Decimal(10, 2)
   total         Decimal   @db.Decimal(10, 2)
+  amountPaid    Decimal   @default(0) @db.Decimal(10, 2) @map("amount_paid")
+  balanceDue    Decimal   @default(0) @db.Decimal(10, 2) @map("balance_due")
   status        String    @default("draft")
   notes         String?
   paidAt        DateTime? @map("paid_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  jobOrder JobOrder? @relation(fields: [jobOrderId], references: [id], onDelete: SetNull)
+  customer Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  jobOrder JobOrder?       @relation(fields: [jobOrderId], references: [id], onDelete: SetNull)
+  activities InvoiceActivity[]
   items    InvoiceItem[]
+  payments InvoicePayment[]
 
   @@index([tenantId])
   @@index([tenantId, branchId])
@@ -511,6 +515,44 @@ model InvoiceItem {
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@map("invoice_items")
+}
+
+model InvoicePayment {
+  id            String   @id @default(cuid())
+  tenantId      String   @map("tenant_id")
+  branchId      String?  @map("branch_id")
+  invoiceId     String   @map("invoice_id")
+  amount        Decimal  @db.Decimal(10, 2)
+  paymentMethod String   @default("cash") @map("payment_method")
+  notes         String?
+  receivedAt    DateTime @map("received_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@index([invoiceId])
+  @@index([tenantId, receivedAt])
+  @@map("invoice_payments")
+}
+
+model InvoiceActivity {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  branchId  String?  @map("branch_id")
+  invoiceId String   @map("invoice_id")
+  type      String
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@index([invoiceId])
+  @@index([tenantId, createdAt])
+  @@map("invoice_activities")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

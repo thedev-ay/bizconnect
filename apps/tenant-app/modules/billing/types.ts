@@ -9,11 +9,15 @@ export interface Invoice {
   subtotal: string;
   tax: string;
   total: string;
+  amountPaid: string;
+  balanceDue: string;
   status: string;
   notes: string | null;
   paidAt: Date | null;
   createdAt: Date;
+  activities: InvoiceActivity[];
   items: InvoiceLineItem[];
+  payments: InvoicePayment[];
 }
 
 export interface InvoiceLineItem {
@@ -22,4 +26,20 @@ export interface InvoiceLineItem {
   quantity: number;
   unitPrice: string;
   total: string;
+}
+
+export interface InvoicePayment {
+  id: string;
+  amount: string;
+  paymentMethod: string;
+  notes: string | null;
+  receivedAt: Date;
+  createdAt: Date;
+}
+
+export interface InvoiceActivity {
+  id: string;
+  type: string;
+  notes: string | null;
+  createdAt: Date;
 }

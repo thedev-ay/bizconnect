@@ -28,10 +28,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, CheckCircle, XCircle, Send } from "lucide-react";
+import { MoreHorizontal, CheckCircle, XCircle, Send, BellRing } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Invoice } from "../types";
-import { markInvoicePaid, voidInvoice, sendInvoice } from "../actions";
+import { markInvoicePaid, sendReminder, voidInvoice, sendInvoice } from "../actions";
+import { LogFollowUpDialog } from "./log-follow-up-dialog";
+import { RecordPaymentDialog } from "./record-payment-dialog";
 
 interface InvoiceListProps {
   invoices: Invoice[];
@@ -45,8 +47,24 @@ interface InvoiceListProps {
 const STATUS_PILL: Record<string, string> = {
   draft: "border-border bg-muted text-muted-foreground",
   sent: "border-sky-200 bg-sky-50 text-sky-700",
+  partial: "border-amber-200 bg-amber-50 text-amber-700",
   paid: "border-emerald-200 bg-emerald-50 text-emerald-700",
   void: "border-border bg-muted text-muted-foreground",
+};
+
+const PAYMENT_LABEL: Record<string, string> = {
+  cash: "Cash",
+  card: "Card",
+  gcash: "GCash",
+  maya: "Maya",
+  bank_transfer: "Bank transfer",
+  other: "Other",
+};
+
+const ACTIVITY_LABEL: Record<string, string> = {
+  invoice_sent: "Initial invoice issue",
+  follow_up_logged: "Manual follow-up",
+  payment_recorded: "Payment recorded",
 };
 
 export function InvoiceList({
@@ -103,8 +121,9 @@ export function InvoiceList({
       await action(tenantSlug, tenantId, invoiceId);
       toast.success(successMsg);
       router.refresh();
-    } catch {
-      toast.error("Action failed");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Action failed";
+      toast.error(message);
     } finally {
       setLoading(null);
     }
@@ -168,9 +187,9 @@ export function InvoiceList({
                     </p>
                   </div>
                   <div>
-                    <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">Paid</p>
+                    <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">Balance</p>
                     <p className="mt-1 font-medium text-foreground">
-                      {inv.paidAt ? format(new Date(inv.paidAt), "MMM d, yyyy") : "Not yet"}
+                      {currencySymbol}{Number(inv.balanceDue).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
                     </p>
                   </div>
                 </div>
@@ -189,7 +208,7 @@ export function InvoiceList({
               <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Due</TableHead>
               <TableHead className="text-right text-xs uppercase tracking-[0.22em] text-muted-foreground">Total</TableHead>
               <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Status</TableHead>
-              <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Paid</TableHead>
+              <TableHead className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Balance</TableHead>
               <TableHead className="w-12 pr-4" />
             </TableRow>
           </TableHeader>
@@ -244,7 +263,7 @@ export function InvoiceList({
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {inv.paidAt ? format(new Date(inv.paidAt), "MMM d, yyyy") : <span className="text-muted-foreground/50">—</span>}
+                      {currencySymbol}{Number(inv.balanceDue).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell className="pr-4">
                       {inv.status !== "void" && (
@@ -260,23 +279,34 @@ export function InvoiceList({
                               <DropdownMenuItem
                                 onClick={() => handleAction(inv.id, sendInvoice, "Invoice marked as sent")}
                               >
-                                <Send className="mr-2 h-4 w-4" /> Mark as Sent
+                                <Send className="mr-2 h-4 w-4" /> Mark as Issued
                               </DropdownMenuItem>
                             )}
-                            {inv.status !== "paid" && (
+                            {inv.status !== "paid" && Number(inv.balanceDue) > 0 && (
+                              <DropdownMenuItem
+                                onClick={() => handleAction(inv.id, sendReminder, "Follow-up logged")}
+                              >
+                                <BellRing className="mr-2 h-4 w-4" /> Quick Follow-up
+                              </DropdownMenuItem>
+                            )}
+                            {inv.status !== "paid" && Number(inv.balanceDue) > 0 && (
                               <DropdownMenuItem
                                 onClick={() => handleAction(inv.id, markInvoicePaid, "Invoice marked as paid")}
                               >
                                 <CheckCircle className="mr-2 h-4 w-4" /> Mark as Paid
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => handleAction(inv.id, voidInvoice, "Invoice voided")}
-                            >
-                              <XCircle className="mr-2 h-4 w-4" /> Void
-                            </DropdownMenuItem>
+                            {Number(inv.amountPaid) <= 0 && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => handleAction(inv.id, voidInvoice, "Invoice voided")}
+                                >
+                                  <XCircle className="mr-2 h-4 w-4" /> Void
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
@@ -292,7 +322,7 @@ export function InvoiceList({
         <SheetContent
           side="right"
           showCloseButton={false}
-          className="w-full border-l-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(236,253,250,0.92)_100%)] sm:max-w-xl"
+          className="w-full border-l-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(236,253,250,0.92)_100%)] sm:max-w-2xl"
         >
           {selectedInvoice && (
             <>
@@ -373,12 +403,89 @@ export function InvoiceList({
                   <span>Total</span>
                   <span className="tabular-nums">{currencySymbol}{Number(selectedInvoice.total).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}</span>
                 </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Amount paid</span>
+                  <span className="tabular-nums">{currencySymbol}{Number(selectedInvoice.amountPaid).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Balance due</span>
+                  <span className={cn("tabular-nums", Number(selectedInvoice.balanceDue) > 0 ? "text-foreground" : "text-emerald-700")}>
+                    {currencySymbol}{Number(selectedInvoice.balanceDue).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
                 {selectedInvoice.paidAt && (
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Paid</span>
+                    <span>Paid in full</span>
                     <span className="tabular-nums">{format(new Date(selectedInvoice.paidAt), "MMM d, yyyy")}</span>
                   </div>
                 )}
+              </section>
+
+              <section className="space-y-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-foreground">Payment History</h3>
+                  <span className="text-xs text-muted-foreground">
+                    {selectedInvoice.payments.length} payment{selectedInvoice.payments.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <div className="overflow-hidden rounded-[calc(var(--radius)+4px)] border border-border/70 bg-white/80">
+                  {selectedInvoice.payments.length === 0 ? (
+                    <div className="px-4 py-6 text-sm text-muted-foreground">No payments recorded yet.</div>
+                  ) : (
+                    <div className="divide-y divide-border/60">
+                      {selectedInvoice.payments.map((payment) => (
+                        <div key={payment.id} className="flex items-start justify-between gap-4 px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">
+                              {PAYMENT_LABEL[payment.paymentMethod] ?? payment.paymentMethod}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(payment.receivedAt), "MMM d, yyyy")}
+                            </p>
+                            {payment.notes && (
+                              <p className="mt-1 text-xs text-muted-foreground">{payment.notes}</p>
+                            )}
+                          </div>
+                          <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+                            {currencySymbol}{Number(payment.amount).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="space-y-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-foreground">Collection Activity</h3>
+                  <span className="text-xs text-muted-foreground">
+                    {selectedInvoice.activities.length} event{selectedInvoice.activities.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <div className="overflow-hidden rounded-[calc(var(--radius)+4px)] border border-border/70 bg-white/80">
+                  {selectedInvoice.activities.length === 0 ? (
+                    <div className="px-4 py-6 text-sm text-muted-foreground">No reminder or send activity yet.</div>
+                  ) : (
+                    <div className="divide-y divide-border/60">
+                      {selectedInvoice.activities.map((activity) => (
+                        <div key={activity.id} className="flex items-start justify-between gap-4 px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">
+                              {ACTIVITY_LABEL[activity.type] ?? activity.type.replaceAll("_", " ")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(activity.createdAt), "MMM d, yyyy")}
+                            </p>
+                            {activity.notes && (
+                              <p className="mt-1 text-xs text-muted-foreground">{activity.notes}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </section>
 
               {selectedInvoice.notes && (
@@ -395,14 +502,36 @@ export function InvoiceList({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="rounded-full"
-                    disabled={loading === selectedInvoice.id}
-                    onClick={() => handleAction(selectedInvoice.id, sendInvoice, "Invoice marked as sent")}
-                  >
-                    Mark as Sent
+                  className="rounded-full"
+                  disabled={loading === selectedInvoice.id}
+                  onClick={() => handleAction(selectedInvoice.id, sendInvoice, "Invoice marked as sent")}
+                >
+                    Mark as Issued
                   </Button>
                 )}
-                {selectedInvoice.status !== "paid" && selectedInvoice.status !== "void" && (
+                {selectedInvoice.status !== "paid" && selectedInvoice.status !== "void" && Number(selectedInvoice.balanceDue) > 0 && (
+                  <LogFollowUpDialog
+                    tenantSlug={tenantSlug}
+                    tenantId={tenantId}
+                    invoiceId={selectedInvoice.id}
+                    invoiceNo={selectedInvoice.invoiceNo}
+                    onLogged={() => router.refresh()}
+                    triggerClassName="rounded-full"
+                  />
+                )}
+                {selectedInvoice.status !== "paid" && selectedInvoice.status !== "void" && Number(selectedInvoice.balanceDue) > 0 && (
+                  <RecordPaymentDialog
+                    tenantSlug={tenantSlug}
+                    tenantId={tenantId}
+                    invoiceId={selectedInvoice.id}
+                    invoiceNo={selectedInvoice.invoiceNo}
+                    currencySymbol={currencySymbol}
+                    maxAmount={Number(selectedInvoice.balanceDue)}
+                    onRecorded={() => router.refresh()}
+                    triggerClassName="rounded-full"
+                  />
+                )}
+                {selectedInvoice.status !== "paid" && selectedInvoice.status !== "void" && Number(selectedInvoice.balanceDue) > 0 && (
                   <Button
                     size="sm"
                     className="rounded-full"
@@ -412,7 +541,7 @@ export function InvoiceList({
                     Mark as Paid
                   </Button>
                 )}
-                {selectedInvoice.status !== "void" && (
+                {selectedInvoice.status !== "void" && Number(selectedInvoice.amountPaid) <= 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
