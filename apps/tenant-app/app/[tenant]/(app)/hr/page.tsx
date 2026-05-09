@@ -1,6 +1,7 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { TopbarPageBridge } from "@/components/layout/topbar-page-bridge";
+import { ContentPanel, PageShell } from "@/components/layout/page-shell";
 import { EmployeeList, AddEmployeeDialog, AttendanceTab, LeaveTab, PayrollTab } from "@/modules/hr";
 import type { Employee, AttendanceRecord, LeaveRequest, PayrollRecord } from "@/modules/hr";
 import { StaffCalendar } from "@/modules/staff";
@@ -166,16 +167,10 @@ export default async function HRPage({ params, searchParams }: HRPageProps) {
 
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="HR"
-        title="Staff"
-        description={`${employees.length} total`}
-        action={
-          tab === "employees" ? (
-            <AddEmployeeDialog tenantSlug={tenantSlug} tenantId={tenant.id} currencySymbol={tenant.currencySymbol} />
-          ) : undefined
-        }
-      />
+      <TopbarPageBridge title="Staff" description={`${employees.length} total`} />
+      {tab === "employees" ? (
+        <AddEmployeeDialog tenantSlug={tenantSlug} tenantId={tenant.id} currencySymbol={tenant.currencySymbol} showTrigger={false} />
+      ) : null}
 
       <ContentPanel className="space-y-4 p-0">
       <div className="flex gap-1 border-b border-border/60 px-4 pt-3">

@@ -42,6 +42,7 @@ import { getPermissionLabel } from "@/lib/permissions";
 import { createUserGroup, deleteUserGroup, updateUserGroup } from "../actions";
 import { PermissionEditor } from "./permission-editor";
 import type { UserGroup } from "../types";
+import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 
 interface UserGroupsPanelProps {
   tenantSlug: string;
@@ -196,17 +197,24 @@ export function CreateUserGroupDialogTrigger({
   tenantSlug,
   tenantId,
   activeModuleSlugs,
+  showTrigger = true,
 }: {
   tenantSlug: string;
   tenantId: string;
   activeModuleSlugs: string[];
+  showTrigger?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  useTopbarCta("Create Group", () => setOpen(true));
+
   return (
     <UserGroupDialog
       tenantSlug={tenantSlug}
       tenantId={tenantId}
       activeModuleSlugs={activeModuleSlugs}
-      trigger={<Button className="rounded-full px-4">Create Group</Button>}
+      open={open}
+      onOpenChange={setOpen}
+      trigger={showTrigger ? <Button className="rounded-full px-4">Create Group</Button> : undefined}
     />
   );
 }

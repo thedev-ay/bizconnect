@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Settings, Plus, Trash2, GripVertical, CheckCircle2, XCircle, ArrowRight, WifiOff } from "lucide-react";
+import { Settings, Plus, Trash2, GripVertical, CheckCircle2, XCircle, ArrowRight, WifiOff, X } from "lucide-react";
 import { useOnlineStatus } from "@/lib/use-online-status";
+import { useTopbarSecondaryCta } from "@/components/layout/topbar-cta-context";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,7 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ interface WorkflowStageEditorProps {
   tenantId: string;
   stages: WorkflowStage[];
   stageCounts: Record<string, number>;
+  showTrigger?: boolean;
 }
 
 function slugify(name: string) {
@@ -93,7 +94,13 @@ function SortableStepRow({
   );
 }
 
-export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts }: WorkflowStageEditorProps) {
+export function WorkflowStageEditor({
+  tenantSlug,
+  tenantId,
+  stages,
+  stageCounts,
+  showTrigger = true,
+}: WorkflowStageEditorProps) {
   const queryClient = useQueryClient();
   const isOnline = useOnlineStatus();
   const [open, setOpen] = useState(false);
@@ -123,6 +130,8 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
     if (o) initLocal();
     setOpen(o);
   }
+
+  useTopbarSecondaryCta(showTrigger ? null : "Workflow", () => handleOpenChange(true));
 
   function updateStep(stageId: string, patch: Partial<EditableStage>) {
     setLocal((prev) =>
@@ -256,144 +265,174 @@ export function WorkflowStageEditor({ tenantSlug, tenantId, stages, stageCounts 
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
-        <Settings className="h-3.5 w-3.5" />
-        Workflow
-      </DialogTrigger>
+      {showTrigger ? (
+        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => handleOpenChange(true)}>
+          <Settings className="h-3.5 w-3.5" />
+          Workflow
+        </Button>
+      ) : null}
 
-      <DialogContent className="flex max-h-[94dvh] w-[calc(100vw-1rem)] max-w-5xl flex-col gap-0 overflow-hidden border border-border/70 bg-popover/98 p-0 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)] sm:w-[min(96vw,72rem)]">
-        <DialogHeader className="border-b border-border/60 px-4 pb-4 pt-4 sm:px-5">
-          <p className="eyebrow-label">Workflow</p>
-          <DialogTitle>Stages</DialogTitle>
-          <DialogDescription>From intake to claim</DialogDescription>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[94dvh] w-[calc(100vw-1rem)] max-w-5xl flex-col gap-0 overflow-hidden border border-border/70 bg-popover/98 p-0 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)] sm:w-[min(96vw,72rem)]"
+      >
+        <DialogHeader className="border-b border-border/60 px-5 py-4 text-left sm:px-6 sm:py-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow-label">Job Orders / Workflow</p>
+              <DialogTitle className="mt-1 text-xl font-semibold tracking-tight text-foreground">Workflow stages</DialogTitle>
+              <DialogDescription className="mt-1">Arrange the board from intake through completion.</DialogDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mt-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => setOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
-        <div className="grid flex-1 min-h-0 gap-5 overflow-y-auto px-4 py-4 sm:px-5 lg:grid-cols-[minmax(0,1.25fr)_320px]">
-          <div className="space-y-5">
-
-          <div className="space-y-3 rounded-[26px] border border-border/60 bg-background/72 p-4">
-            <div>
-              <p className="eyebrow-label">Active</p>
-              <h3 className="mt-1 text-sm font-semibold text-foreground">Stages</h3>
-            </div>
-
-            {steps.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-border/70 bg-muted/25 px-4 py-6 text-center">
-                <p className="text-sm font-medium text-muted-foreground">No steps</p>
-              </div>
-            )}
-
-            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-1.5">
-                  {steps.map((stage) => (
-                    <SortableStepRow
-                      key={stage.id}
-                      stage={stage}
-                      onUpdate={(patch) => updateStep(stage.id, patch)}
-                      onDelete={() => handleDeleteStep(stage)}
-                      deleting={deletingId === stage.id}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-
-            <button
-              onClick={addStep}
-              className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border/70 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add step
-            </button>
-          </div>
-
-          {steps.filter((s) => s.name.trim()).length > 0 && (
-            <div className="rounded-[26px] border border-border/60 bg-background/72 px-4 py-3">
-              <p className="eyebrow-label text-[0.62rem]">Preview</p>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {steps.filter((s) => s.name.trim()).map((s, i) => (
-                  <span key={i} className="flex items-center gap-1.5">
-                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-foreground/80">
-                      {s.name}
-                    </span>
-                    <ArrowRight className="h-3 w-3 text-muted-foreground/45" />
-                  </span>
-                ))}
-                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                  {doneStage?.name || "Completed"}
-                </span>
-              </div>
-            </div>
-          )}
-          </div>
-
-          <div className="space-y-4">
-          <div className="space-y-2 rounded-[26px] border border-emerald-100 bg-emerald-50/90 p-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-              <div>
-                <p className="text-xs font-semibold text-emerald-800">Completed</p>
-                <p className="text-[10px] text-emerald-600">Payment and closeout</p>
-              </div>
-            </div>
-            {doneStage && (
-              <Input
-                value={doneStage.name}
-                onChange={(e) => updateSpecial("completed", { name: e.target.value })}
-                placeholder="e.g. Claimed, Picked Up, Done"
-                className="h-8 text-sm bg-white"
-              />
-            )}
-          </div>
-
-          {cancelStage && (
-            <div className="space-y-2 rounded-[26px] border border-red-100 bg-red-50/90 p-4">
-              <div className="flex items-center gap-2">
-                <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+          <div className="grid min-h-0 gap-5 lg:grid-cols-[minmax(0,1.25fr)_320px]">
+            <div className="space-y-5">
+              <div className="space-y-3 rounded-[26px] border border-border/60 bg-background/72 p-4">
                 <div>
-                  <p className="text-xs font-semibold text-red-800">Cancelled</p>
-                  <p className="text-[10px] text-red-500">Abandoned or refused</p>
+                  <p className="eyebrow-label">Active</p>
+                  <h3 className="mt-1 text-sm font-semibold text-foreground">Stages</h3>
                 </div>
+
+                {steps.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-muted/25 px-4 py-6 text-center">
+                    <p className="text-sm font-medium text-muted-foreground">No steps</p>
+                  </div>
+                )}
+
+                <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-1.5">
+                      {steps.map((stage) => (
+                        <SortableStepRow
+                          key={stage.id}
+                          stage={stage}
+                          onUpdate={(patch) => updateStep(stage.id, patch)}
+                          onDelete={() => handleDeleteStep(stage)}
+                          deleting={deletingId === stage.id}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+
+                <button
+                  type="button"
+                  onClick={addStep}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border/70 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add step
+                </button>
               </div>
-              <Input
-                value={cancelStage.name}
-                onChange={(e) => updateSpecial("cancelled", { name: e.target.value })}
-                placeholder="e.g. Cancelled, Rejected"
-                className="h-8 text-sm bg-white"
-              />
+
+              {steps.filter((s) => s.name.trim()).length > 0 && (
+                <div className="rounded-[26px] border border-border/60 bg-background/72 px-4 py-3">
+                  <p className="eyebrow-label text-[0.62rem]">Preview</p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {steps.filter((s) => s.name.trim()).map((s, i) => (
+                      <span key={i} className="flex items-center gap-1.5">
+                        <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-foreground/80">
+                          {s.name}
+                        </span>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground/45" />
+                      </span>
+                    ))}
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                      {doneStage?.name || "Completed"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {(emptyNames || steps.length < 1) && (
+                <div className="rounded-[26px] border border-amber-200 bg-amber-50/90 px-4 py-3 text-xs font-medium text-amber-700">
+                  {emptyNames ? "Give every step a name before saving." : "Add at least one step before saving."}
+                </div>
+              )}
+
+              {pendingDelete && (
+                <div className="space-y-2 rounded-[26px] border border-red-200 bg-red-50 p-4">
+                  <p className="text-xs font-semibold text-red-800">
+                    Remove "{pendingDelete.name}"?
+                  </p>
+                  <p className="text-xs text-red-700">
+                    There {stageCounts[pendingDelete.slug] === 1 ? "is" : "are"} <strong>{stageCounts[pendingDelete.slug]}</strong> job order{stageCounts[pendingDelete.slug] === 1 ? "" : "s"} currently in this stage. They will remain but won't appear on the board. Orders with no matching stage are automatically removed after 1 week — to restore them, re-add a step with the same name.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setPendingDelete(null)}>Keep it</Button>
+                    <Button size="sm" variant="destructive" onClick={() => doDeleteStep(pendingDelete)} disabled={!!deletingId}>
+                      {deletingId ? "Removing..." : "Remove anyway"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+
+            <div className="space-y-4">
+              <div className="space-y-2 rounded-[26px] border border-emerald-100 bg-emerald-50/90 p-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-800">Completed</p>
+                    <p className="text-[10px] text-emerald-600">Payment and closeout</p>
+                  </div>
+                </div>
+                {doneStage && (
+                  <Input
+                    value={doneStage.name}
+                    onChange={(e) => updateSpecial("completed", { name: e.target.value })}
+                    placeholder="e.g. Claimed, Picked Up, Done"
+                    className="h-8 bg-white text-sm"
+                  />
+                )}
+              </div>
+
+              {cancelStage && (
+                <div className="space-y-2 rounded-[26px] border border-red-100 bg-red-50/90 p-4">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4 shrink-0 text-red-500" />
+                    <div>
+                      <p className="text-xs font-semibold text-red-800">Cancelled</p>
+                      <p className="text-[10px] text-red-500">Abandoned or refused</p>
+                    </div>
+                  </div>
+                  <Input
+                    value={cancelStage.name}
+                    onChange={(e) => updateSpecial("cancelled", { name: e.target.value })}
+                    placeholder="e.g. Cancelled, Rejected"
+                    className="h-8 bg-white text-sm"
+                  />
+                </div>
+              )}
+
+              {!isOnline ? (
+                <div className="rounded-[26px] border border-amber-200 bg-amber-50/90 p-4 text-xs text-amber-800">
+                  <div className="flex items-start gap-2">
+                    <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <p>You're offline. Reconnect before editing the workflow.</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 
-        {emptyNames && (
-          <p className="text-xs font-medium text-amber-600 pt-2">Give every step a name before saving.</p>
-        )}
-        {!emptyNames && steps.length < 1 && (
-          <p className="text-xs font-medium text-amber-600 pt-2">Add at least one step.</p>
-        )}
-
-        {pendingDelete && (
-          <div className="mt-2 space-y-2 rounded-[26px] border border-red-200 bg-red-50 p-4">
-            <p className="text-xs font-semibold text-red-800">
-              Remove "{pendingDelete.name}"?
-            </p>
-            <p className="text-xs text-red-700">
-              There {stageCounts[pendingDelete.slug] === 1 ? "is" : "are"} <strong>{stageCounts[pendingDelete.slug]}</strong> job order{stageCounts[pendingDelete.slug] === 1 ? "" : "s"} currently in this stage. They will remain but won't appear on the board. Orders with no matching stage are automatically removed after 1 week — to restore them, re-add a step with the same name.
-            </p>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setPendingDelete(null)}>Keep it</Button>
-              <Button size="sm" variant="destructive" onClick={() => doDeleteStep(pendingDelete)} disabled={!!deletingId}>
-                {deletingId ? "Removing..." : "Remove anyway"}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <DialogFooter className="border-t border-border/60 bg-background/95 px-4 py-3 sm:px-5">
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving || hasErrors}>
+        <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 rounded-b-[inherit] border-t border-border/60 bg-muted/30 px-5 py-4 sm:px-6">
+          <Button variant="outline" className="rounded-full px-4" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button className="rounded-full px-4" onClick={handleSave} disabled={saving || hasErrors}>
             {saving ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>

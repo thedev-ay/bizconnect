@@ -54,6 +54,10 @@ export async function getReportsSummary(
   const { from, to, granularity } = options;
   const toEnd = new Date(to);
   toEnd.setHours(23, 59, 59, 999);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(todayStart);
+  todayEnd.setHours(23, 59, 59, 999);
 
   const hasPos = modules.has("pos");
   const hasBilling = modules.has("billing");
@@ -169,6 +173,15 @@ export async function getReportsSummary(
   const totalSales = sales
     .filter((s) => s.status === "completed")
     .reduce((sum, s) => sum + Number(s.total), 0);
+  const salesCompletedCount = sales.filter((s) => s.status === "completed").length;
+  const salesVoidedCount = sales.filter((s) => s.status === "voided").length;
+  const todayCompletedSales = sales.filter((s) => {
+    if (s.status !== "completed") return false;
+    const createdAt = new Date(s.createdAt);
+    return createdAt >= todayStart && createdAt <= todayEnd;
+  });
+  const todaySalesRevenue = todayCompletedSales.reduce((sum, s) => sum + Number(s.total), 0);
+  const todaySalesCount = todayCompletedSales.length;
   const totalInvoiced = invoices.reduce((sum, i) => sum + Number(i.total), 0);
   const paidInvoices = invoices.filter((i) => i.status === "paid").length;
   const refundedReturns = saleReturns.filter((r) => r.status === "refunded");
@@ -190,6 +203,10 @@ export async function getReportsSummary(
   return {
     totalRevenue: totalSales + invoices.filter((i) => i.status === "paid").reduce((sum, i) => sum + Number(i.total), 0),
     totalSales,
+    salesCompletedCount,
+    salesVoidedCount,
+    todaySalesRevenue,
+    todaySalesCount,
     totalInvoiced,
     paidInvoices,
     totalRefunded,

@@ -1,10 +1,11 @@
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { TopbarPageBridge } from "@/components/layout/topbar-page-bridge";
+import { ContentPanel, PageShell } from "@/components/layout/page-shell";
 import { DataSurfaceLoading } from "@/components/ui/data-surface-loading";
 
 export default function Loading() {
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader eyebrow="Dashboard" title="Overview" />
+      <TopbarPageBridge title="Dashboard" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <DataSurfaceLoading showLabel={false} variant="cards" rows={1} className="min-h-[220px]" />

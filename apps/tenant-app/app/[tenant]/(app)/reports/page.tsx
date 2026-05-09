@@ -1,13 +1,14 @@
 import { getTenant } from "@/lib/tenant";
 import { authorize } from "@/lib/authorize";
 import { getReportsSummary } from "@/modules/reports";
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { TopbarPageBridge } from "@/components/layout/topbar-page-bridge";
+import { ContentPanel, PageShell } from "@/components/layout/page-shell";
 import { RevenueChart, PaymentMethodChart } from "@/modules/reports";
 import { ReportsSummaryCards, TopItemsTable } from "@/modules/reports/components/reports-summary";
 import { DateRangeFilter } from "@/modules/reports/components/date-range-filter";
 import { FadeIn } from "@/components/dashboard/fade-in";
 import { Card, CardContent } from "@/components/ui/card";
-import { RotateCcw, Banknote, Clock3 } from "lucide-react";
+import { RotateCcw, Banknote, Clock3, TrendingUp, ShoppingBag, XCircle } from "lucide-react";
 import { format } from "date-fns";
 
 const toDateStr = (d: Date) => format(d, "yyyy-MM-dd");
@@ -62,10 +63,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
 
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="Reports"
-        title={section === "overview" ? "Overview" : section === "sales" ? "Sales" : "Payments"}
-      />
+      <TopbarPageBridge title={section === "overview" ? "Overview" : section === "sales" ? "Sales" : "Payments"} />
 
       <ContentPanel className="p-4">
         <DateRangeFilter from={fromStr} to={toStr} granularity={granularity} />
@@ -104,7 +102,80 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       {section === "sales" && (
         <>
           <FadeIn>
-            <section id="sales" className="scroll-mt-24 pt-2">
+            <section className="pt-2">
+              <div className="mb-5 border-b border-slate-200/80 pb-4">
+                <h2 className="text-base font-semibold text-slate-950">Key metrics</h2>
+              </div>
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <Card className="h-full">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Revenue</p>
+                        <p className="metric-value mt-2">
+                          {tenant.currencySymbol}{summary.totalSales.toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className="metric-caption mt-1">selected range</p>
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-inner">
+                        <TrendingUp className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="h-full">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Today</p>
+                        <p className="metric-value mt-2">
+                          {tenant.currencySymbol}{summary.todaySalesRevenue.toLocaleString(tenant.currencyLocale, { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className="metric-caption mt-1">{summary.todaySalesCount} transactions</p>
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 shadow-inner">
+                        <Banknote className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="h-full">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Completed</p>
+                        <p className="metric-value mt-2">{summary.salesCompletedCount}</p>
+                        <p className="metric-caption mt-1">selected range</p>
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner">
+                        <ShoppingBag className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="h-full">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="eyebrow-label text-[0.64rem] tracking-[0.18em]">Voided</p>
+                        <p className="metric-value mt-2 text-muted-foreground">{summary.salesVoidedCount}</p>
+                        <p className="metric-caption mt-1">selected range</p>
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-muted text-muted-foreground shadow-inner">
+                        <XCircle className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+          </FadeIn>
+
+          <FadeIn>
+            <section id="sales" className="scroll-mt-24 pt-3">
               <div className="mb-5 border-b border-slate-200/80 pb-4">
                 <p className="eyebrow-label text-primary">Sales</p>
                 <h2 className="text-base font-semibold text-slate-950">Revenue</h2>

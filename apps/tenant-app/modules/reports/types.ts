@@ -21,6 +21,10 @@ export interface PaymentMethodBreakdown {
 export interface ReportsSummary {
   totalRevenue: number;
   totalSales: number;
+  salesCompletedCount: number;
+  salesVoidedCount: number;
+  todaySalesRevenue: number;
+  todaySalesCount: number;
   totalInvoiced: number;
   paidInvoices: number;
   totalRefunded: number;

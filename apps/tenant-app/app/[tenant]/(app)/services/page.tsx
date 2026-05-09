@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
 import { authorize } from "@/lib/authorize";
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { TopbarPageBridge } from "@/components/layout/topbar-page-bridge";
+import { ContentPanel, PageShell } from "@/components/layout/page-shell";
 import { ServicesList } from "@/modules/services";
 import { NewServiceButton } from "@/modules/services/components/new-service-button";
 import type { Service, PricingType } from "@/modules/services";
@@ -37,21 +38,15 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
 
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="Catalog"
-        title="Services"
-        description={`${services.length} total · ${activeCount} active`}
-        className="py-3 sm:py-4"
-        action={
-          <NewServiceButton
-            tenantSlug={tenantSlug}
-            tenantId={tenant.id}
-            currencySymbol={tenant.currencySymbol}
-            showDuration={hasAppointments}
-            showAppointmentsAvailability={hasAppointments}
-            showJobOrdersAvailability={hasJobOrders}
-          />
-        }
+      <TopbarPageBridge title="Services" description={`${services.length} total · ${activeCount} active`} />
+      <NewServiceButton
+        tenantSlug={tenantSlug}
+        tenantId={tenant.id}
+        currencySymbol={tenant.currencySymbol}
+        showDuration={hasAppointments}
+        showAppointmentsAvailability={hasAppointments}
+        showJobOrdersAvailability={hasJobOrders}
+        showTrigger={false}
       />
 
       <ContentPanel className="overflow-hidden p-0">

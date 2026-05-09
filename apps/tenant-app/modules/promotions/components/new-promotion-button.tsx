@@ -17,6 +17,7 @@ interface NewPromotionButtonProps {
   tenantId: string;
   currencySymbol: string;
   products: ProductOption[];
+  showTrigger?: boolean;
 }
 
 export function NewPromotionButton({
@@ -24,15 +25,18 @@ export function NewPromotionButton({
   tenantId,
   currencySymbol,
   products,
+  showTrigger = true,
 }: NewPromotionButtonProps) {
   const [open, setOpen] = useState(false);
   useTopbarCta("New Promotion", () => setOpen(true));
 
   return (
     <>
-      <Button className="rounded-full px-4" onClick={() => setOpen(true)}>
-        <Plus className="mr-2 h-4 w-4" /> New
-      </Button>
+      {showTrigger ? (
+        <Button className="rounded-full px-4" onClick={() => setOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" /> New
+        </Button>
+      ) : null}
 
       <PromotionDialog
         tenantSlug={tenantSlug}

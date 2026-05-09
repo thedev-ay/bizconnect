@@ -27,9 +27,10 @@ interface AddEmployeeDialogProps {
   tenantSlug: string;
   tenantId: string;
   currencySymbol: string;
+  showTrigger?: boolean;
 }
 
-export function AddEmployeeDialog({ tenantSlug, tenantId, currencySymbol }: AddEmployeeDialogProps) {
+export function AddEmployeeDialog({ tenantSlug, tenantId, currencySymbol, showTrigger = true }: AddEmployeeDialogProps) {
   const [open, setOpen] = useState(false);
   useTopbarCta("Add Employee", () => setOpen(true));
   const router = useRouter();
@@ -57,10 +58,12 @@ export function AddEmployeeDialog({ tenantSlug, tenantId, currencySymbol }: AddE
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button className="rounded-full px-4" />}>
-        <Plus className="mr-2 h-4 w-4" />
-        New
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger render={<Button className="rounded-full px-4" />}>
+          <Plus className="mr-2 h-4 w-4" />
+          New
+        </DialogTrigger>
+      ) : null}
       <DialogContent
         showCloseButton={false}
         className="flex max-h-[90dvh] w-[min(680px,calc(100vw-2rem))] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"

@@ -1,9 +1,8 @@
 import { getTenant } from "@/lib/tenant";
 import { POSView } from "@/modules/pos";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { History } from "lucide-react";
-import { PageHeader, PageShell } from "@/components/layout/page-shell";
+import { TopbarPageBridge } from "@/components/layout/topbar-page-bridge";
+import { TopbarSecondaryLinkBridge } from "@/components/layout/topbar-secondary-link-bridge";
+import { PageShell } from "@/components/layout/page-shell";
 
 interface POSPageProps {
   params: Promise<{ tenant: string }>;
@@ -15,19 +14,8 @@ export default async function POSPage({ params }: POSPageProps) {
 
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="Storefront"
-        title="Point of Sale"
-        className="px-5 py-4 sm:px-6 sm:py-5"
-        action={
-          <Link href={`/${tenantSlug}/sales`}>
-            <Button variant="outline" size="sm">
-              <History className="mr-2 h-4 w-4" />
-              Sales History
-            </Button>
-          </Link>
-        }
-      />
+      <TopbarPageBridge title="Point of Sale" />
+      <TopbarSecondaryLinkBridge label="Sales History" href={`/${tenantSlug}/sales`} />
       <div className="flex-1 overflow-visible 2xl:overflow-hidden">
         <POSView
           tenantSlug={tenantSlug}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Settings, X } from "lucide-react";
+import { useTopbarSecondaryCta } from "@/components/layout/topbar-cta-context";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,14 +23,21 @@ interface LoyaltySettingsDialogProps {
   tenantSlug: string;
   tenantId: string;
   settings: LoyaltySetting;
+  showTrigger?: boolean;
 }
 
-export function LoyaltySettingsDialog({ tenantSlug, tenantId, settings }: LoyaltySettingsDialogProps) {
+export function LoyaltySettingsDialog({
+  tenantSlug,
+  tenantId,
+  settings,
+  showTrigger = true,
+}: LoyaltySettingsDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [stamps, setStamps] = useState(settings.stampsPerReward);
   const [reward, setReward] = useState(settings.rewardDescription);
   const [saving, setSaving] = useState(false);
+  useTopbarSecondaryCta(showTrigger ? null : "Settings", () => setOpen(true));
 
   async function handleSave() {
     if (!reward.trim() || stamps < 1) return;
@@ -52,10 +60,12 @@ export function LoyaltySettingsDialog({ tenantSlug, tenantId, settings }: Loyalt
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
-        <Settings className="h-3.5 w-3.5" />
-        Settings
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
+          <Settings className="h-3.5 w-3.5" />
+          Settings
+        </DialogTrigger>
+      ) : null}
       <DialogContent
         showCloseButton={false}
         className="flex max-h-[90dvh] w-[min(420px,calc(100vw-2rem))] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"

@@ -1,15 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useTopbarCta } from "@/components/layout/topbar-cta-context";
+import { useTopbarCta, useTopbarPage } from "@/components/layout/topbar-cta-context";
 import { useQuery } from "@tanstack/react-query";
 import { AppointmentsShell } from "./appointments-shell";
 import { CreateAppointmentDialog } from "./create-appointment-dialog";
 import type { Appointment } from "../types";
 import { db } from "@/lib/local-db";
-import { PageHeader, PageShell } from "@/components/layout/page-shell";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { PageShell } from "@/components/layout/page-shell";
 
 interface AppointmentsViewProps {
   tenantSlug: string;
@@ -60,6 +58,10 @@ export function AppointmentsView({ tenantSlug, tenantId, currencySymbol, currenc
   const staff = data?.staff ?? [];
   const slotMinTime = data?.slotMinTime ?? "07:00";
   const slotMaxTime = data?.slotMaxTime ?? "21:00";
+  useTopbarPage({
+    title: "Appointments",
+    description: isPending ? "Loading" : `${appointments.length} total`,
+  });
 
   function handleSlotSelect(start: Date) {
     const local = new Date(start.getTime() - start.getTimezoneOffset() * 60000);
@@ -67,25 +69,8 @@ export function AppointmentsView({ tenantSlug, tenantId, currencySymbol, currenc
     setDialogOpen(true);
   }
 
-  function handleNewAppointment() {
-    setDefaultStart(undefined);
-    setDialogOpen(true);
-  }
-
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="Schedule"
-        title="Appointments"
-        description={isPending ? "Loading" : `${appointments.length} total`}
-        className="py-4 sm:py-5"
-        action={
-          <Button onClick={handleNewAppointment} className="rounded-full px-4">
-            <Plus className="mr-2 h-4 w-4" /> New
-          </Button>
-        }
-      />
-
       <AppointmentsShell
         appointments={appointments}
         slotMinTime={slotMinTime}

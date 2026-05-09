@@ -30,6 +30,7 @@ import { getPermissionLabel } from "@/lib/permissions";
 import { createUserSchema, type CreateUserInput } from "../schema";
 import { createUser } from "../actions";
 import { PermissionEditor } from "./permission-editor";
+import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 import {
   USER_GROUP_NONE_LABEL,
   USER_GROUP_NONE_VALUE,
@@ -42,6 +43,7 @@ interface CreateUserDialogProps {
   tenantId: string;
   activeModuleSlugs: string[];
   userGroups: UserGroup[];
+  showTrigger?: boolean;
 }
 
 export function CreateUserDialog({
@@ -49,8 +51,10 @@ export function CreateUserDialog({
   tenantId,
   activeModuleSlugs,
   userGroups,
+  showTrigger = true,
 }: CreateUserDialogProps) {
   const [open, setOpen] = useState(false);
+  useTopbarCta("New User", () => setOpen(true));
   const [role, setRole] = useState<string>("member");
   const [userGroupId, setUserGroupId] = useState<string>(USER_GROUP_NONE_VALUE);
   const [permissions, setPermissions] = useState<Record<string, boolean>>({});
@@ -104,10 +108,12 @@ export function CreateUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button className="rounded-full px-4" />}>
-        <Plus className="mr-2 h-4 w-4" />
-        New
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger render={<Button className="rounded-full px-4" />}>
+          <Plus className="mr-2 h-4 w-4" />
+          New
+        </DialogTrigger>
+      ) : null}
       <DialogContent
         showCloseButton={false}
         className="border-border/70 bg-popover flex max-h-[94dvh] w-[min(95vw,64rem)] max-w-[64rem] flex-col gap-0 overflow-hidden border p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"

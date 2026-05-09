@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
 import { authorize } from "@/lib/authorize";
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { TopbarPageBridge } from "@/components/layout/topbar-page-bridge";
+import { ContentPanel, PageShell } from "@/components/layout/page-shell";
 import { BillingLedger, CreateInvoiceDialog } from "@/modules/billing";
 import type { Invoice } from "@/modules/billing";
 import { createInvoiceForJobOrder } from "@/modules/job-orders/actions";
@@ -85,7 +86,7 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
   const { invoiceId } = await searchParams;
   const [tenant, session] = await Promise.all([getTenant(tenantSlug), authorize(tenantSlug)]);
   const crmEnabled = session.user.modules.includes("crm");
-  const { invoices, customers, readyToInvoice, overdueCount, readyToInvoiceValue, summaryCards } = await getInvoices(tenant.id);
+  const { invoices, customers, readyToInvoice, overdueCount, readyToInvoiceValue } = await getInvoices(tenant.id);
 
   const typedInvoices: Invoice[] = invoices.map((inv) => ({
     ...inv,
@@ -108,20 +109,15 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
 
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="Billing"
-        title="Invoices"
-        description={`${invoices.length} total${overdueCount > 0 ? ` · ${overdueCount} overdue overall` : ""}`}
-        action={
-          <CreateInvoiceDialog
-            tenantSlug={tenantSlug}
-            tenantId={tenant.id}
-            currencySymbol={tenant.currencySymbol}
-            defaultTaxRate={Number(tenant.defaultTaxRate)}
-            customers={customers}
-            crmEnabled={crmEnabled}
-          />
-        }
+      <TopbarPageBridge title="Invoices" description={`${invoices.length} total${overdueCount > 0 ? ` · ${overdueCount} overdue overall` : ""}`} />
+      <CreateInvoiceDialog
+        tenantSlug={tenantSlug}
+        tenantId={tenant.id}
+        currencySymbol={tenant.currencySymbol}
+        defaultTaxRate={Number(tenant.defaultTaxRate)}
+        customers={customers}
+        crmEnabled={crmEnabled}
+        showTrigger={false}
       />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.85fr)]">

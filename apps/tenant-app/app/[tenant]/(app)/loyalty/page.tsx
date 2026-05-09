@@ -1,7 +1,8 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
-import { LoyaltyShell, LoyaltySettingsDialog, NewCardButton } from "@/modules/loyalty";
+import { TopbarPageBridge } from "@/components/layout/topbar-page-bridge";
+import { ContentPanel, PageShell } from "@/components/layout/page-shell";
+import { LoyaltyShell, LoyaltySettingsDialog } from "@/modules/loyalty";
 import type { LoyaltyCard, LoyaltyActivity } from "@/modules/loyalty";
 
 interface LoyaltyPageProps {
@@ -79,23 +80,12 @@ export default async function LoyaltyPage({ params }: LoyaltyPageProps) {
 
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="Loyalty"
-        title="Cards"
-        description={`${totalCards} total${redeemableCards > 0 ? ` · ${redeemableCards} ready` : ""}`}
-        action={
-          <div className="flex items-center gap-2">
-          <LoyaltySettingsDialog
-            tenantSlug={tenantSlug}
-            tenantId={tenant.id}
-            settings={settings}
-          />
-          <NewCardButton
-            tenantSlug={tenantSlug}
-            tenantId={tenant.id}
-          />
-          </div>
-        }
+      <TopbarPageBridge title="Cards" description={`${totalCards} total${redeemableCards > 0 ? ` · ${redeemableCards} ready` : ""}`} />
+      <LoyaltySettingsDialog
+        tenantSlug={tenantSlug}
+        tenantId={tenant.id}
+        settings={settings}
+        showTrigger={false}
       />
 
       <ContentPanel className="min-h-0 flex-1 overflow-hidden border-slate-200/70 bg-white/82 p-4 shadow-[0_20px_60px_-28px_rgba(15,23,42,0.18)]">

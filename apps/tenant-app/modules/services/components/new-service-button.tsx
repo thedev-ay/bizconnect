@@ -13,6 +13,7 @@ interface NewServiceButtonProps {
   showDuration: boolean;
   showAppointmentsAvailability: boolean;
   showJobOrdersAvailability: boolean;
+  showTrigger?: boolean;
 }
 
 export function NewServiceButton({
@@ -22,15 +23,18 @@ export function NewServiceButton({
   showDuration,
   showAppointmentsAvailability,
   showJobOrdersAvailability,
+  showTrigger = true,
 }: NewServiceButtonProps) {
   const [open, setOpen] = useState(false);
   useTopbarCta("New Service", () => setOpen(true));
 
   return (
     <>
-      <Button className="rounded-full px-4" onClick={() => setOpen(true)}>
-        <Plus className="mr-2 h-4 w-4" /> New
-      </Button>
+      {showTrigger ? (
+        <Button className="rounded-full px-4" onClick={() => setOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" /> New
+        </Button>
+      ) : null}
 
       <ServiceDialog
         open={open}

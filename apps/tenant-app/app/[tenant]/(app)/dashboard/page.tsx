@@ -523,9 +523,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             <h1 className="mt-1.5 text-[1.7rem] font-semibold tracking-[-0.035em] text-foreground sm:text-[2rem]">
               Good {getTimeGreeting()}, {firstName}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Here&rsquo;s what&rsquo;s happening across {tenant.name} today.
-            </p>
           </div>
           <div className="flex shrink-0 items-center gap-0.5 rounded-full border border-border/70 bg-muted/50 p-0.5">
             {VALID_RANGES.map((r) => (

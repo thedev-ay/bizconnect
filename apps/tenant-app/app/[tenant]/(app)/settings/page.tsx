@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
 import { authorize } from "@/lib/authorize";
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { TopbarPageBridge } from "@/components/layout/topbar-page-bridge";
+import { ContentPanel, PageShell } from "@/components/layout/page-shell";
 import { BusinessProfileForm, CurrencyForm, BusinessHoursForm } from "@/modules/settings";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -37,10 +38,7 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
 
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="Settings"
-        title="Business configuration"
-      />
+      <TopbarPageBridge title="Business Configuration" />
 
       <ContentPanel className="space-y-4 p-0">
       <div className="flex gap-2 border-b border-slate-200/80 px-4 pt-3">

@@ -1,7 +1,8 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
 import { authorize } from "@/lib/authorize";
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { TopbarPageBridge } from "@/components/layout/topbar-page-bridge";
+import { ContentPanel, PageShell } from "@/components/layout/page-shell";
 import { CustomerList, AddCustomerDialog } from "@/modules/crm";
 import type { Customer } from "@/modules/crm";
 
@@ -81,12 +82,8 @@ export default async function CRMPage({ params }: CRMPageProps) {
 
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="CRM"
-        title="Customers"
-        description={`${customers.length} total`}
-        action={<AddCustomerDialog tenantSlug={tenantSlug} tenantId={tenant.id} />}
-      />
+      <TopbarPageBridge title="Customers" description={`${customers.length} total`} />
+      <AddCustomerDialog tenantSlug={tenantSlug} tenantId={tenant.id} showTrigger={false} />
       <ContentPanel className="overflow-hidden p-0">
         <CustomerList
           customers={typedCustomers}

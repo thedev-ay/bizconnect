@@ -2,7 +2,8 @@ import { prisma } from "@bizconnect/db";
 import Link from "next/link";
 import { getTenant } from "@/lib/tenant";
 import { authorize } from "@/lib/authorize";
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { TopbarPageBridge } from "@/components/layout/topbar-page-bridge";
+import { ContentPanel, PageShell } from "@/components/layout/page-shell";
 import { cn } from "@/lib/utils";
 import {
   UserTable,
@@ -75,31 +76,30 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
 
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="Users"
+      <TopbarPageBridge
         title="Access Control"
         description={
           tab === "groups"
             ? `${userGroups.length} group${userGroups.length === 1 ? "" : "s"}`
             : `${users.length} member${users.length === 1 ? "" : "s"}`
         }
-        action={
-          canManage && tab === "members" ? (
-            <CreateUserDialog
-              tenantSlug={tenantSlug}
-              tenantId={tenant.id}
-              activeModuleSlugs={activeModuleSlugs}
-              userGroups={normalizedUserGroups}
-            />
-          ) : canManage && tab === "groups" ? (
-            <CreateUserGroupDialogTrigger
-              tenantSlug={tenantSlug}
-              tenantId={tenant.id}
-              activeModuleSlugs={activeModuleSlugs}
-            />
-          ) : undefined
-        }
       />
+      {canManage && tab === "members" ? (
+        <CreateUserDialog
+          tenantSlug={tenantSlug}
+          tenantId={tenant.id}
+          activeModuleSlugs={activeModuleSlugs}
+          userGroups={normalizedUserGroups}
+          showTrigger={false}
+        />
+      ) : canManage && tab === "groups" ? (
+        <CreateUserGroupDialogTrigger
+          tenantSlug={tenantSlug}
+          tenantId={tenant.id}
+          activeModuleSlugs={activeModuleSlugs}
+          showTrigger={false}
+        />
+      ) : null}
 
       <ContentPanel className="p-0">
         <div className="flex gap-2 border-b border-slate-200/80 px-4 pt-3">

@@ -1,11 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useTopbarCta } from "@/components/layout/topbar-cta-context";
+import { useTopbarPage } from "@/components/layout/topbar-cta-context";
 import { JobOrderBoard, CreateJobOrderDialog, WorkflowStageEditor } from "@/modules/job-orders";
 import type { JobOrder, WorkflowStage } from "../types";
 import { db } from "@/lib/local-db";
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { ContentPanel, PageShell } from "@/components/layout/page-shell";
 import { DataSurfaceLoading } from "@/components/ui/data-surface-loading";
 
 interface JobOrdersViewProps {
@@ -38,7 +38,6 @@ export function JobOrdersView({
   billingEnabled,
   initialCustomerId,
 }: JobOrdersViewProps) {
-  useTopbarCta("New Job", () => {});
   const { data, isPending } = useQuery<JobOrdersData>({
     queryKey: ["job-orders", tenantSlug],
     queryFn: async () => {
@@ -79,42 +78,37 @@ export function JobOrdersView({
   const firstActiveSlug = activeStages[0]?.slug;
 
   const activeOrders = jobOrders.filter((j) => activeStages.some((s) => s.slug === j.status));
+  useTopbarPage({
+    title: "Job Orders",
+    description: isPending ? "Loading" : `${activeOrders.length} active`,
+  });
 
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="Workflow"
-        title="Job Orders"
-        description={isPending ? "Loading" : `${activeOrders.length} active`}
-        action={
-          <div className="flex items-center gap-2">
-            <WorkflowStageEditor
-              tenantSlug={tenantSlug}
-              tenantId={tenantId}
-              stages={stages}
-              stageCounts={Object.fromEntries(stages.map((s) => [s.slug, jobOrders.filter((j) => j.status === s.slug).length]))}
-            />
-            <CreateJobOrderDialog
-              tenantSlug={tenantSlug}
-              tenantId={tenantId}
-              services={services}
-              crmEnabled={crmEnabled}
-              customers={customers}
-              assetsEnabled={assetsEnabled}
-              assets={assets}
-              employees={employees}
-              currencySymbol={currencySymbol}
-              currencyLocale={currencyLocale}
-              firstStageSlug={firstActiveSlug ?? "received"}
-              initialCustomerId={initialCustomerId}
-              disabled={activeStages.length === 0}
-            />
-          </div>
-        }
-        className="py-4 sm:py-5"
+      <WorkflowStageEditor
+        tenantSlug={tenantSlug}
+        tenantId={tenantId}
+        stages={stages}
+        stageCounts={Object.fromEntries(stages.map((s) => [s.slug, jobOrders.filter((j) => j.status === s.slug).length]))}
+        showTrigger={false}
       />
 
-
+      <CreateJobOrderDialog
+        tenantSlug={tenantSlug}
+        tenantId={tenantId}
+        services={services}
+        crmEnabled={crmEnabled}
+        customers={customers}
+        assetsEnabled={assetsEnabled}
+        assets={assets}
+        employees={employees}
+        currencySymbol={currencySymbol}
+        currencyLocale={currencyLocale}
+        firstStageSlug={firstActiveSlug ?? "received"}
+        initialCustomerId={initialCustomerId}
+        disabled={activeStages.length === 0}
+        showTrigger={false}
+      />
 
       <ContentPanel className="min-h-0 flex-1 overflow-visible p-3 sm:p-4 lg:overflow-hidden lg:p-5">
         {isPending ? (

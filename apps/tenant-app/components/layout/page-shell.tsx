@@ -13,29 +13,35 @@ export function PageShell({
 }
 
 export function PageHeader({
-  eyebrow,
   title,
   description,
   action,
   className,
+  variant = "panel",
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
   action?: React.ReactNode;
   className?: string;
+  variant?: "panel" | "compact";
 }) {
+  const isCompact = variant === "compact";
+
   return (
     <header
       className={cn(
-        "app-panel flex flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6 lg:flex-row lg:items-end lg:justify-between",
+        isCompact
+          ? "flex flex-col gap-3 px-1 py-1 sm:px-1 lg:flex-row lg:items-end lg:justify-between"
+          : "app-panel flex flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6 lg:flex-row lg:items-end lg:justify-between",
         className
       )}
     >
       <div className="min-w-0">
-        {eyebrow ? <p className="eyebrow-label">{eyebrow}</p> : null}
-        <h1 className="page-title">{title}</h1>
-        {description ? <p className="page-subtitle">{description}</p> : null}
+        <h1 className={cn("page-title", isCompact && "text-[1.45rem] sm:text-[1.7rem]")}>{title}</h1>
+        {description ? (
+          <p className={cn("page-subtitle", isCompact && "mt-0.5 text-xs leading-5 sm:text-sm")}>{description}</p>
+        ) : null}
       </div>
       {action ? <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">{action}</div> : null}
     </header>

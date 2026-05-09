@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Plus, Pencil, X } from "lucide-react";
+import { useTopbarCtaLabel } from "@/components/layout/topbar-cta-context";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,6 +40,8 @@ interface AssetDialogProps {
   initialCustomerId?: string;
   triggerLabel?: string;
   lockCustomer?: boolean;
+  showTrigger?: boolean;
+  enableTopbarCta?: boolean;
   onSaved?: (asset: {
     id: string;
     customerId: string;
@@ -60,11 +63,29 @@ export function AssetDialog({
   initialCustomerId,
   triggerLabel,
   lockCustomer,
+  showTrigger = true,
+  enableTopbarCta = false,
   onSaved,
 }: AssetDialogProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const isEditing = Boolean(asset);
+  const topbarCtx = useTopbarCtaLabel();
+
+  useEffect(() => {
+    if (!enableTopbarCta || isEditing) return;
+
+    topbarCtx?.setLabel("New Asset");
+    function handleTopbarCta() {
+      setOpen(true);
+    }
+
+    window.addEventListener("topbar-cta", handleTopbarCta);
+    return () => {
+      topbarCtx?.setLabel(null);
+      window.removeEventListener("topbar-cta", handleTopbarCta);
+    };
+  }, [enableTopbarCta, isEditing, topbarCtx]);
 
   const {
     register,
@@ -162,14 +183,16 @@ export function AssetDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button type="button" variant={asset ? "outline" : "default"} className="rounded-full px-4" />
-        }
-      >
-        {asset ? <Pencil className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-        {triggerLabel ?? (asset ? "Edit" : "New")}
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger
+          render={
+            <Button type="button" variant={asset ? "outline" : "default"} className="rounded-full px-4" />
+          }
+        >
+          {asset ? <Pencil className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+          {triggerLabel ?? (asset ? "Edit" : "New")}
+        </DialogTrigger>
+      ) : null}
       <DialogContent
         showCloseButton={false}
         className="flex max-h-[90dvh] w-[min(860px,calc(100vw-2rem))] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"

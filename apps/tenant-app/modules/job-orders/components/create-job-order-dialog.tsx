@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { AlertCircle, Plus, Trash2, Scale, WifiOff } from "lucide-react";
 import { useOnlineStatus } from "@/lib/use-online-status";
+import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 import { Button } from "@/components/ui/button";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import {
@@ -100,6 +101,7 @@ interface CreateJobOrderDialogProps {
   firstStageSlug: string;
   initialCustomerId?: string;
   disabled?: boolean;
+  showTrigger?: boolean;
 }
 
 export function CreateJobOrderDialog({
@@ -116,15 +118,11 @@ export function CreateJobOrderDialog({
   firstStageSlug,
   initialCustomerId,
   disabled,
+  showTrigger = true,
 }: CreateJobOrderDialogProps) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<LineItem[]>([]);
-  useEffect(() => {
-    if (disabled) return;
-    function handleTopbarCta() { setOpen(true); }
-    window.addEventListener("topbar-cta", handleTopbarCta);
-    return () => window.removeEventListener("topbar-cta", handleTopbarCta);
-  }, [disabled]);
+  useTopbarCta(showTrigger || disabled ? null : "New Job", () => setOpen(true));
   const [assetOptions, setAssetOptions] = useState<AssetOption[]>(assets);
   const [serviceSearch, setServiceSearch] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
@@ -384,10 +382,12 @@ export function CreateJobOrderDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogTrigger render={<Button className="rounded-full px-4" disabled={disabled} title={disabled ? "Set up your workflow before creating job orders" : undefined} />}>
-        <Plus className="mr-2 h-4 w-4" />
-        New
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger render={<Button className="rounded-full px-4" disabled={disabled} title={disabled ? "Set up your workflow before creating job orders" : undefined} />}>
+          <Plus className="mr-2 h-4 w-4" />
+          New
+        </DialogTrigger>
+      ) : null}
       <DialogContent
         initialFocus={false}
         className="flex max-h-[94dvh] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden border border-border/70 bg-popover/98 p-0 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)] sm:w-[min(96vw,42rem)]"

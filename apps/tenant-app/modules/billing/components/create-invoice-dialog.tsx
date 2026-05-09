@@ -37,6 +37,7 @@ interface CreateInvoiceDialogProps {
   defaultTaxRate: number;
   customers: CustomerOption[];
   crmEnabled: boolean;
+  showTrigger?: boolean;
 }
 
 export function CreateInvoiceDialog({
@@ -46,6 +47,7 @@ export function CreateInvoiceDialog({
   defaultTaxRate,
   customers,
   crmEnabled,
+  showTrigger = true,
 }: CreateInvoiceDialogProps) {
   const [open, setOpen] = useState(false);
   useTopbarCta("New Invoice", () => setOpen(true));
@@ -100,10 +102,12 @@ export function CreateInvoiceDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button className="rounded-full px-4" />}>
-        <Plus className="mr-2 h-4 w-4" />
-        New
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger render={<Button className="rounded-full px-4" />}>
+          <Plus className="mr-2 h-4 w-4" />
+          New
+        </DialogTrigger>
+      ) : null}
       <DialogContent
         showCloseButton={false}
         className="flex max-h-[94dvh] w-[min(96vw,72rem)] max-w-[72rem] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"

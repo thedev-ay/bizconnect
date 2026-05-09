@@ -1,7 +1,8 @@
 import { prisma } from "@bizconnect/db";
 import { getTenant } from "@/lib/tenant";
 import { authorize } from "@/lib/authorize";
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
+import { TopbarPageBridge } from "@/components/layout/topbar-page-bridge";
+import { ContentPanel, PageShell } from "@/components/layout/page-shell";
 import { AssetDialog } from "@/modules/assets/components/asset-dialog";
 import { AssetsList } from "@/modules/assets/components/assets-list";
 import type { Asset } from "@/modules/assets";
@@ -89,19 +90,15 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
 
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="Assets"
-        title="Customer Assets"
-        description={`${assets.length} tracked`}
-        action={
-          <AssetDialog
-            tenantSlug={tenantSlug}
-            tenantId={tenant.id}
-            customers={customers}
-            branches={branches}
-            initialCustomerId={initialCustomerId}
-          />
-        }
+      <TopbarPageBridge title="Customer Assets" description={`${assets.length} tracked`} />
+      <AssetDialog
+        tenantSlug={tenantSlug}
+        tenantId={tenant.id}
+        customers={customers}
+        branches={branches}
+        initialCustomerId={initialCustomerId}
+        showTrigger={false}
+        enableTopbarCta
       />
       <ContentPanel className="p-4 sm:p-5">
         <AssetsList

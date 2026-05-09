@@ -27,9 +27,10 @@ import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 interface AddCustomerDialogProps {
   tenantSlug: string;
   tenantId: string;
+  showTrigger?: boolean;
 }
 
-export function AddCustomerDialog({ tenantSlug, tenantId }: AddCustomerDialogProps) {
+export function AddCustomerDialog({ tenantSlug, tenantId, showTrigger = true }: AddCustomerDialogProps) {
   const [open, setOpen] = useState(false);
   useTopbarCta("New Customer", () => setOpen(true));
   const router = useRouter();
@@ -59,10 +60,12 @@ export function AddCustomerDialog({ tenantSlug, tenantId }: AddCustomerDialogPro
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button className="rounded-full px-4" />}>
-          <Plus className="mr-2 h-4 w-4" />
-          New
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger render={<Button className="rounded-full px-4" />}>
+            <Plus className="mr-2 h-4 w-4" />
+            New
+        </DialogTrigger>
+      ) : null}
       <DialogContent
         showCloseButton={false}
         className="flex max-h-[90dvh] w-[min(680px,calc(100vw-2rem))] flex-col gap-0 overflow-hidden border border-border/70 bg-popover p-0 shadow-[0_0_60px_-20px_rgba(15,23,42,0.28)]"

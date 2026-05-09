@@ -9,8 +9,8 @@ import { RecentActivityPanel } from "./recent-activity-panel";
 import { AddItemDialog } from "./add-item-dialog";
 import type { InventoryItem } from "../types";
 import { db } from "@/lib/local-db";
-import { ContentPanel, PageHeader, PageShell } from "@/components/layout/page-shell";
-import { DashboardStatCards, type DashboardStatCardData } from "@/components/dashboard/stat-cards";
+import { useTopbarCta, useTopbarPage } from "@/components/layout/topbar-cta-context";
+import { ContentPanel, PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DataSurfaceLoading } from "@/components/ui/data-surface-loading";
@@ -36,8 +36,10 @@ interface InventoryData {
 }
 
 export function InventoryView({ tenantSlug, tenantId, currencySymbol, currencyLocale }: InventoryViewProps) {
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [watchlistOpen, setWatchlistOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
+  useTopbarCta("Add Item", () => setAddDialogOpen(true));
   const { data, isPending } = useQuery<InventoryData>({
     queryKey: ["inventory", tenantSlug],
     queryFn: async () => {
@@ -99,71 +101,13 @@ export function InventoryView({ tenantSlug, tenantId, currencySymbol, currencyLo
   const items = data?.items ?? [];
   const recentAdjustments = data?.recentAdjustments ?? [];
   const lowStock = items.filter((i) => i.quantity <= i.reorderAt);
-  const lowStockCount = lowStock.length;
-  const totalValue = items.reduce((sum, i) => sum + Number(i.unitCost) * i.quantity, 0);
-  const retailValue = items.reduce((sum, i) => sum + Number(i.unitPrice) * i.quantity, 0);
-  const stats: DashboardStatCardData[] = [
-    {
-      label: "Items",
-      rawValue: items.length,
-      iconKey: "Package",
-      href: `/${tenantSlug}/inventory`,
-      color: "blue",
-    },
-    {
-      label: "Cost value",
-      rawValue: totalValue,
-      isCurrency: true,
-      currencySymbol,
-      currencyLocale,
-      sub: "At cost",
-      iconKey: "ReceiptText",
-      href: `/${tenantSlug}/inventory`,
-      color: "green",
-    },
-    {
-      label: "Retail",
-      rawValue: retailValue,
-      isCurrency: true,
-      currencySymbol,
-      currencyLocale,
-      sub: "At price",
-      iconKey: "ShoppingCart",
-      href: `/${tenantSlug}/inventory`,
-      color: "violet",
-    },
-    {
-      label: "Low stock",
-      rawValue: lowStockCount,
-      sub: lowStockCount > 0 ? "Restock" : "Stable",
-      iconKey: "ClipboardList",
-      href: `/${tenantSlug}/inventory`,
-      color: lowStockCount > 0 ? "amber" : "zinc",
-      alert: lowStockCount > 0,
-    },
-  ];
+  useTopbarPage({
+    title: "Inventory",
+    description: isPending ? "Loading inventory." : `${items.length} tracked`,
+  });
 
   return (
     <PageShell className="h-auto min-h-full">
-      <PageHeader
-        eyebrow="Stock"
-        title="Inventory"
-        description={isPending ? "Loading" : `${items.length} tracked`}
-        action={<AddItemDialog tenantSlug={tenantSlug} tenantId={tenantId} currencySymbol={currencySymbol} />}
-        className="py-4 sm:py-5"
-      />
-
-      <DashboardStatCards cards={stats} mobileCols={2} />
-
-      {lowStockCount > 0 && (
-        <div className="flex items-center gap-2.5 rounded-2xl border border-amber-200/70 bg-amber-50/85 px-4 py-3 text-sm text-amber-900 shadow-[0_12px_32px_-24px_rgba(217,119,6,0.4)]">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-          <span>
-            {lowStockCount} low
-          </span>
-        </div>
-      )}
-
       <div className="grid grid-cols-2 gap-3 sm:hidden">
         <Button
           className="justify-start rounded-full px-4"
@@ -250,6 +194,14 @@ export function InventoryView({ tenantSlug, tenantId, currencySymbol, currencyLo
           </div>
         </SheetContent>
       </Sheet>
+
+      <AddItemDialog
+        tenantSlug={tenantSlug}
+        tenantId={tenantId}
+        currencySymbol={currencySymbol}
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+      />
     </PageShell>
   );
 }

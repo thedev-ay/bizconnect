@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { LoyaltyCard, LoyaltySetting, LoyaltyActivity } from "../types";
 import { addStamp, redeemReward, deleteLoyaltyCard } from "../actions";
-import { LoyaltySettingsDialog } from "./loyalty-settings-dialog";
-import { NewCardDialog, NewCardButton } from "./new-card-dialog";
+import { NewCardDialog } from "./new-card-dialog";
 import { useTopbarCta } from "@/components/layout/topbar-cta-context";
 
 interface LoyaltyCardWithActivity extends LoyaltyCard {
