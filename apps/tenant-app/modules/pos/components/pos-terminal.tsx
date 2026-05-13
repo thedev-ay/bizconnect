@@ -466,33 +466,6 @@ export function POSTerminal({
 
         {/* ── Left: browser ── */}
         <div className="flex min-h-0 flex-col gap-3 rounded-[calc(var(--radius)+8px)] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.88)_0%,rgba(248,250,252,0.9)_100%)] p-3 shadow-[0_24px_50px_-34px_rgba(15,23,42,0.3)]">
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
-            <div>
-              <p className="eyebrow-label">Browse</p>
-              <h2 className="text-lg font-semibold tracking-[-0.03em] text-foreground sm:text-xl">
-                {activeTab === "products" ? "Catalog" : "Service Menu"}
-              </h2>
-            </div>
-            <div className="grid grid-cols-3 gap-2 rounded-[calc(var(--radius)+2px)] border border-primary/10 bg-primary/[0.035] p-2 text-xs text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] sm:min-w-[260px]">
-              <div className="rounded-xl bg-white/80 px-3 py-2">
-                <p className="text-[0.68rem] uppercase tracking-[0.16em] text-primary/70">Shown</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {activeTab === "products" ? filteredProducts.length : filteredServices.length}
-                </p>
-              </div>
-              <div className="rounded-xl bg-white/80 px-3 py-2">
-                <p className="text-[0.68rem] uppercase tracking-[0.16em] text-primary/70">Cart</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">{totalUnits}</p>
-              </div>
-              <div className="rounded-xl bg-white/80 px-3 py-2">
-                <p className="text-[0.68rem] uppercase tracking-[0.16em] text-primary/70">Value</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {currencySymbol}{total.toFixed(2)}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Tabs */}
           {availableTabs.length > 1 && (
             <div className="flex gap-1 rounded-[calc(var(--radius)+2px)] border border-border/70 bg-muted/35 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
@@ -567,25 +540,6 @@ export function POSTerminal({
                   onClick={() => addToCart(product)}
                   className="group rounded-[calc(var(--radius)+2px)] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(250,250,250,0.95)_100%)] p-3.5 text-left shadow-[0_24px_42px_-34px_rgba(15,23,42,0.38)] transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_28px_52px_-34px_rgba(13,148,136,0.5)] focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  {/* Thumbnail with stock pill */}
-                  <div className="relative mb-3 flex items-start justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary/80">
-                      {product.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    <span className={cn(
-                      "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                      product.quantity <= 5
-                        ? "border-amber-200 bg-amber-50 text-amber-700"
-                        : "border-border/70 bg-muted/70 text-muted-foreground"
-                    )}>
-                      {product.quantity}
-                    </span>
-                  </div>
-                  {product.category && (
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/70">
-                      {product.category}
-                    </p>
-                  )}
                   <p className="text-sm font-semibold leading-tight text-foreground">
                     {product.name}
                   </p>

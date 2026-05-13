@@ -413,7 +413,7 @@ export function Sidebar({
     );
   }
 
-  function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
+  function renderSidebarBody(onNavigate?: () => void) {
     return (
       <>
         <div className="border-b border-sidebar-border px-3 pb-3 pt-4">
@@ -537,7 +537,7 @@ export function Sidebar({
             <SheetTitle>Navigation</SheetTitle>
           </SheetHeader>
           <div className="flex h-full flex-col">
-            <SidebarBody onNavigate={() => onMobileOpenChange(false)} />
+            {renderSidebarBody(() => onMobileOpenChange(false))}
           </div>
         </SheetContent>
       </Sheet>
@@ -545,7 +545,7 @@ export function Sidebar({
       <aside
         className="hidden h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex"
       >
-        <SidebarBody />
+        {renderSidebarBody()}
       </aside>
     </>
   );
